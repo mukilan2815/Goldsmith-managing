@@ -14,7 +14,14 @@ import { receiptServices } from "@/services/api";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+
+// Extend jsPDF type to include autoTable for TypeScript
+declare module "jspdf" {
+  interface jsPDF {
+    autoTable: typeof autoTable;
+  }
+}
 
 export default function ReceiptDetailsPage() {
   const { id } = useParams();
@@ -22,39 +29,41 @@ export default function ReceiptDetailsPage() {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-  // Fetch all receipts and find the matching one
+  // Fetch receipt by ID directly instead of fetching all receipts
   const {
-    data: receiptsData,
+    data: receipt,
     isLoading,
     isError,
     error,
   } = useQuery({
-    queryKey: ["receipts"],
-    queryFn: () => receiptServices.getReceipts(),
-    select: (data) => {
-      // Find the receipt with matching ID
-      return data?.receipts?.find((receipt) => receipt._id === id);
-    },
+    queryKey: ["receipt", id],
+    queryFn: () => receiptServices.getReceipt(id),
+    enabled: !!id,
     meta: {
       onError: (err) => {
-        console.error("Error fetching receipts:", err);
+        console.error("Error fetching receipt:", err);
         toast({
           title: "Error",
-          description: "Failed to load receipts. Please try again.",
+          description: "Failed to load receipt details. Please try again.",
           variant: "destructive",
         });
       },
     },
   });
 
-  const receipt = receiptsData;
+  // Debug log to check receipt data structure
+  useEffect(() => {
+    if (receipt) {
+      console.log("Receipt data:", receipt);
+    }
+  }, [receipt]);
 
-  // Rest of your component remains the same...
   const handleEditReceipt = () => {
     navigate(`/receipts/${id}/edit`, {
       state: { receiptData: receipt }, // Pass the receipt data via state
     });
   };
+
   const handlePrintReceipt = () => {
     window.print();
   };
@@ -128,11 +137,11 @@ export default function ReceiptDetailsPage() {
       receipt.items?.forEach((item) => {
         const itemData = [
           item.itemName || "",
-          (item.grossWeight || 0).toFixed(2),
-          (item.stoneWeight || 0).toFixed(2),
-          (item.netWeight || 0).toFixed(2),
-          (item.finalWeight || 0).toFixed(2),
-          (item.stoneAmount || 0).toFixed(2),
+          parseFloat(item.grossWeight || 0).toFixed(2),
+          parseFloat(item.stoneWeight || 0).toFixed(2),
+          parseFloat(item.netWeight || 0).toFixed(2),
+          parseFloat(item.finalWeight || 0).toFixed(2),
+          parseFloat(item.stoneAmount || 0).toFixed(2),
         ];
         tableRows.push(itemData);
       });
@@ -140,15 +149,15 @@ export default function ReceiptDetailsPage() {
       const totals = receipt.totals || {};
       const totalsRow = [
         "Totals",
-        (totals.grossWt || 0).toFixed(2),
-        (totals.stoneWt || 0).toFixed(2),
-        (totals.netWt || 0).toFixed(2),
-        (totals.finalWt || 0).toFixed(2),
-        (totals.stoneAmt || 0).toFixed(2),
+        parseFloat(totals.grossWt || 0).toFixed(2),
+        parseFloat(totals.stoneWt || 0).toFixed(2),
+        parseFloat(totals.netWt || 0).toFixed(2),
+        parseFloat(totals.finalWt || 0).toFixed(2),
+        parseFloat(totals.stoneAmt || 0).toFixed(2),
       ];
       tableRows.push(totalsRow);
 
-      doc.autoTable({
+      autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
         startY: 90,
@@ -159,7 +168,7 @@ export default function ReceiptDetailsPage() {
         footStyles: { fillColor: [200, 200, 200], fontStyle: "bold" },
       });
 
-      const pageCount = doc.internal.getNumberOfPages();
+      const pageCount = doc.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
@@ -332,19 +341,19 @@ export default function ReceiptDetailsPage() {
                     >
                       <td className="py-2 px-1">{item.itemName}</td>
                       <td className="py-2 px-1 text-right">
-                        {(item.grossWeight || 0).toFixed(2)}
+                        {parseFloat(item.grossWeight || 0).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {(item.stoneWeight || 0).toFixed(2)}
+                        {parseFloat(item.stoneWeight || 0).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {(item.netWeight || 0).toFixed(2)}
+                        {parseFloat(item.netWeight || 0).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {(item.finalWeight || 0).toFixed(2)}
+                        {parseFloat(item.finalWeight || 0).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {(item.stoneAmount || 0).toFixed(2)}
+                        {parseFloat(item.stoneAmount || 0).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -352,19 +361,19 @@ export default function ReceiptDetailsPage() {
                   <tr className="font-medium bg-accent/20 print:bg-gray-100">
                     <td className="py-2 px-1 text-left">Totals</td>
                     <td className="py-2 px-1 text-right">
-                      {(receipt.totals?.grossWt || 0).toFixed(2)}
+                      {parseFloat(receipt.totals?.grossWt || 0).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {(receipt.totals?.stoneWt || 0).toFixed(2)}
+                      {parseFloat(receipt.totals?.stoneWt || 0).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {(receipt.totals?.netWt || 0).toFixed(2)}
+                      {parseFloat(receipt.totals?.netWt || 0).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {(receipt.totals?.finalWt || 0).toFixed(2)}
+                      {parseFloat(receipt.totals?.finalWt || 0).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {(receipt.totals?.stoneAmt || 0).toFixed(2)}
+                      {parseFloat(receipt.totals?.stoneAmt || 0).toFixed(2)}
                     </td>
                   </tr>
                 </tbody>

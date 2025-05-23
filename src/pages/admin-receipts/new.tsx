@@ -33,7 +33,7 @@ import axios from "axios";
 
 // API client setup
 const api = axios.create({
-  baseURL: "https://backend-goldsmith.onrender.com/api",
+  baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },

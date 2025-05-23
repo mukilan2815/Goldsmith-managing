@@ -2,7 +2,7 @@ import axios from "axios";
 import { toast } from "@/hooks/use-toast";
 
 // For local development, this would point to your local server
-export const API_URL = "https://backend-goldsmith.onrender.com/api";
+export const API_URL = "http://localhost:5000/api";
 
 export const api = axios.create({
   baseURL: API_URL,
