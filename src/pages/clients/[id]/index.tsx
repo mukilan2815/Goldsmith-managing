@@ -37,23 +37,120 @@ interface Client {
 interface Receipt {
   _id: string;
   voucherId: string;
+  clientId: string;
+  clientInfo: {
+    clientName: string;
+    shopName: string;
+    phoneNumber: string;
+    metalType: string;
+  };
   issueDate: string;
   items: Array<{
-    description: string;
-    grossWeight: number;
-    stoneWeight: number;
-    netWeight: number;
-    purity: number;
-    finalWeight: number;
-    rate: number;
-    amount: number;
+    itemName: string;
+    tag: string;
+    grossWt: number;
+    stoneWt: number;
+    netWt: number;
+    meltingTouch: number;
+    finalWt: number;
+    stoneAmt: number;
+    totalInvoiceAmount: number;
   }>;
-  totalGrossWeight: number;
-  totalStoneWeight: number;
-  totalNetWeight: number;
-  totalFinalWeight: number;
-  totalAmount: number;
+  totals: {
+    grossWt: number;
+    stoneWt: number;
+    netWt: number;
+    finalWt: number;
+    stoneAmt: number;
+    totalInvoiceAmount: number;
+    totalPaidAmount: number;
+    balanceDue: number;
+    paymentStatus: string;
+    isCompleted: boolean;
+  };
+  payments: any[];
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
   type: "regular" | "admin";
+}
+
+interface ReceiptsTableProps {
+  receipts: Receipt[];
+  onViewReceipt: (receipt: Receipt) => void;
+  onDownloadReceipt: (receiptId: string) => void;
+}
+
+function ReceiptsTable({
+  receipts,
+  onViewReceipt,
+  onDownloadReceipt,
+}: ReceiptsTableProps) {
+  if (!receipts || receipts.length === 0) {
+    return (
+      <div className="text-center py-10 text-muted-foreground">
+        No receipts found for this client
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Receipt ID</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Items</TableHead>
+            <TableHead>Gross Weight</TableHead>
+            <TableHead>Stone Weight</TableHead>
+            <TableHead>Final Weight</TableHead>
+            <TableHead>Total Amount</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {receipts.map((receipt) => (
+            <TableRow key={receipt._id}>
+              <TableCell className="font-medium">
+                #{receipt.voucherId}
+              </TableCell>
+              <TableCell>
+                {new Date(receipt.issueDate).toLocaleDateString()}
+              </TableCell>
+              <TableCell>{receipt.items.length}</TableCell>
+              <TableCell>{receipt.totals.grossWt}g</TableCell>
+              <TableCell>{receipt.totals.stoneWt}g</TableCell>
+              <TableCell>{receipt.totals.finalWt}g</TableCell>
+              <TableCell>
+                ₹{receipt.totals.totalInvoiceAmount.toLocaleString()}
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => onViewReceipt(receipt)}
+                    title="View Receipt"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => onDownloadReceipt(receipt._id)}
+                    title="Download Receipt"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
 }
 
 export default function ClientDetailsPage() {
@@ -65,7 +162,7 @@ export default function ClientDetailsPage() {
   const [stats, setStats] = useState({
     totalReceipts: 0,
     totalWeight: "0g",
-    totalValue: "$0",
+    totalValue: "₹0",
     lastTransaction: "N/A",
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -91,7 +188,7 @@ export default function ClientDetailsPage() {
       return {
         totalReceipts: 0,
         totalWeight: "0g",
-        totalValue: "$0",
+        totalValue: "₹0",
         lastTransaction: "N/A",
       };
     }
@@ -99,13 +196,13 @@ export default function ClientDetailsPage() {
     const totalReceipts = receiptsData.length;
     const totalWeight =
       receiptsData
-        .reduce((sum, r) => sum + (r.totalFinalWeight || 0), 0)
+        .reduce((sum, r) => sum + (r.totals.finalWt || 0), 0)
         .toFixed(2) + "g";
 
     const totalValue =
-      "$" +
+      "₹" +
       receiptsData
-        .reduce((sum, r) => sum + (r.totalAmount || 0), 0)
+        .reduce((sum, r) => sum + (r.totals.totalInvoiceAmount || 0), 0)
         .toLocaleString();
 
     const lastTransaction = receiptsData[0]?.issueDate || "N/A";
@@ -367,20 +464,20 @@ export default function ClientDetailsPage() {
                 <div className="grid grid-cols-2 mb-4">
                   <div className="text-left">
                     <p className="text-sm">
-                      Receipt: #{selectedReceipt.voucherId || "N/A"}
+                      Receipt: #{selectedReceipt.voucherId}
                     </p>
                     <p className="text-sm">
                       Date:{" "}
-                      {selectedReceipt.issueDate
-                        ? new Date(
-                            selectedReceipt.issueDate
-                          ).toLocaleDateString()
-                        : "N/A"}
+                      {new Date(selectedReceipt.issueDate).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm">Client: {client.clientName}</p>
-                    <p className="text-sm">Phone: {client.phoneNumber}</p>
+                    <p className="text-sm">
+                      Client: {selectedReceipt.clientInfo.clientName}
+                    </p>
+                    <p className="text-sm">
+                      Phone: {selectedReceipt.clientInfo.phoneNumber}
+                    </p>
                   </div>
                 </div>
 
@@ -388,6 +485,7 @@ export default function ClientDetailsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
+                      <TableHead>Tag</TableHead>
                       <TableHead>Gross Wt</TableHead>
                       <TableHead>Stone Wt</TableHead>
                       <TableHead>Net Wt</TableHead>
@@ -399,14 +497,15 @@ export default function ClientDetailsPage() {
                   <TableBody>
                     {selectedReceipt.items.map((item, index) => (
                       <TableRow key={index}>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell>{item.grossWeight}g</TableCell>
-                        <TableCell>{item.stoneWeight}g</TableCell>
-                        <TableCell>{item.netWeight}g</TableCell>
-                        <TableCell>{item.purity}%</TableCell>
-                        <TableCell>{item.finalWeight}g</TableCell>
+                        <TableCell>{item.itemName}</TableCell>
+                        <TableCell>{item.tag}</TableCell>
+                        <TableCell>{item.grossWt}g</TableCell>
+                        <TableCell>{item.stoneWt}g</TableCell>
+                        <TableCell>{item.netWt}g</TableCell>
+                        <TableCell>{item.meltingTouch}%</TableCell>
+                        <TableCell>{item.finalWt}g</TableCell>
                         <TableCell>
-                          ${(item.amount || 0).toLocaleString()}
+                          ₹{(item.totalInvoiceAmount || 0).toLocaleString()}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -415,10 +514,20 @@ export default function ClientDetailsPage() {
 
                 <div className="flex justify-between mt-6 pt-4 border-t">
                   <div>Total Items: {selectedReceipt.items.length}</div>
-                  <div>Total Weight: {selectedReceipt.totalFinalWeight}g</div>
                   <div>
-                    Total Value: $
-                    {(selectedReceipt.totalAmount || 0).toLocaleString()}
+                    Total Gross Weight: {selectedReceipt.totals.grossWt}g
+                  </div>
+                  <div>
+                    Total Stone Weight: {selectedReceipt.totals.stoneWt}g
+                  </div>
+                  <div>
+                    Total Final Weight: {selectedReceipt.totals.finalWt}g
+                  </div>
+                  <div>
+                    Total Value: ₹
+                    {(
+                      selectedReceipt.totals.totalInvoiceAmount || 0
+                    ).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -434,199 +543,6 @@ export default function ClientDetailsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-// Update the Receipt interface to match your MongoDB schema
-interface Receipt {
-  _id: string;
-  clientId: string;
-  clientInfo: {
-    clientName: string;
-    shopName: string;
-    phoneNumber: string;
-    metalType: string;
-  };
-  issueDate: string;
-  voucherId: string;
-  items: Array<{
-    itemName: string;
-    tag: string;
-    grossWt: number;
-    stoneWt: number;
-    netWt: number;
-    meltingTouch: number;
-    finalWt: number;
-    stoneAmt: number;
-    totalInvoiceAmount: number;
-  }>;
-  totals: {
-    grossWt: number;
-    stoneWt: number;
-    netWt: number;
-    finalWt: number;
-    stoneAmt: number;
-    totalInvoiceAmount: number;
-    totalPaidAmount: number;
-    balanceDue: number;
-    paymentStatus: string;
-    isCompleted: boolean;
-  };
-  payments: any[];
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-}
-
-// Update the ReceiptsTable component to display the correct fields
-function ReceiptsTable({
-  receipts,
-  onViewReceipt,
-  onDownloadReceipt,
-}: ReceiptsTableProps) {
-  if (!receipts || receipts.length === 0) {
-    return (
-      <div className="text-center py-10 text-muted-foreground">
-        No receipts found for this client
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Receipt ID</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Items</TableHead>
-            <TableHead>Gross Weight</TableHead>
-            <TableHead>Stone Weight</TableHead>
-            <TableHead>Final Weight</TableHead>
-            <TableHead>Total Amount</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {receipts.map((receipt) => (
-            <TableRow key={receipt._id}>
-              <TableCell className="font-medium">
-                #{receipt.voucherId}
-              </TableCell>
-              <TableCell>
-                {new Date(receipt.issueDate).toLocaleDateString()}
-              </TableCell>
-              <TableCell>{receipt.items.length}</TableCell>
-              <TableCell>{receipt.totals.grossWt}g</TableCell>
-              <TableCell>{receipt.totals.stoneWt}g</TableCell>
-              <TableCell>{receipt.totals.finalWt}g</TableCell>
-              <TableCell>
-                ₹{receipt.totals.totalInvoiceAmount.toLocaleString()}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onViewReceipt(receipt)}
-                    title="View Receipt"
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onDownloadReceipt(receipt._id)}
-                    title="Download Receipt"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-// Update the receipt modal to show the correct data
-{
-  selectedReceipt && (
-    <div className="mt-4">
-      <div className="border rounded-lg p-6 mb-6 text-center">
-        <h3 className="text-lg font-bold mb-2">Golden Touch Jewelers</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Premium Goldsmith Services
-        </p>
-
-        <div className="grid grid-cols-2 mb-4">
-          <div className="text-left">
-            <p className="text-sm">Receipt: #{selectedReceipt.voucherId}</p>
-            <p className="text-sm">
-              Date: {new Date(selectedReceipt.issueDate).toLocaleDateString()}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm">
-              Client: {selectedReceipt.clientInfo.clientName}
-            </p>
-            <p className="text-sm">
-              Phone: {selectedReceipt.clientInfo.phoneNumber}
-            </p>
-          </div>
-        </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>Tag</TableHead>
-              <TableHead>Gross Wt</TableHead>
-              <TableHead>Stone Wt</TableHead>
-              <TableHead>Net Wt</TableHead>
-              <TableHead>Touch%</TableHead>
-              <TableHead>Final Wt</TableHead>
-              <TableHead>Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {selectedReceipt.items.map((item, index) => (
-              <TableRow key={index}>
-                <TableCell>{item.itemName}</TableCell>
-                <TableCell>{item.tag}</TableCell>
-                <TableCell>{item.grossWt}g</TableCell>
-                <TableCell>{item.stoneWt}g</TableCell>
-                <TableCell>{item.netWt}g</TableCell>
-                <TableCell>{item.meltingTouch}%</TableCell>
-                <TableCell>{item.finalWt}g</TableCell>
-                <TableCell>
-                  ₹{(item.totalInvoiceAmount || 0).toLocaleString()}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-        <div className="flex justify-between mt-6 pt-4 border-t">
-          <div>Total Items: {selectedReceipt.items.length}</div>
-          <div>Total Gross Weight: {selectedReceipt.totals.grossWt}g</div>
-          <div>Total Stone Weight: {selectedReceipt.totals.stoneWt}g</div>
-          <div>Total Final Weight: {selectedReceipt.totals.finalWt}g</div>
-          <div>
-            Total Value: ₹
-            {(selectedReceipt.totals.totalInvoiceAmount || 0).toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button onClick={() => handleDownloadReceipt(selectedReceipt._id)}>
-          <Download className="mr-2 h-4 w-4" /> Download PDF
-        </Button>
-      </div>
     </div>
   );
 }
