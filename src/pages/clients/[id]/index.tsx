@@ -229,11 +229,12 @@ export default function ClientDetailsPage() {
     const fetchClientData = async () => {
       try {
         setIsLoading(true);
-        const clientResponse = await axios.get(`/api/clients/${id}`);
+        const clientResponse =
+          await axios.get(`https://backend-goldsmith.onrender.com/api/clients/${id}`);
         setClient(clientResponse.data);
 
         const receiptsResponse = await axios.get(
-          `/api/receipts?clientId=${id}`
+          `https://backend-goldsmith.onrender.com/api/receipts?clientId=${id}`
         );
         const receiptsData = Array.isArray(receiptsResponse.data)
           ? receiptsResponse.data
