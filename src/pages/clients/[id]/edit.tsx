@@ -59,7 +59,8 @@ export default function EditClientPage() {
     const fetchClient = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get(`/api/clients/${id}`);
+        const response =
+          await axios.get(`https://backend-goldsmith.onrender.com/api/clients/api/clients/${id}`);
         form.reset(response.data);
       } catch (err) {
         console.error("Failed to fetch client:", err);
@@ -80,7 +81,7 @@ export default function EditClientPage() {
   const handleSubmit = async (data: ClientFormValues) => {
     try {
       setIsLoading(true);
-      await axios.put(`/api/clients/${id}`, data);
+      await axios.put(`https://backend-goldsmith.onrender.com/api/clients/${id}`, data);
       toast.success("Client updated successfully");
       navigate(`/clients/${id}`);
     } catch (err) {
