@@ -43,8 +43,8 @@ export default function CustomerDetailsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
 
-  // Fetch clients from API
   const fetchClients = async () => {
     try {
       setLoading(true);
@@ -62,7 +62,6 @@ export default function CustomerDetailsPage() {
     }
   };
 
-  // Search clients
   const searchClients = async () => {
     if (!searchTerm || searchTerm.length < 2) {
       fetchClients();
@@ -105,13 +104,28 @@ export default function CustomerDetailsPage() {
     setDeleteDialogOpen(true);
   };
 
+  const handleCloseDialog = () => {
+    setDeleteDialogOpen(false);
+    setDeletePassword("");
+    setClientToDelete(null);
+  };
+
   const handleDeleteClient = async () => {
     if (!clientToDelete) return;
+
+    if (deletePassword !== "7007") {
+      toast({
+        title: "Incorrect Password",
+        description: "You must enter the correct password to delete a client.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setDeleteLoading(true);
       await axios.delete(`/api/clients/${clientToDelete}`);
-      fetchClients(); // Refresh the list
+      fetchClients();
       toast({
         title: "Client Deleted",
         description:
@@ -126,8 +140,7 @@ export default function CustomerDetailsPage() {
       console.error("Error deleting client:", err);
     } finally {
       setDeleteLoading(false);
-      setDeleteDialogOpen(false);
-      setClientToDelete(null);
+      handleCloseDialog();
     }
   };
 
@@ -135,7 +148,6 @@ export default function CustomerDetailsPage() {
     navigate("/receipts/new", { state: { client } });
   };
 
-  // Filter clients based on search term (client-side fallback)
   const filteredClients = clients.filter((client) => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -274,20 +286,28 @@ export default function CustomerDetailsPage() {
         </div>
       </div>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog open={deleteDialogOpen} onOpenChange={handleCloseDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this client? If the client has
-              receipts, they will be marked as inactive instead of being
-              deleted.
+              Enter the password to delete this client.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="my-4">
+            <Input
+              type="password"
+              placeholder="Enter password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+            />
+          </div>
+
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
+              onClick={handleCloseDialog}
               disabled={deleteLoading}
             >
               Cancel
@@ -295,7 +315,7 @@ export default function CustomerDetailsPage() {
             <Button
               variant="destructive"
               onClick={handleDeleteClient}
-              disabled={deleteLoading}
+              disabled={deletePassword !== "7007" || deleteLoading}
             >
               {deleteLoading ? (
                 <>
