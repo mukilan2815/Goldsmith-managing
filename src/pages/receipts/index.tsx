@@ -61,8 +61,8 @@ export default function ReceiptsPage() {
     }
   });
 
-  const receipts = receiptsData?.receipts || [];
-
+  const receipts = receiptsData?.data || [];
+console.log("Fetched receipts:", receiptsData);
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => receiptServices.deleteReceipt(id),

@@ -344,23 +344,26 @@ export function ReceiptForm({
       // Format data for API
       const formattedData = {
         clientId: client._id,
-        clientName: client.clientName,
-        shopName: client.shopName,
-        phoneNumber: client.phoneNumber,
-        metalType: formValues.metalType,
-        overallWeight: formValues.overallWeight || 0,
+        metalType: formValues.metalType, // Add as top-level property
+        clientInfo: {
+          clientName: client.clientName,
+          shopName: client.shopName,
+          phoneNumber: client.phoneNumber,
+          metalType: formValues.metalType,
+        },
+        overallWeight: formValues.overallWeight,
         issueDate: formValues.date.toISOString(),
         voucherId: voucherId,
         tableData: items.map((item) => ({
-          itemName: item.description, // Added itemName field to match backend validation
-          description: item.description, // Keep description if needed
+          itemName: item.description,
+          description: item.description,
           tag: item.tag || "",
-          grossWeight: parseFloat(item.grossWeight.toString()) || 0,
-          stoneWeight: parseFloat(item.stoneWeight.toString()) || 0,
-          meltingPercent: parseFloat(item.meltingPercent.toString()) || 0,
-          netWeight: parseFloat(item.netWeight.toString()) || 0,
-          finalWeight: parseFloat(item.finalWeight.toString()) || 0,
-          stoneAmount: parseFloat(item.stoneAmount?.toString() || "0") || 0,
+          grossWeight: parseFloat(item.grossWeight.toString()),
+          stoneWeight: parseFloat(item.stoneWeight.toString()),
+          meltingPercent: parseFloat(item.meltingPercent.toString()),
+          netWeight: parseFloat(item.netWeight.toString()),
+          finalWeight: parseFloat(item.finalWeight.toString()),
+          stoneAmount: parseFloat(item.stoneAmount?.toString()),
         })),
         totals: {
           grossWt: totals.grossWeight,
@@ -370,11 +373,10 @@ export function ReceiptForm({
           stoneAmt: totals.stoneAmount,
         },
       };
-
       console.log("Sending data to API:", formattedData);
 
       // Updated API URL with correct port (5000)
-      const API_URL = "https://backend-goldsmith.onrender.com/api/receipts";
+      const API_URL = "http://localhost:5000/api/receipts";
       console.log("Using API URL:", API_URL);
 
       // Make API call with the correct URL
@@ -404,11 +406,11 @@ export function ReceiptForm({
       // Show success message
       toast({
         title: "Success",
-        description: `Receipt saved successfully with ID: ${result._id}`,
+        description: `Receipt saved successfully with ID: ${result.data._id}`,
       });
 
       // Navigate to receipt details page
-      navigate(`/receipts/${result._id}`);
+      navigate(`/receipts/${result.data._id}`);
     } catch (error) {
       console.error("Error saving receipt:", error);
 

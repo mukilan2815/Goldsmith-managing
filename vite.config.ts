@@ -7,10 +7,10 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 8000,
     proxy: {
       "/api": {
-        target: "https://backend-goldsmith.onrender.com", // Your backend URL
+        target: "http://localhost:5000", // Your backend URL
         changeOrigin: true,
         secure: false,
       },

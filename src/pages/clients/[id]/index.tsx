@@ -23,6 +23,11 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+// API configuration
+const API_BASE_URL = "http://localhost:5000/api";
+const CLIENT_RECEIPTS_URL = `${API_BASE_URL}/receipts`;
+const ADMIN_RECEIPTS_URL = `${API_BASE_URL}/admin/receipts`;
+
 interface Client {
   _id: string;
   shopName: string;
@@ -72,24 +77,27 @@ interface Receipt {
   createdAt: string;
   updatedAt: string;
   __v: number;
-  type: "regular" | "admin";
+  type: "client" | "admin";
 }
 
 interface ReceiptsTableProps {
   receipts: Receipt[];
   onViewReceipt: (receipt: Receipt) => void;
-  onDownloadReceipt: (receiptId: string) => void;
+  onDownloadReceipt: (receiptId: string, type: "client" | "admin") => void;
+  onDeleteReceipt: (receiptId: string, type: "client" | "admin") => void;
 }
 
 function ReceiptsTable({
   receipts,
   onViewReceipt,
   onDownloadReceipt,
+  onDeleteReceipt,
 }: ReceiptsTableProps) {
+  console.log("No receipts available:", receipts);
   if (!receipts || receipts.length === 0) {
     return (
       <div className="text-center py-10 text-muted-foreground">
-        No receipts found for this client
+        No receipts found
       </div>
     );
   }
@@ -100,6 +108,7 @@ function ReceiptsTable({
         <TableHeader>
           <TableRow>
             <TableHead>Receipt ID</TableHead>
+            <TableHead>Type</TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Items</TableHead>
             <TableHead>Gross Weight</TableHead>
@@ -114,6 +123,17 @@ function ReceiptsTable({
             <TableRow key={receipt._id}>
               <TableCell className="font-medium">
                 #{receipt.voucherId}
+              </TableCell>
+              <TableCell>
+                <span
+                  className={`px-2 py-1 rounded text-xs ${
+                    receipt.type === "admin"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-green-100 text-green-800"
+                  }`}
+                >
+                  {receipt.type}
+                </span>
               </TableCell>
               <TableCell>
                 {new Date(receipt.issueDate).toLocaleDateString()}
@@ -138,7 +158,7 @@ function ReceiptsTable({
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => onDownloadReceipt(receipt._id)}
+                    onClick={() => onDownloadReceipt(receipt._id, receipt.type)}
                     title="Download Receipt"
                   >
                     <Download className="h-4 w-4" />
@@ -158,7 +178,8 @@ export default function ClientDetailsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [clientReceipts, setClientReceipts] = useState<Receipt[]>([]);
+  const [adminReceipts, setAdminReceipts] = useState<Receipt[]>([]);
   const [stats, setStats] = useState({
     totalReceipts: 0,
     totalWeight: "0g",
@@ -168,83 +189,75 @@ export default function ClientDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
-  const [activeTab, setActiveTab] = useState<"all" | "regular" | "admin">(
-    "all"
-  );
+  const [activeTab, setActiveTab] = useState<"all" | "client" | "admin">("all");
 
-  const getFilteredReceipts = () => {
-    switch (activeTab) {
-      case "regular":
-        return receipts.filter((r) => r.type === "regular");
-      case "admin":
-        return receipts.filter((r) => r.type === "admin");
-      default:
-        return receipts;
-    }
-  };
-
-  const calculateStats = (receiptsData: Receipt[]) => {
-    if (!receiptsData || receiptsData.length === 0) {
-      return {
-        totalReceipts: 0,
-        totalWeight: "0g",
-        totalValue: "₹0",
-        lastTransaction: "N/A",
-      };
-    }
-
-    const totalReceipts = receiptsData.length;
-    const totalWeight =
-      receiptsData
-        .reduce((sum, r) => sum + (r.totals.finalWt || 0), 0)
-        .toFixed(2) + "g";
-
-    const totalValue =
-      "₹" +
-      receiptsData
-        .reduce((sum, r) => sum + (r.totals.totalInvoiceAmount || 0), 0)
-        .toLocaleString();
-
-    const lastTransaction = receiptsData[0]?.issueDate || "N/A";
-
-    return {
-      totalReceipts,
-      totalWeight,
-      totalValue,
-      lastTransaction,
-    };
-  };
-
-  useEffect(() => {
-    const filteredReceipts = getFilteredReceipts();
-    setStats(calculateStats(filteredReceipts));
-  }, [receipts, activeTab]);
-
+  // Fetch all data
   useEffect(() => {
     if (!id) {
       setIsLoading(false);
       return;
     }
 
-    const fetchClientData = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
-        const clientResponse =
-          await axios.get(`https://backend-goldsmith.onrender.com/api/clients/${id}`);
+
+        // Fetch client data
+        const clientResponse = await axios.get(`${API_BASE_URL}/clients/${id}`);
+        console.log("Client data up:", clientResponse.data);
         setClient(clientResponse.data);
 
-        const receiptsResponse = await axios.get(
-          `https://backend-goldsmith.onrender.com/api/receipts?clientId=${id}`
+        // Fetch all receipts
+        const allReceiptsResponse = await axios.get(
+          "http://localhost:5000/api/receipts"
         );
-        const receiptsData = Array.isArray(receiptsResponse.data)
-          ? receiptsResponse.data
-          : receiptsResponse.data?.receipts || [];
+        const allReceipts = allReceiptsResponse.data.data;
 
-        setReceipts(receiptsData);
+        // Filter receipts for this client only
+        const clientOnlyReceipts = allReceipts.filter(
+          (r: any) => r.clientId === id
+        );
+
+        // Optional: separate into types if needed
+        const clientReceiptsData = clientOnlyReceipts.map((r: any) => ({
+          ...r,
+          type: "receipt",
+        }));
+        setClientReceipts(clientReceiptsData); // or setAdminReceipts if needed
+
+        // Calculate stats
+        const totalReceipts = clientReceiptsData.length;
+
+        const totalWeight =
+          clientReceiptsData
+            .reduce((sum, r) => sum + (r.totals?.finalWt || 0), 0)
+            .toFixed(2) + "g";
+
+        const totalValue =
+          "₹" +
+          clientReceiptsData
+            .reduce((sum, r) => sum + (r.totals?.totalInvoiceAmount || 0), 0)
+            .toLocaleString();
+
+        const sortedByDate = [...clientReceiptsData].sort(
+          (a, b) =>
+            new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()
+        );
+
+        const lastTransaction = sortedByDate[0]?.issueDate
+          ? new Date(sortedByDate[0].issueDate).toLocaleDateString()
+          : "N/A";
+
+        setStats({
+          totalReceipts,
+          totalWeight,
+          totalValue,
+          lastTransaction,
+        });
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to fetch client data",
+          description: "Failed to fetch client-specific data",
           variant: "destructive",
         });
       } finally {
@@ -252,11 +265,26 @@ export default function ClientDetailsPage() {
       }
     };
 
-    fetchClientData();
+    fetchData();
   }, [id, toast]);
 
-  const handleCreateReceipt = () => {
-    navigate(`/receipts/new?clientId=${id}`);
+  // Filter receipts based on active tab
+  const getFilteredReceipts = () => {
+    switch (activeTab) {
+      case "client":
+        return clientReceipts;
+      case "admin":
+        return adminReceipts;
+      default:
+        return [...clientReceipts, ...adminReceipts].sort(
+          (a, b) =>
+            new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()
+        );
+    }
+  };
+
+  const handleCreateReceipt = (type: "client" | "admin") => {
+    navigate(`/receipts/new?clientId=${id}&type=${type}`);
   };
 
   const handleViewReceipt = (receipt: Receipt) => {
@@ -264,11 +292,74 @@ export default function ClientDetailsPage() {
     setReceiptModalOpen(true);
   };
 
-  const handleDownloadReceipt = (receiptId: string) => {
-    toast({
-      title: "Download Started",
-      description: `Receipt #${receiptId} is downloading...`,
-    });
+  const handleDownloadReceipt = async (
+    receiptId: string,
+    type: "client" | "admin"
+  ) => {
+    try {
+      const url =
+        type === "client"
+          ? `${CLIENT_RECEIPTS_URL}/${receiptId}/download`
+          : `${ADMIN_RECEIPTS_URL}/${receiptId}/download`;
+
+      const response = await axios.get(url, { responseType: "blob" });
+
+      const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.setAttribute("download", `receipt-${receiptId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      toast({
+        title: "Download Complete",
+        description: "Receipt downloaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Could not download receipt",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteReceipt = async (
+    receiptId: string,
+    type: "client" | "admin"
+  ) => {
+    try {
+      const url =
+        type === "client"
+          ? `${CLIENT_RECEIPTS_URL}/${receiptId}`
+          : `${ADMIN_RECEIPTS_URL}/${receiptId}`;
+
+      await axios.delete(url);
+
+      // Update the appropriate receipts list
+      if (type === "client") {
+        setClientReceipts(clientReceipts.filter((r) => r._id !== receiptId));
+      } else {
+        setAdminReceipts(adminReceipts.filter((r) => r._id !== receiptId));
+      }
+
+      // Close modal if open
+      if (selectedReceipt?._id === receiptId) {
+        setReceiptModalOpen(false);
+      }
+
+      toast({
+        title: "Success",
+        description: "Receipt deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete receipt",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -304,6 +395,7 @@ export default function ClientDetailsPage() {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Clients
       </Button>
 
+      {/* Client header and actions */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
           <h1 className="text-3xl font-serif font-bold">{client.shopName}</h1>
@@ -315,12 +407,24 @@ export default function ClientDetailsPage() {
           <Button onClick={() => navigate(`/clients/${id}/edit`)}>
             <Edit className="mr-2 h-4 w-4" /> Edit Client
           </Button>
-          <Button variant="outline" onClick={handleCreateReceipt}>
-            <FileText className="mr-2 h-4 w-4" /> New Receipt
-          </Button>
+          <div className="inline-flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleCreateReceipt("client")}
+            >
+              <FileText className="mr-2 h-4 w-4" /> New Client Receipt
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleCreateReceipt("admin")}
+            >
+              <FileText className="mr-2 h-4 w-4" /> New Admin Receipt
+            </Button>
+          </div>
         </div>
       </div>
 
+      {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
           title="Total Receipts"
@@ -352,6 +456,7 @@ export default function ClientDetailsPage() {
         />
       </div>
 
+      {/* Client info card */}
       <Card className="card-premium mb-8">
         <CardContent className="p-6">
           <h2 className="text-xl font-serif font-medium mb-4">
@@ -396,11 +501,12 @@ export default function ClientDetailsPage() {
         </CardContent>
       </Card>
 
+      {/* Receipts table with tabs */}
       <div className="bg-card card-premium rounded-lg p-6">
         <Tabs
           defaultValue="all"
           onValueChange={(value) =>
-            setActiveTab(value as "all" | "regular" | "admin")
+            setActiveTab(value as "all" | "client" | "admin")
           }
         >
           <div className="flex justify-between items-center mb-6">
@@ -409,7 +515,7 @@ export default function ClientDetailsPage() {
             </h2>
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="regular">Regular</TabsTrigger>
+              <TabsTrigger value="client">Client</TabsTrigger>
               <TabsTrigger value="admin">Admin</TabsTrigger>
             </TabsList>
           </div>
@@ -419,14 +525,16 @@ export default function ClientDetailsPage() {
               receipts={getFilteredReceipts()}
               onViewReceipt={handleViewReceipt}
               onDownloadReceipt={handleDownloadReceipt}
+              onDeleteReceipt={handleDeleteReceipt}
             />
           </TabsContent>
 
-          <TabsContent value="regular" className="mt-0">
+          <TabsContent value="client" className="mt-0">
             <ReceiptsTable
               receipts={getFilteredReceipts()}
               onViewReceipt={handleViewReceipt}
               onDownloadReceipt={handleDownloadReceipt}
+              onDeleteReceipt={handleDeleteReceipt}
             />
           </TabsContent>
 
@@ -435,16 +543,19 @@ export default function ClientDetailsPage() {
               receipts={getFilteredReceipts()}
               onViewReceipt={handleViewReceipt}
               onDownloadReceipt={handleDownloadReceipt}
+              onDeleteReceipt={handleDeleteReceipt}
             />
           </TabsContent>
         </Tabs>
       </div>
 
+      {/* Receipt details modal */}
       <Dialog open={receiptModalOpen} onOpenChange={setReceiptModalOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Receipt Details</DialogTitle>
             <DialogDescription>
+              {selectedReceipt?.type === "admin" ? "Admin " : ""}
               Receipt #{selectedReceipt?.voucherId || "N/A"} from{" "}
               {selectedReceipt?.issueDate
                 ? new Date(selectedReceipt.issueDate).toLocaleDateString()
@@ -471,6 +582,18 @@ export default function ClientDetailsPage() {
                       Date:{" "}
                       {new Date(selectedReceipt.issueDate).toLocaleDateString()}
                     </p>
+                    <p className="text-sm">
+                      Type:{" "}
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${
+                          selectedReceipt.type === "admin"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {selectedReceipt.type}
+                      </span>
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm">
@@ -478,6 +601,9 @@ export default function ClientDetailsPage() {
                     </p>
                     <p className="text-sm">
                       Phone: {selectedReceipt.clientInfo.phoneNumber}
+                    </p>
+                    <p className="text-sm">
+                      Metal: {selectedReceipt.clientInfo.metalType}
                     </p>
                   </div>
                 </div>
@@ -513,7 +639,7 @@ export default function ClientDetailsPage() {
                   </TableBody>
                 </Table>
 
-                <div className="flex justify-between mt-6 pt-4 border-t">
+                <div className="flex flex-wrap justify-between mt-6 pt-4 border-t gap-2">
                   <div>Total Items: {selectedReceipt.items.length}</div>
                   <div>
                     Total Gross Weight: {selectedReceipt.totals.grossWt}g
@@ -533,9 +659,26 @@ export default function ClientDetailsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
                 <Button
-                  onClick={() => handleDownloadReceipt(selectedReceipt._id)}
+                  variant="destructive"
+                  onClick={() => {
+                    handleDeleteReceipt(
+                      selectedReceipt._id,
+                      selectedReceipt.type
+                    );
+                    setReceiptModalOpen(false);
+                  }}
+                >
+                  Delete Receipt
+                </Button>
+                <Button
+                  onClick={() =>
+                    handleDownloadReceipt(
+                      selectedReceipt._id,
+                      selectedReceipt.type
+                    )
+                  }
                 >
                   <Download className="mr-2 h-4 w-4" /> Download PDF
                 </Button>

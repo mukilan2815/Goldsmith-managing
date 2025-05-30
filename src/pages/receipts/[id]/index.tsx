@@ -88,7 +88,7 @@ export default function ReceiptDetailsPage() {
       toast({
         title: "Sharing Failed",
         description:
-          "Could not share the receipt. Try copying the URL manually.",
+          "Could not share the receipt.data. Try copying the URL manually.",
         variant: "destructive",
       });
     }
@@ -104,11 +104,11 @@ export default function ReceiptDetailsPage() {
       doc.setFontSize(20);
       doc.text("Receipt", 105, 15, { align: "center" });
       doc.setFontSize(12);
-      doc.text(`Voucher ID: ${receipt.voucherId || id}`, 105, 25, {
+      doc.text(`Voucher ID: ${receipt.data.voucherId || id}`, 105, 25, {
         align: "center",
       });
-      const issueDate = receipt.issueDate
-        ? new Date(receipt.issueDate)
+      const issueDate = receipt.data.issueDate
+        ? new Date(receipt.data.issueDate)
         : new Date();
       doc.text(`Date: ${format(issueDate, "PPP")}`, 105, 30, {
         align: "center",
@@ -117,12 +117,12 @@ export default function ReceiptDetailsPage() {
       doc.setFontSize(14);
       doc.text("Client Information", 14, 40);
       doc.setFontSize(10);
-      doc.text(`Shop Name: ${receipt.clientInfo?.shopName || ""}`, 14, 48);
-      doc.text(`Client Name: ${receipt.clientInfo?.clientName || ""}`, 14, 54);
-      doc.text(`Phone: ${receipt.clientInfo?.phoneNumber || ""}`, 14, 60);
+      doc.text(`Shop Name: ${receipt.data.clientInfo?.shopName || ""}`, 14, 48);
+      doc.text(`Client Name: ${receipt.data.clientInfo?.clientName || ""}`, 14, 54);
+      doc.text(`Phone: ${receipt.data.clientInfo?.phoneNumber || ""}`, 14, 60);
 
       doc.setFontSize(12);
-      doc.text(`Metal Type: ${receipt.metalType || ""}`, 14, 76);
+      doc.text(`Metal Type: ${receipt.data.metalType || ""}`, 14, 76);
 
       const tableColumn = [
         "Description",
@@ -134,7 +134,7 @@ export default function ReceiptDetailsPage() {
       ];
       const tableRows = [];
 
-      receipt.items?.forEach((item) => {
+      receipt.data.items?.forEach((item) => {
         const itemData = [
           item.itemName || "",
           parseFloat(item.grossWeight || 0).toFixed(2),
@@ -146,7 +146,7 @@ export default function ReceiptDetailsPage() {
         tableRows.push(itemData);
       });
 
-      const totals = receipt.totals || {};
+      const totals = receipt.data.totals || {};
       const totalsRow = [
         "Totals",
         parseFloat(totals.grossWt || 0).toFixed(2),
@@ -183,7 +183,7 @@ export default function ReceiptDetailsPage() {
         );
       }
 
-      doc.save(`Receipt-${receipt.voucherId || id}.pdf`);
+      doc.save(`Receipt-${receipt.data.voucherId || id}.pdf`);
 
       toast({
         title: "PDF Downloaded",
@@ -260,10 +260,10 @@ export default function ReceiptDetailsPage() {
           <div>
             <h1 className="text-3xl font-serif font-bold">Receipt Details</h1>
             <p className="text-muted-foreground">
-              {receipt.clientInfo?.shopName} - {receipt.clientInfo?.clientName}
+              {receipt.data.clientInfo?.shopName} - {receipt.data.clientInfo?.clientName}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Voucher ID: {receipt.voucherId}
+              Voucher ID: {receipt.data.voucherId}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
@@ -294,11 +294,11 @@ export default function ReceiptDetailsPage() {
       <div className="hidden print:block mb-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold">Receipt</h1>
-          <p className="text-lg mt-2">Voucher ID: {receipt.voucherId}</p>
+          <p className="text-lg mt-2">Voucher ID: {receipt.data.voucherId}</p>
           <p className="mt-1">
             Date:{" "}
-            {receipt.issueDate
-              ? format(new Date(receipt.issueDate), "PPP")
+            {receipt.data.issueDate
+              ? format(new Date(receipt.data.issueDate), "PPP")
               : "N/A"}
           </p>
         </div>
@@ -334,7 +334,7 @@ export default function ReceiptDetailsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {receipt.items?.map((item, index) => (
+                  {receipt.data.items?.map((item, index) => (
                     <tr
                       key={item._id || index}
                       className="border-b last:border-b-0"
@@ -361,19 +361,19 @@ export default function ReceiptDetailsPage() {
                   <tr className="font-medium bg-accent/20 print:bg-gray-100">
                     <td className="py-2 px-1 text-left">Totals</td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.totals?.grossWt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.grossWt || 0).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.totals?.stoneWt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.stoneWt || 0).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.totals?.netWt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.netWt || 0).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.totals?.finalWt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.finalWt || 0).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.totals?.stoneAmt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.stoneAmt || 0).toFixed(2)}
                     </td>
                   </tr>
                 </tbody>
@@ -390,21 +390,21 @@ export default function ReceiptDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Shop Name</p>
                 <p className="font-medium">
-                  {receipt.clientInfo?.shopName || "-"}
+                  {receipt.data.clientInfo?.shopName || "-"}
                 </p>
               </div>
 
               <div>
                 <p className="text-sm text-muted-foreground">Client Name</p>
                 <p className="font-medium">
-                  {receipt.clientInfo?.clientName || "-"}
+                  {receipt.data.clientInfo?.clientName || "-"}
                 </p>
               </div>
 
               <div>
                 <p className="text-sm text-muted-foreground">Mobile Number</p>
                 <p className="font-medium">
-                  {receipt.clientInfo?.phoneNumber || "-"}
+                  {receipt.data.clientInfo?.phoneNumber || "-"}
                 </p>
               </div>
             </div>
@@ -416,14 +416,14 @@ export default function ReceiptDetailsPage() {
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-muted-foreground">Metal Type</p>
-                <p className="font-medium">{receipt.metalType || "-"}</p>
+                <p className="font-medium">{receipt.data.metalType || "-"}</p>
               </div>
 
               <div>
                 <p className="text-sm text-muted-foreground">Issue Date</p>
                 <p className="font-medium">
-                  {receipt.issueDate
-                    ? format(new Date(receipt.issueDate), "PPP")
+                  {receipt.data.issueDate
+                    ? format(new Date(receipt.data.issueDate), "PPP")
                     : "-"}
                 </p>
               </div>
@@ -431,8 +431,8 @@ export default function ReceiptDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Created At</p>
                 <p className="font-medium">
-                  {receipt.createdAt
-                    ? format(new Date(receipt.createdAt), "PPP p")
+                  {receipt.data.createdAt
+                    ? format(new Date(receipt.data.createdAt), "PPP p")
                     : "-"}
                 </p>
               </div>
@@ -440,8 +440,8 @@ export default function ReceiptDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Last Updated</p>
                 <p className="font-medium">
-                  {receipt.updatedAt
-                    ? format(new Date(receipt.updatedAt), "PPP p")
+                  {receipt.data.updatedAt
+                    ? format(new Date(receipt.data.updatedAt), "PPP p")
                     : "-"}
                 </p>
               </div>
