@@ -1,97 +1,132 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Loader, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { receiptServices } from "@/services/api";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { receiptServices } from "@/services/api";
+
+// Helper function to safely parse dates
+const safeDateParse = (dateString: string | Date): Date => {
+  if (dateString instanceof Date) return dateString;
+  try {
+    const parsed = new Date(dateString);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  } catch {
+    return new Date();
+  }
+};
+
+// Type definitions
+interface ReceiptItem {
+  _id?: string;
+  itemName: string;
+  tag: string;
+  grossWt: number;
+  stoneWt: number;
+  netWt: number;
+  meltingTouch: number;
+  finalWt: number;
+  stoneAmt: number;
+  totalInvoiceAmount: number;
+}
+
+interface ClientInfo {
+  shopName: string;
+  clientName: string;
+  phoneNumber?: string;
+  address?: string;
+}
+
+interface Receipt {
+  _id: string;
+  voucherId: string;
+  metalType: string;
+  issueDate: string | Date;
+  items: ReceiptItem[];
+  clientInfo: ClientInfo;
+  paymentStatus: "Pending" | "Partial" | "Paid";
+  totalPaidAmount: number;
+  totals?: {
+    grossWt: number;
+    stoneWt: number;
+    netWt: number;
+    finalWt: number;
+    stoneAmt: number;
+    totalInvoiceAmount: number;
+  };
+}
 
 export default function EditReceiptPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const [editableReceipt, setEditableReceipt] = useState(null);
+  const [editableReceipt, setEditableReceipt] = useState<Receipt | null>(null);
 
-  // Check for state data first (passed from ReceiptDetailsPage)
-  const stateReceipt = location.state?.receiptData;
-
-  // Fetch receipt by ID only if not available in state
+  // Fetch receipt by ID
   const {
-    data: receipt,
+    data: receiptData,
     isLoading,
     isError,
     error,
   } = useQuery({
     queryKey: ["receipt", id],
-    queryFn: () => receiptServices.getReceipt(id),
-    enabled: !!id && !stateReceipt,
+    queryFn: () => receiptServices.getReceipt(id!),
+    enabled: !!id,
   });
 
-  // Handle query side effects
+  // Initialize state with fetched data
   useEffect(() => {
-    if (receipt) {
-      setEditableReceipt(receipt?.receipt);
+    if (receiptData?.data) {
+      const receipt = receiptData.data;
+      setEditableReceipt({
+        ...receipt,
+        issueDate: safeDateParse(receipt.issueDate),
+        clientInfo: receipt.clientInfo || {
+          shopName: "",
+          clientName: "",
+          phoneNumber: "",
+          address: "",
+        },
+        items: receipt.items.map((item) => ({
+          ...item,
+          grossWt: item.grossWt || 0,
+          stoneWt: item.stoneWt || 0,
+          netWt: item.netWt || 0,
+          meltingTouch: item.meltingTouch || 0,
+          finalWt: item.finalWt || 0,
+          stoneAmt: item.stoneAmt || 0,
+          totalInvoiceAmount: item.totalInvoiceAmount || 0,
+        })),
+      });
     }
-  }, [receipt]);
+  }, [receiptData]);
 
+  // Handle query errors
   useEffect(() => {
     if (isError) {
       toast({
         title: "Error",
-        description: "Failed to load receipt. Please try again.",
+        description: error?.message || "Failed to load receipt",
         variant: "destructive",
       });
     }
-  }, [isError, toast]);
-
-  // Initialize state with location data if available
-  useEffect(() => {
-    if (stateReceipt) {
-      setEditableReceipt(stateReceipt);
-    }
-  }, [stateReceipt]);
+  }, [isError, error, toast]);
 
   // Update receipt mutation
-  // Update receipt mutation
-  type UpdateReceiptInput = {
-    metalType: string;
-    issueDate: string;
-    items: Array<{
-      itemName: string;
-      grossWt: number;
-      stoneWt: number;
-      netWt: number;
-      finalWt: number;
-      stoneAmt: number;
-      meltingPercent: number;
-    }>;
-    clientInfo: {
-      shopName: string;
-      clientName: string;
-      phoneNumber?: string;
-      address?: string;
-    };
-    paymentStatus: string;
-    totalPaidAmount: number;
-  };
-
-  const { mutate: updateReceipt, isPending: isUpdating } = useMutation<
-    void,
-    Error,
-    UpdateReceiptInput
-  >({
-    mutationFn: (updatedData) => receiptServices.updateReceipt(id, updatedData),
-    onSuccess: (data) => {
+  const { mutate: updateReceipt, isPending: isUpdating } = useMutation({
+    mutationFn: (updatedData: Partial<Receipt>) =>
+      receiptServices.updateReceipt(id!, updatedData),
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "Receipt updated successfully",
       });
       navigate(`/receipts/${id}`);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update receipt",
@@ -100,8 +135,112 @@ export default function EditReceiptPage() {
     },
   });
 
+  // Handle field changes
+  const handleFieldChange = <K extends keyof Receipt>(
+    field: K,
+    value: Receipt[K]
+  ) => {
+    setEditableReceipt((prev) => {
+      if (!prev) return null;
+      return { ...prev, [field]: value };
+    });
+  };
+
+  // Handle client info changes
+  const handleClientInfoChange = <K extends keyof ClientInfo>(
+    field: K,
+    value: ClientInfo[K]
+  ) => {
+    setEditableReceipt((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        clientInfo: {
+          ...(prev.clientInfo || {
+            shopName: "",
+            clientName: "",
+            phoneNumber: "",
+            address: "",
+          }),
+          [field]: value,
+        },
+      };
+    });
+  };
+
+  // Handle item changes
+  const handleItemChange = (
+    index: number,
+    field: keyof ReceiptItem,
+    value: string | number
+  ) => {
+    setEditableReceipt((prev) => {
+      if (!prev) return null;
+
+      const updatedItems = [...prev.items];
+
+      // Handle string fields differently from number fields
+      if (field === "itemName" || field === "tag") {
+        updatedItems[index] = {
+          ...updatedItems[index],
+          [field]: value.toString(), // Ensure it's a string
+        };
+      } else {
+        // For numeric fields
+        const numericValue =
+          typeof value === "string" ? parseFloat(value) || 0 : value;
+
+        // Create updated item
+        const updatedItem = {
+          ...updatedItems[index],
+          [field]: numericValue,
+        };
+
+        // Recalculate dependent fields
+        if (["grossWt", "stoneWt", "meltingTouch"].includes(field)) {
+          updatedItem.netWt = updatedItem.grossWt - updatedItem.stoneWt;
+          updatedItem.finalWt =
+            updatedItem.netWt * (updatedItem.meltingTouch / 100);
+        }
+
+        updatedItems[index] = updatedItem;
+      }
+
+      // Calculate totals (only for numeric fields)
+      const totals = {
+        grossWt: updatedItems.reduce(
+          (sum, item) => sum + (item.grossWt || 0),
+          0
+        ),
+        stoneWt: updatedItems.reduce(
+          (sum, item) => sum + (item.stoneWt || 0),
+          0
+        ),
+        netWt: updatedItems.reduce((sum, item) => sum + (item.netWt || 0), 0),
+        finalWt: updatedItems.reduce(
+          (sum, item) => sum + (item.finalWt || 0),
+          0
+        ),
+        stoneAmt: updatedItems.reduce(
+          (sum, item) => sum + (item.stoneAmt || 0),
+          0
+        ),
+        totalInvoiceAmount: updatedItems.reduce(
+          (sum, item) => sum + (item.totalInvoiceAmount || 0),
+          0
+        ),
+      };
+
+      return {
+        ...prev,
+        items: updatedItems,
+        totals,
+      };
+    });
+  };
+
   // Handle save
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!editableReceipt) {
       toast({
         title: "Error",
@@ -111,174 +250,27 @@ export default function EditReceiptPage() {
       return;
     }
 
-    try {
-      // Calculate totals
-      const totals = editableReceipt.items.reduce(
-        (acc, item) => {
-          acc.grossWt += Number(item.grossWeight) || 0;
-          acc.stoneWt += Number(item.stoneWeight) || 0;
-          acc.stoneAmt += Number(item.stoneAmount) || 0;
-          acc.netWt += Number(item.netWeight) || 0;
-          acc.finalWt += Number(item.finalWeight) || 0;
-          return acc;
-        },
-        {
-          grossWt: 0,
-          stoneWt: 0,
-          netWt: 0,
-          finalWt: 0,
-          stoneAmt: 0,
-        }
-      );
+    // Prepare payload with all updated fields
+    const payload = {
+      ...editableReceipt,
+      issueDate:
+        editableReceipt.issueDate instanceof Date
+          ? editableReceipt.issueDate.toISOString()
+          : editableReceipt.issueDate,
+      items: editableReceipt.items.map((item) => ({
+        ...item,
+        grossWt: Number(item.grossWt) || 0,
+        stoneWt: Number(item.stoneWt) || 0,
+        netWt: Number(item.netWt) || 0,
+        meltingTouch: Number(item.meltingTouch) || 0,
+        finalWt: Number(item.finalWt) || 0,
+        stoneAmt: Number(item.stoneAmt) || 0,
+        totalInvoiceAmount: Number(item.totalInvoiceAmount) || 0,
+      })),
+    };
 
-      // Prepare the payload with the correct field names
-      const payload = {
-        metalType: editableReceipt.metalType,
-        issueDate:
-          editableReceipt.issueDate instanceof Date
-            ? editableReceipt.issueDate.toISOString()
-            : new Date(editableReceipt.issueDate).toISOString(),
-        items: editableReceipt.items.map((item) => ({
-          itemName: item.description || item.itemName || "",
-          grossWt: Number(item.grossWeight) || 0,
-          stoneWt: Number(item.stoneWeight) || 0,
-          netWt: Number(item.netWeight) || 0,
-          finalWt: Number(item.finalWeight) || 0,
-          stoneAmt: Number(item.stoneAmount) || 0,
-          meltingPercent: Number(item.meltingPercent) || 0,
-        })),
-        clientInfo: {
-          shopName: editableReceipt.clientInfo?.shopName || "",
-          clientName: editableReceipt.clientInfo?.clientName || "",
-          phoneNumber: editableReceipt.clientInfo?.phoneNumber || "",
-          address: editableReceipt.clientInfo?.address || "",
-        },
-        paymentStatus: editableReceipt.paymentStatus,
-        totalPaidAmount: Number(editableReceipt.totalPaidAmount) || 0,
-        totals, // Include calculated totals
-      };
-
-      await updateReceipt(payload);
-    } catch (error) {
-      console.error("Save error:", error);
-      toast({
-        title: "Save Failed",
-        description: error.message || "Could not save receipt",
-        variant: "destructive",
-      });
-    }
+    updateReceipt(payload);
   };
-
-  // Handle field changes
-  const handleFieldChange = (field, value) => {
-    setEditableReceipt((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  // Handle client info changes
-  const handleClientInfoChange = (field, value) => {
-    setEditableReceipt((prev) => ({
-      ...prev,
-      clientInfo: {
-        ...prev.clientInfo,
-        [field]: value,
-      },
-    }));
-  };
-
-  // Handle item changes
-  const handleItemChange = (index, field, value) => {
-    setEditableReceipt((prev) => {
-      const updatedItems = [...prev.items];
-      updatedItems[index] = {
-        ...updatedItems[index],
-        [field]: Number(value) || value,
-      };
-
-      // Calculate item totals if needed
-      if (["grossWeight", "stoneWeight", "meltingPercent"].includes(field)) {
-        const grossWeight = Number(updatedItems[index].grossWeight) || 0;
-        const stoneWeight = Number(updatedItems[index].stoneWeight) || 0;
-        const meltingPercent = Number(updatedItems[index].meltingPercent) || 0;
-
-        updatedItems[index].netWeight = grossWeight - stoneWeight;
-        updatedItems[index].finalWeight =
-          updatedItems[index].netWeight * (meltingPercent / 100);
-      }
-
-      return {
-        ...prev,
-        items: updatedItems,
-      };
-    });
-  };
-
-  // // Handle save
-  // const handleSave = async () => {
-  //   if (!editableReceipt) {
-  //     toast({
-  //       title: "Error",
-  //       description: "No receipt data to save",
-  //       variant: "destructive",
-  //     });
-  //     return;
-  //   }
-
-  //   try {
-  //     // Calculate totals if needed
-  //     const totals = editableReceipt.items.reduce(
-  //       (acc, item) => {
-  //         acc.grossWt += Number(item.grossWeight) || 0;
-  //         acc.stoneWt += Number(item.stoneWeight) || 0;
-  //         acc.stoneAmt += Number(item.stoneAmount) || 0;
-  //         acc.netWt += Number(item.netWeight) || 0;
-  //         acc.finalWt += Number(item.finalWeight) || 0;
-  //         return acc;
-  //       },
-  //       {
-  //         grossWt: 0,
-  //         stoneWt: 0,
-  //         netWt: 0,
-  //         finalWt: 0,
-  //         stoneAmt: 0,
-  //       }
-  //     );
-
-  //     const payload = {
-  //       ...editableReceipt,
-  //       totals,
-  //       items: editableReceipt.items.map((item) => ({
-  //         ...item,
-  //         grossWeight: Number(item.grossWeight),
-  //         stoneWeight: Number(item.stoneWeight),
-  //         meltingPercent: Number(item.meltingPercent),
-  //         netWeight: Number(item.netWeight),
-  //         finalWeight: Number(item.finalWeight),
-  //         stoneAmount: Number(item.stoneAmount),
-  //         rate: Number(item.rate) || 0,
-  //       })),
-  //       totalPaidAmount: Number(editableReceipt.totalPaidAmount) || 0,
-  //       issueDate:
-  //         editableReceipt.issueDate instanceof Date
-  //           ? editableReceipt.issueDate.toISOString()
-  //           : new Date(editableReceipt.issueDate).toISOString(),
-  //     };
-
-  //     delete payload._id; // Remove MongoDB _id if present
-  //     delete payload.__v; // Remove version key if present
-
-  //     await updateReceipt(payload);
-  //   } catch (error) {
-  //     console.error("Save error:", error);
-  //     toast({
-  //       title: "Save Failed",
-  //       description: error.message || "Could not save receipt",
-  //       variant: "destructive",
-  //     });
-  //   }
-  // };
 
   if (isLoading) {
     return (
@@ -291,7 +283,7 @@ export default function EditReceiptPage() {
     );
   }
 
-  if (isError) {
+  if (isError || !editableReceipt) {
     return (
       <div className="container py-6">
         <Button
@@ -302,24 +294,8 @@ export default function EditReceiptPage() {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Receipts
         </Button>
         <div className="text-center text-destructive py-8">
-          Failed to load receipt details.{" "}
-          {error?.message || "Please try again."}
+          {error?.message || "Failed to load receipt details"}
         </div>
-      </div>
-    );
-  }
-
-  if (!editableReceipt) {
-    return (
-      <div className="container py-6">
-        <Button
-          variant="ghost"
-          className="mb-6"
-          onClick={() => navigate("/receipts")}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Receipts
-        </Button>
-        <div className="text-center py-8">Receipt not found</div>
       </div>
     );
   }
@@ -338,33 +314,35 @@ export default function EditReceiptPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
             <h1 className="text-3xl font-serif font-bold">Edit Receipt</h1>
-            <p className="text-muted-foreground">
-              {editableReceipt.clientInfo?.shopName} -{" "}
-              {editableReceipt.clientInfo?.clientName}
-            </p>
+            {editableReceipt.clientInfo && (
+              <>
+                <p className="text-muted-foreground">
+                  {editableReceipt.clientInfo.shopName} -{" "}
+                  {editableReceipt.clientInfo.clientName}
+                </p>
+              </>
+            )}
             <p className="text-sm text-muted-foreground mt-1">
               Voucher ID: {editableReceipt.voucherId}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-            <Button onClick={handleSave} disabled={isUpdating}>
-              {isUpdating ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" /> Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" /> Save Changes
-                </>
-              )}
-            </Button>
-          </div>
+          <Button onClick={handleSave} disabled={isUpdating}>
+            {isUpdating ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" /> Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" /> Save Changes
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="col-span-2">
-          <div className="bg-card card-premium rounded-lg p-6 print:p-0 print:bg-transparent print:shadow-none">
+          <div className="bg-card rounded-lg p-6 print:p-0 print:bg-transparent">
             <h2 className="text-xl font-medium mb-4">Receipt Items</h2>
 
             <div className="overflow-x-auto">
@@ -372,7 +350,7 @@ export default function EditReceiptPage() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2 px-1 text-sm font-medium">
-                      Description
+                      Item Name
                     </th>
                     <th className="text-right py-2 px-1 text-sm font-medium">
                       Gross Wt (g)
@@ -396,20 +374,13 @@ export default function EditReceiptPage() {
                 </thead>
                 <tbody>
                   {editableReceipt.items?.map((item, index) => (
-                    <tr
-                      key={item._id || index}
-                      className="border-b last:border-b-0"
-                    >
+                    <tr key={item._id || index} className="border-b">
                       <td className="py-2 px-1">
                         <input
                           type="text"
-                          value={item.description || item.itemName || ""}
+                          value={item.itemName}
                           onChange={(e) =>
-                            handleItemChange(
-                              index,
-                              "description",
-                              e.target.value
-                            )
+                            handleItemChange(index, "itemName", e.target.value)
                           }
                           className="w-full bg-transparent border rounded px-2 py-1"
                         />
@@ -417,132 +388,92 @@ export default function EditReceiptPage() {
                       <td className="py-2 px-1">
                         <input
                           type="number"
-                          value={item.grossWeight || 0}
+                          value={item.grossWt || 0}
                           onChange={(e) =>
-                            handleItemChange(
-                              index,
-                              "grossWeight",
-                              e.target.value
-                            )
+                            handleItemChange(index, "grossWt", e.target.value)
                           }
                           className="w-full bg-transparent border rounded px-2 py-1 text-right"
                           step="0.01"
+                          min="0"
                         />
                       </td>
                       <td className="py-2 px-1">
                         <input
                           type="number"
-                          value={item.stoneWeight || 0}
+                          value={item.stoneWt || 0}
                           onChange={(e) =>
-                            handleItemChange(
-                              index,
-                              "stoneWeight",
-                              e.target.value
-                            )
+                            handleItemChange(index, "stoneWt", e.target.value)
                           }
                           className="w-full bg-transparent border rounded px-2 py-1 text-right"
                           step="0.01"
+                          min="0"
                         />
                       </td>
                       <td className="py-2 px-1">
                         <input
                           type="number"
-                          value={item.meltingPercent || 0}
+                          value={item.meltingTouch || 0}
                           onChange={(e) =>
                             handleItemChange(
                               index,
-                              "meltingPercent",
+                              "meltingTouch",
                               e.target.value
                             )
                           }
                           className="w-full bg-transparent border rounded px-2 py-1 text-right"
                           step="0.1"
+                          min="0"
+                          max="100"
                         />
                       </td>
                       <td className="py-2 px-1">
                         <input
                           type="number"
-                          value={item.netWeight || 0}
-                          onChange={(e) =>
-                            handleItemChange(index, "netWeight", e.target.value)
-                          }
-                          className="w-full bg-transparent border rounded px-2 py-1 text-right"
-                          step="0.01"
+                          value={item.netWt || 0}
+                          readOnly
+                          className="w-full bg-muted/50 border rounded px-2 py-1 text-right"
                         />
                       </td>
                       <td className="py-2 px-1">
                         <input
                           type="number"
-                          value={item.finalWeight || 0}
-                          onChange={(e) =>
-                            handleItemChange(
-                              index,
-                              "finalWeight",
-                              e.target.value
-                            )
-                          }
-                          className="w-full bg-transparent border rounded px-2 py-1 text-right"
-                          step="0.01"
+                          value={item.finalWt || 0}
+                          readOnly
+                          className="w-full bg-muted/50 border rounded px-2 py-1 text-right"
                         />
                       </td>
                       <td className="py-2 px-1">
                         <input
                           type="number"
-                          value={item.stoneAmount || 0}
+                          value={item.stoneAmt || 0}
                           onChange={(e) =>
-                            handleItemChange(
-                              index,
-                              "stoneAmount",
-                              e.target.value
-                            )
+                            handleItemChange(index, "stoneAmt", e.target.value)
                           }
                           className="w-full bg-transparent border rounded px-2 py-1 text-right"
                           step="0.01"
+                          min="0"
                         />
                       </td>
                     </tr>
                   ))}
 
-                  {/* Totals Row */}
-                  <tr className="font-medium bg-accent/20 print:bg-gray-100">
-                    <td className="py-2 px-1 text-left">Totals</td>
+                  <tr className="font-medium bg-accent/20">
+                    <td className="py-2 px-1">Totals</td>
                     <td className="py-2 px-1 text-right">
-                      {editableReceipt.items
-                        ?.reduce(
-                          (sum, item) => sum + (item.grossWeight || 0),
-                          0
-                        )
-                        .toFixed(2)}
+                      {editableReceipt.totals?.grossWt?.toFixed(2) || "0.00"}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {editableReceipt.items
-                        ?.reduce(
-                          (sum, item) => sum + (item.stoneWeight || 0),
-                          0
-                        )
-                        .toFixed(2)}
+                      {editableReceipt.totals?.stoneWt?.toFixed(2) || "0.00"}
                     </td>
                     <td className="py-2 px-1"></td>
                     <td className="py-2 px-1 text-right">
-                      {editableReceipt.items
-                        ?.reduce((sum, item) => sum + (item.netWeight || 0), 0)
-                        .toFixed(2)}
+                      {editableReceipt.totals?.netWt?.toFixed(2) || "0.00"}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {editableReceipt.items
-                        ?.reduce(
-                          (sum, item) => sum + (item.finalWeight || 0),
-                          0
-                        )
-                        .toFixed(2)}
+                      {editableReceipt.totals?.finalWt?.toFixed(2) || "0.00"}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {editableReceipt.items
-                        ?.reduce(
-                          (sum, item) => sum + (item.stoneAmount || 0),
-                          0
-                        )
-                        .toFixed(2)}
+                      {editableReceipt.totals?.stoneAmt?.toFixed(2) || "0.00"}
                     </td>
                   </tr>
                 </tbody>
@@ -551,10 +482,9 @@ export default function EditReceiptPage() {
           </div>
         </div>
 
-        <div className="col-span-1">
-          <div className="bg-card card-premium rounded-lg p-6 mb-6 print:p-0 print:bg-transparent print:shadow-none">
+        <div className="col-span-1 space-y-6">
+          <div className="bg-card rounded-lg p-6">
             <h2 className="text-xl font-medium mb-4">Client Information</h2>
-
             <div className="space-y-4">
               <div>
                 <label className="text-sm text-muted-foreground block mb-1">
@@ -569,7 +499,6 @@ export default function EditReceiptPage() {
                   className="w-full bg-transparent border rounded px-3 py-2"
                 />
               </div>
-
               <div>
                 <label className="text-sm text-muted-foreground block mb-1">
                   Client Name
@@ -583,13 +512,12 @@ export default function EditReceiptPage() {
                   className="w-full bg-transparent border rounded px-3 py-2"
                 />
               </div>
-
               <div>
                 <label className="text-sm text-muted-foreground block mb-1">
                   Mobile Number
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   value={editableReceipt.clientInfo?.phoneNumber || ""}
                   onChange={(e) =>
                     handleClientInfoChange("phoneNumber", e.target.value)
@@ -597,7 +525,6 @@ export default function EditReceiptPage() {
                   className="w-full bg-transparent border rounded px-3 py-2"
                 />
               </div>
-
               <div>
                 <label className="text-sm text-muted-foreground block mb-1">
                   Address
@@ -614,16 +541,15 @@ export default function EditReceiptPage() {
             </div>
           </div>
 
-          <div className="bg-card card-premium rounded-lg p-6 print:p-0 print:bg-transparent print:shadow-none">
+          <div className="bg-card rounded-lg p-6">
             <h2 className="text-xl font-medium mb-4">Receipt Information</h2>
-
             <div className="space-y-4">
               <div>
                 <label className="text-sm text-muted-foreground block mb-1">
                   Metal Type
                 </label>
                 <select
-                  value={editableReceipt.metalType || "Gold"}
+                  value={editableReceipt.metalType}
                   onChange={(e) =>
                     handleFieldChange("metalType", e.target.value)
                   }
@@ -634,7 +560,6 @@ export default function EditReceiptPage() {
                   <option value="Platinum">Platinum</option>
                 </select>
               </div>
-
               <div>
                 <label className="text-sm text-muted-foreground block mb-1">
                   Issue Date
@@ -644,47 +569,55 @@ export default function EditReceiptPage() {
                   value={
                     editableReceipt.issueDate
                       ? format(
-                          new Date(editableReceipt.issueDate),
+                          safeDateParse(editableReceipt.issueDate),
                           "yyyy-MM-dd"
                         )
-                      : ""
+                      : format(new Date(), "yyyy-MM-dd")
                   }
-                  onChange={(e) =>
-                    handleFieldChange("issueDate", e.target.value)
-                  }
+                  onChange={(e) => {
+                    const newDate = new Date(e.target.value);
+                    if (!isNaN(newDate.getTime())) {
+                      handleFieldChange("issueDate", newDate);
+                    }
+                  }}
                   className="w-full bg-transparent border rounded px-3 py-2"
                 />
               </div>
-
               <div>
                 <label className="text-sm text-muted-foreground block mb-1">
                   Payment Status
                 </label>
                 <select
-                  value={editableReceipt.paymentStatus || "Pending"}
+                  value={editableReceipt.paymentStatus}
                   onChange={(e) =>
-                    handleFieldChange("paymentStatus", e.target.value)
+                    handleFieldChange(
+                      "paymentStatus",
+                      e.target.value as "Pending" | "Partial" | "Paid"
+                    )
                   }
                   className="w-full bg-transparent border rounded px-3 py-2"
                 >
                   <option value="Pending">Pending</option>
-                  <option value="Partial">Partial </option>
+                  <option value="Partial">Partial</option>
                   <option value="Paid">Paid</option>
                 </select>
               </div>
-
               <div>
                 <label className="text-sm text-muted-foreground block mb-1">
                   Total Paid Amount
                 </label>
                 <input
                   type="number"
-                  value={editableReceipt.totalPaidAmount || 0}
+                  value={editableReceipt.totalPaidAmount}
                   onChange={(e) =>
-                    handleFieldChange("totalPaidAmount", e.target.value)
+                    handleFieldChange(
+                      "totalPaidAmount",
+                      parseFloat(e.target.value) || 0
+                    )
                   }
                   className="w-full bg-transparent border rounded px-3 py-2"
                   step="0.01"
+                  min="0"
                 />
               </div>
             </div>

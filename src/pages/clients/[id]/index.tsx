@@ -24,9 +24,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // API configuration
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "https://backend-goldsmith.onrender.com/api";
 const CLIENT_RECEIPTS_URL = `${API_BASE_URL}/receipts`;
-const ADMIN_RECEIPTS_URL = `${API_BASE_URL}/admin/receipts`;
+const ADMIN_RECEIPTS_URL = `${API_BASE_URL}/admin-receipts`;
 
 interface Client {
   _id: string;
@@ -39,7 +39,48 @@ interface Client {
   createdAt: string;
 }
 
-interface Receipt {
+interface AdminReceipt {
+  _id: string;
+  clientId: string;
+  clientName: string;
+  voucherId: string;
+  status: string;
+  given: {
+    date: string;
+    items: {
+      productName: string;
+      pureWeight: string;
+      purePercent: string;
+      melting: string;
+      total: number;
+      _id: string;
+    }[];
+    totalPureWeight: number;
+    total: number;
+  };
+  received: {
+    date: string;
+    items: {
+      productName: string;
+      finalOrnamentsWt: string;
+      stoneWeight: string;
+      makingChargePercent: string;
+      subTotal: number;
+      total: number;
+      _id: string;
+    }[];
+    totalOrnamentsWt: number;
+    totalStoneWeight: number;
+    totalSubTotal: number;
+    total: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+  type: "admin";
+}
+
+interface ClientReceipt {
   _id: string;
   voucherId: string;
   clientId: string;
@@ -77,8 +118,10 @@ interface Receipt {
   createdAt: string;
   updatedAt: string;
   __v: number;
-  type: "client" | "admin";
+  type: "client";
 }
+
+type Receipt = ClientReceipt | AdminReceipt;
 
 interface ReceiptsTableProps {
   receipts: Receipt[];
@@ -93,7 +136,6 @@ function ReceiptsTable({
   onDownloadReceipt,
   onDeleteReceipt,
 }: ReceiptsTableProps) {
-  console.log("No receipts available:", receipts);
   if (!receipts || receipts.length === 0) {
     return (
       <div className="text-center py-10 text-muted-foreground">
@@ -110,11 +152,9 @@ function ReceiptsTable({
             <TableHead>Receipt ID</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Date</TableHead>
-            <TableHead>Items</TableHead>
-            <TableHead>Gross Weight</TableHead>
-            <TableHead>Stone Weight</TableHead>
-            <TableHead>Final Weight</TableHead>
-            <TableHead>Total Amount</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Total</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -136,14 +176,40 @@ function ReceiptsTable({
                 </span>
               </TableCell>
               <TableCell>
-                {new Date(receipt.issueDate).toLocaleDateString()}
+                {new Date(
+                  receipt.type === "admin"
+                    ? receipt.given.date
+                    : receipt.issueDate
+                ).toLocaleDateString()}
               </TableCell>
-              <TableCell>{receipt.items.length}</TableCell>
-              <TableCell>{receipt.totals.grossWt}g</TableCell>
-              <TableCell>{receipt.totals.stoneWt}g</TableCell>
-              <TableCell>{receipt.totals.finalWt}g</TableCell>
               <TableCell>
-                ₹{receipt.totals.totalInvoiceAmount.toLocaleString()}
+                {receipt.type === "admin"
+                  ? receipt.clientName
+                  : receipt.clientInfo.clientName}
+              </TableCell>
+              <TableCell>
+                <span
+                  className={`px-2 py-1 rounded text-xs ${
+                    (
+                      receipt.type === "admin"
+                        ? receipt.status === "complete"
+                        : receipt.totals.paymentStatus === "Paid"
+                    )
+                      ? "bg-green-100 text-green-800"
+                      : "bg-yellow-100 text-yellow-800"
+                  }`}
+                >
+                  {receipt.type === "admin"
+                    ? receipt.status
+                    : receipt.totals.paymentStatus}
+                </span>
+              </TableCell>
+              <TableCell>
+                ₹
+                {(receipt.type === "admin"
+                  ? receipt.received.total
+                  : receipt.totals.totalInvoiceAmount
+                ).toLocaleString()}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
@@ -178,13 +244,14 @@ export default function ClientDetailsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
-  const [clientReceipts, setClientReceipts] = useState<Receipt[]>([]);
-  const [adminReceipts, setAdminReceipts] = useState<Receipt[]>([]);
+  const [clientReceipts, setClientReceipts] = useState<ClientReceipt[]>([]);
+  const [adminReceipts, setAdminReceipts] = useState<AdminReceipt[]>([]);
   const [stats, setStats] = useState({
     totalReceipts: 0,
-    totalWeight: "0g",
     totalValue: "₹0",
     lastTransaction: "N/A",
+    totalAdminValue: "₹0",
+    totalClientValue: "₹0",
   });
   const [isLoading, setIsLoading] = useState(true);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
@@ -204,60 +271,79 @@ export default function ClientDetailsPage() {
 
         // Fetch client data
         const clientResponse = await axios.get(`${API_BASE_URL}/clients/${id}`);
-        console.log("Client data up:", clientResponse.data);
+        console.log("Client data:", clientResponse.data);
         setClient(clientResponse.data);
 
-        // Fetch all receipts
-        const allReceiptsResponse = await axios.get(
-          "http://localhost:5000/api/receipts"
+        // Fetch client receipts
+        const clientReceiptsResponse = await axios.get(
+          `${CLIENT_RECEIPTS_URL}/client/${id}`
         );
-        const allReceipts = allReceiptsResponse.data.data;
+        console.log("Client receipts data:", clientReceiptsResponse);
 
-        // Filter receipts for this client only
-        const clientOnlyReceipts = allReceipts.filter(
-          (r: any) => r.clientId === id
+        const clientReceiptsData = clientReceiptsResponse.data.data.map(
+          (r: any) => ({
+            ...r,
+            type: "client",
+          })
         );
+        console.log("Client receipts data:", clientReceiptsResponse);
+        setClientReceipts(clientReceiptsData);
 
-        // Optional: separate into types if needed
-        const clientReceiptsData = clientOnlyReceipts.map((r: any) => ({
+        // Fetch admin receipts for this client
+        const adminReceiptsResponse = await axios.get(
+          `${ADMIN_RECEIPTS_URL}?clientId=${id}`
+        );
+        const adminReceiptsData = adminReceiptsResponse.data.map((r: any) => ({
           ...r,
-          type: "receipt",
+          type: "admin",
         }));
-        setClientReceipts(clientReceiptsData); // or setAdminReceipts if needed
+        console.log("Admin receipts data:", adminReceiptsData);
+        setAdminReceipts(adminReceiptsData);
 
         // Calculate stats
-        const totalReceipts = clientReceiptsData.length;
+        const totalReceipts =
+          clientReceiptsData.length + adminReceiptsData.length;
 
-        const totalWeight =
-          clientReceiptsData
-            .reduce((sum, r) => sum + (r.totals?.finalWt || 0), 0)
-            .toFixed(2) + "g";
-
-        const totalValue =
-          "₹" +
-          clientReceiptsData
-            .reduce((sum, r) => sum + (r.totals?.totalInvoiceAmount || 0), 0)
-            .toLocaleString();
-
-        const sortedByDate = [...clientReceiptsData].sort(
-          (a, b) =>
-            new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()
+        const totalClientValue = clientReceiptsData.reduce(
+          (sum: number, r: ClientReceipt) =>
+            sum + (r.totals.totalInvoiceAmount || 0),
+          0
         );
 
-        const lastTransaction = sortedByDate[0]?.issueDate
-          ? new Date(sortedByDate[0].issueDate).toLocaleDateString()
+        const totalAdminValue = adminReceiptsData.reduce(
+          (sum: number, r: AdminReceipt) => sum + (r.received.total || 0),
+          0
+        );
+
+        const totalValue = totalClientValue + totalAdminValue;
+
+        // Find most recent transaction
+        const allReceipts = [...clientReceiptsData, ...adminReceiptsData];
+        const sortedByDate = allReceipts.sort((a, b) => {
+          const dateA =
+            a.type === "admin" ? new Date(a.given.date) : new Date(a.issueDate);
+          const dateB =
+            b.type === "admin" ? new Date(b.given.date) : new Date(b.issueDate);
+          return dateB.getTime() - dateA.getTime();
+        });
+
+        const lastTransaction = sortedByDate[0]
+          ? sortedByDate[0].type === "admin"
+            ? new Date(sortedByDate[0].given.date).toLocaleDateString()
+            : new Date(sortedByDate[0].issueDate).toLocaleDateString()
           : "N/A";
 
         setStats({
           totalReceipts,
-          totalWeight,
-          totalValue,
+          totalValue: `₹${totalValue.toLocaleString()}`,
           lastTransaction,
+          totalAdminValue: `₹${totalAdminValue.toLocaleString()}`,
+          totalClientValue: `₹${totalClientValue.toLocaleString()}`,
         });
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to fetch client-specific data",
+          description: "Failed to fetch data",
           variant: "destructive",
         });
       } finally {
@@ -272,14 +358,23 @@ export default function ClientDetailsPage() {
   const getFilteredReceipts = () => {
     switch (activeTab) {
       case "client":
-        return clientReceipts;
-      case "admin":
-        return adminReceipts;
-      default:
-        return [...clientReceipts, ...adminReceipts].sort(
+        return [...clientReceipts].sort(
           (a, b) =>
             new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()
         );
+      case "admin":
+        return [...adminReceipts].sort(
+          (a, b) =>
+            new Date(b.given.date).getTime() - new Date(a.given.date).getTime()
+        );
+      default:
+        return [...clientReceipts, ...adminReceipts].sort((a, b) => {
+          const dateA =
+            a.type === "admin" ? new Date(a.given.date) : new Date(a.issueDate);
+          const dateB =
+            b.type === "admin" ? new Date(b.given.date) : new Date(b.issueDate);
+          return dateB.getTime() - dateA.getTime();
+        });
     }
   };
 
@@ -433,24 +528,20 @@ export default function ClientDetailsPage() {
           icon={<FileText className="h-4 w-4" />}
         />
         <StatCard
-          title="Total Weight"
-          value={stats.totalWeight}
-          description="All items"
-          icon={<Weight className="h-4 w-4" />}
+          title="Total Client Value"
+          value={stats.totalClientValue}
+          description="Client receipts"
+          icon={<FileText className="h-4 w-4" />}
         />
         <StatCard
-          title="Total Value"
-          value={stats.totalValue}
-          description="All transactions"
+          title="Total Admin Value"
+          value={stats.totalAdminValue}
+          description="Admin receipts"
           icon={<FileText className="h-4 w-4" />}
         />
         <StatCard
           title="Last Transaction"
-          value={
-            stats.lastTransaction === "N/A"
-              ? "N/A"
-              : new Date(stats.lastTransaction).toLocaleDateString()
-          }
+          value={stats.lastTransaction}
           description="Most recent"
           icon={<FileText className="h-4 w-4" />}
         />
@@ -555,9 +646,11 @@ export default function ClientDetailsPage() {
           <DialogHeader>
             <DialogTitle>Receipt Details</DialogTitle>
             <DialogDescription>
-              {selectedReceipt?.type === "admin" ? "Admin " : ""}
+              {selectedReceipt?.type === "admin" ? "Admin " : "Client "}
               Receipt #{selectedReceipt?.voucherId || "N/A"} from{" "}
-              {selectedReceipt?.issueDate
+              {selectedReceipt?.type === "admin"
+                ? new Date(selectedReceipt.given.date).toLocaleDateString()
+                : selectedReceipt?.issueDate
                 ? new Date(selectedReceipt.issueDate).toLocaleDateString()
                 : "N/A"}
             </DialogDescription>
@@ -580,7 +673,13 @@ export default function ClientDetailsPage() {
                     </p>
                     <p className="text-sm">
                       Date:{" "}
-                      {new Date(selectedReceipt.issueDate).toLocaleDateString()}
+                      {selectedReceipt.type === "admin"
+                        ? new Date(
+                            selectedReceipt.given.date
+                          ).toLocaleDateString()
+                        : new Date(
+                            selectedReceipt.issueDate
+                          ).toLocaleDateString()}
                     </p>
                     <p className="text-sm">
                       Type:{" "}
@@ -597,66 +696,173 @@ export default function ClientDetailsPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm">
-                      Client: {selectedReceipt.clientInfo.clientName}
+                      Client:{" "}
+                      {selectedReceipt.type === "admin"
+                        ? selectedReceipt.clientName
+                        : selectedReceipt.clientInfo.clientName}
                     </p>
                     <p className="text-sm">
-                      Phone: {selectedReceipt.clientInfo.phoneNumber}
-                    </p>
-                    <p className="text-sm">
-                      Metal: {selectedReceipt.clientInfo.metalType}
+                      Status:{" "}
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${
+                          (
+                            selectedReceipt.type === "admin"
+                              ? selectedReceipt.status === "complete"
+                              : selectedReceipt.totals.paymentStatus === "Paid"
+                          )
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {selectedReceipt.type === "admin"
+                          ? selectedReceipt.status
+                          : selectedReceipt.totals.paymentStatus}
+                      </span>
                     </p>
                   </div>
                 </div>
 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Tag</TableHead>
-                      <TableHead>Gross Wt</TableHead>
-                      <TableHead>Stone Wt</TableHead>
-                      <TableHead>Net Wt</TableHead>
-                      <TableHead>Touch%</TableHead>
-                      <TableHead>Final Wt</TableHead>
-                      <TableHead>Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedReceipt.items.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{item.itemName}</TableCell>
-                        <TableCell>{item.tag}</TableCell>
-                        <TableCell>{item.grossWt}g</TableCell>
-                        <TableCell>{item.stoneWt}g</TableCell>
-                        <TableCell>{item.netWt}g</TableCell>
-                        <TableCell>{item.meltingTouch}%</TableCell>
-                        <TableCell>{item.finalWt}g</TableCell>
-                        <TableCell>
-                          ₹{(item.totalInvoiceAmount || 0).toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                {selectedReceipt.type === "admin" ? (
+                  <>
+                    <h4 className="font-medium mb-2">Given Items</h4>
+                    <Table className="mb-4">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead>Pure Weight</TableHead>
+                          <TableHead>Pure %</TableHead>
+                          <TableHead>Melting</TableHead>
+                          <TableHead>Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedReceipt.given.items.map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{item.productName}</TableCell>
+                            <TableCell>{item.pureWeight}g</TableCell>
+                            <TableCell>{item.purePercent}%</TableCell>
+                            <TableCell>{item.melting}</TableCell>
+                            <TableCell>
+                              ₹{item.total.toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
 
-                <div className="flex flex-wrap justify-between mt-6 pt-4 border-t gap-2">
-                  <div>Total Items: {selectedReceipt.items.length}</div>
-                  <div>
-                    Total Gross Weight: {selectedReceipt.totals.grossWt}g
-                  </div>
-                  <div>
-                    Total Stone Weight: {selectedReceipt.totals.stoneWt}g
-                  </div>
-                  <div>
-                    Total Final Weight: {selectedReceipt.totals.finalWt}g
-                  </div>
-                  <div>
-                    Total Value: ₹
-                    {(
-                      selectedReceipt.totals.totalInvoiceAmount || 0
-                    ).toLocaleString()}
-                  </div>
-                </div>
+                    <h4 className="font-medium mb-2">Received Items</h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead>Final Weight</TableHead>
+                          <TableHead>Stone Weight</TableHead>
+                          <TableHead>Making Charge %</TableHead>
+                          <TableHead>Sub Total</TableHead>
+                          <TableHead>Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedReceipt.received.items.map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{item.productName}</TableCell>
+                            <TableCell>{item.finalOrnamentsWt}g</TableCell>
+                            <TableCell>{item.stoneWeight}g</TableCell>
+                            <TableCell>{item.makingChargePercent}%</TableCell>
+                            <TableCell>
+                              ₹{item.subTotal.toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              ₹{item.total.toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    <div className="flex flex-wrap justify-between mt-6 pt-4 border-t gap-2">
+                      <div>
+                        Total Given Items: {selectedReceipt.given.items.length}
+                      </div>
+                      <div>
+                        Total Pure Weight:{" "}
+                        {selectedReceipt.given.totalPureWeight}g
+                      </div>
+                      <div>
+                        Total Given Value: ₹
+                        {selectedReceipt.given.total.toLocaleString()}
+                      </div>
+                      <div>
+                        Total Received Items:{" "}
+                        {selectedReceipt.received.items.length}
+                      </div>
+                      <div>
+                        Total Ornaments Weight:{" "}
+                        {selectedReceipt.received.totalOrnamentsWt}g
+                      </div>
+                      <div>
+                        Total Stone Weight:{" "}
+                        {selectedReceipt.received.totalStoneWeight}g
+                      </div>
+                      <div>
+                        Total Received Value: ₹
+                        {selectedReceipt.received.total.toLocaleString()}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead>Tag</TableHead>
+                          <TableHead>Gross Wt</TableHead>
+                          <TableHead>Stone Wt</TableHead>
+                          <TableHead>Net Wt</TableHead>
+                          <TableHead>Touch%</TableHead>
+                          <TableHead>Final Wt</TableHead>
+                          <TableHead>Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedReceipt.items.map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{item.itemName}</TableCell>
+                            <TableCell>{item.tag}</TableCell>
+                            <TableCell>{item.grossWt}g</TableCell>
+                            <TableCell>{item.stoneWt}g</TableCell>
+                            <TableCell>{item.netWt}g</TableCell>
+                            <TableCell>{item.meltingTouch}%</TableCell>
+                            <TableCell>{item.finalWt}g</TableCell>
+                            <TableCell>
+                              ₹{(item.totalInvoiceAmount || 0).toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    <div className="flex flex-wrap justify-between mt-6 pt-4 border-t gap-2">
+                      <div>Total Items: {selectedReceipt.items.length}</div>
+                      <div>
+                        Total Gross Weight: {selectedReceipt.totals.grossWt}g
+                      </div>
+                      <div>
+                        Total Stone Weight: {selectedReceipt.totals.stoneWt}g
+                      </div>
+                      <div>
+                        Total Final Weight: {selectedReceipt.totals.finalWt}g
+                      </div>
+                      <div>
+                        Total Value: ₹
+                        {(
+                          selectedReceipt.totals.totalInvoiceAmount || 0
+                        ).toLocaleString()}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex justify-end gap-2">

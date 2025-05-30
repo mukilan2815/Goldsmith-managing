@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -26,6 +25,7 @@ import ClientSelectionPage from "./pages/receipts/select-client";
 // Import our implemented pages
 import AdminReceiptsPage from "./pages/admin-receipts";
 import NewAdminReceiptPage from "./pages/admin-receipts/new";
+import EditAdminReceiptPage from "./pages/admin-receipts/[id]/edit";
 import AdminReceiptDetailPage from "./pages/admin-receipts/[id]/index";
 import AdminBillsPage from "./pages/admin-bills";
 import ClientBillsPage from "./pages/client-bills";
@@ -43,30 +43,49 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<DashboardLayout />}>
               <Route index element={<Dashboard />} />
-              
+
               {/* Client Routes */}
               <Route path="clients" element={<CustomerDetailsPage />} />
               <Route path="clients/new" element={<NewClientPage />} />
               <Route path="clients/:id" element={<ClientDetailsPage />} />
               <Route path="clients/:id/edit" element={<EditClientPage />} />
-              
+
               {/* Receipt Routes */}
               <Route path="receipts" element={<ReceiptsPage />} />
-              <Route path="receipts/select-client" element={<ClientSelectionPage />} />
+              <Route
+                path="receipts/select-client"
+                element={<ClientSelectionPage />}
+              />
               <Route path="receipts/new" element={<NewReceiptPage />} />
               <Route path="receipts/:id" element={<ReceiptDetailsPage />} />
               <Route path="receipts/:id/edit" element={<EditReceiptPage />} />
-              
+
               {/* Add the implemented routes */}
               <Route path="admin-receipts" element={<AdminReceiptsPage />} />
-              <Route path="admin-receipts/new" element={<NewAdminReceiptPage />} />
-              <Route path="admin-receipts/:id" element={<AdminReceiptDetailPage />} />
+              <Route
+                path="admin-receipts/new"
+                element={<NewAdminReceiptPage />}
+              />
+              <Route
+                path="admin-receipts/:id"
+                element={<AdminReceiptDetailPage />}
+              />
+              <Route
+                path="admin-receipts/edit/:id"
+                element={<EditAdminReceiptPage />}
+              />
               <Route path="admin-bills" element={<AdminBillsPage />} />
               <Route path="client-bills" element={<ClientBillsPage />} />
-              
+
               {/* Other Routes */}
-              <Route path="reports" element={<div className="p-6">Reports Page Coming Soon</div>} />
-              <Route path="settings" element={<div className="p-6">Settings Page Coming Soon</div>} />
+              <Route
+                path="reports"
+                element={<div className="p-6">Reports Page Coming Soon</div>}
+              />
+              <Route
+                path="settings"
+                element={<div className="p-6">Settings Page Coming Soon</div>}
+              />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
