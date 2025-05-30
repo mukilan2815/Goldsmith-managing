@@ -645,7 +645,7 @@ export function ReceiptForm({
                     <td className="p-2">
                       <Input
                         placeholder="Item description"
-                        value={item.description}
+                        // value={item.description}
                         onChange={(e) =>
                           updateItem(item.id, "description", e.target.value)
                         }
@@ -654,7 +654,7 @@ export function ReceiptForm({
                     <td className="p-2">
                       <Input
                         placeholder="Tag"
-                        value={item.tag}
+                        // value={item.tag}
                         onChange={(e) =>
                           updateItem(item.id, "tag", e.target.value)
                         }
@@ -666,7 +666,7 @@ export function ReceiptForm({
                         placeholder="0.00"
                         step="0.01"
                         min="0"
-                        value={item.grossWeight}
+                        // value={item.grossWeight}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -682,7 +682,7 @@ export function ReceiptForm({
                         placeholder="0.00"
                         step="0.01"
                         min="0"
-                        value={item.stoneWeight}
+                        // value={item.stoneWeight}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -706,7 +706,7 @@ export function ReceiptForm({
                         step="0.01"
                         min="0"
                         max="100"
-                        value={item.meltingPercent}
+                        // value={item.meltingPercent}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -729,7 +729,7 @@ export function ReceiptForm({
                         placeholder="0.00"
                         step="0.01"
                         min="0"
-                        value={item.stoneAmount || 0}
+                        // value={item.stoneAmount || 0}
                         onChange={(e) =>
                           updateItem(
                             item.id,

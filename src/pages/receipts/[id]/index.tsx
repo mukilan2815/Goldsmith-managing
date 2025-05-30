@@ -137,11 +137,11 @@ export default function ReceiptDetailsPage() {
       receipt.data.items?.forEach((item) => {
         const itemData = [
           item.itemName || "",
-          parseFloat(item.grossWeight || 0).toFixed(2),
-          parseFloat(item.stoneWeight || 0).toFixed(2),
-          parseFloat(item.netWeight || 0).toFixed(2),
-          parseFloat(item.finalWeight || 0).toFixed(2),
-          parseFloat(item.stoneAmount || 0).toFixed(2),
+          parseFloat(item.grossWeight ).toFixed(2),
+          parseFloat(item.stoneWeight ).toFixed(2),
+          parseFloat(item.netWeight ).toFixed(2),
+          parseFloat(item.finalWeight ).toFixed(2),
+          parseFloat(item.stoneAmount ).toFixed(2),
         ];
         tableRows.push(itemData);
       });
@@ -149,11 +149,11 @@ export default function ReceiptDetailsPage() {
       const totals = receipt.data.totals || {};
       const totalsRow = [
         "Totals",
-        parseFloat(totals.grossWt || 0).toFixed(2),
-        parseFloat(totals.stoneWt || 0).toFixed(2),
-        parseFloat(totals.netWt || 0).toFixed(2),
-        parseFloat(totals.finalWt || 0).toFixed(2),
-        parseFloat(totals.stoneAmt || 0).toFixed(2),
+        parseFloat(totals.grossWt ).toFixed(2),
+        parseFloat(totals.stoneWt ).toFixed(2),
+        parseFloat(totals.netWt ).toFixed(2),
+        parseFloat(totals.finalWt ).toFixed(2),
+        parseFloat(totals.stoneAmt ).toFixed(2),
       ];
       tableRows.push(totalsRow);
 
@@ -260,7 +260,8 @@ export default function ReceiptDetailsPage() {
           <div>
             <h1 className="text-3xl font-serif font-bold">Receipt Details</h1>
             <p className="text-muted-foreground">
-              {receipt.data.clientInfo?.shopName} - {receipt.data.clientInfo?.clientName}
+              {receipt.data.clientInfo?.shopName} -{" "}
+              {receipt.data.clientInfo?.clientName}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               Voucher ID: {receipt.data.voucherId}
@@ -341,19 +342,19 @@ export default function ReceiptDetailsPage() {
                     >
                       <td className="py-2 px-1">{item.itemName}</td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.grossWeight || 0).toFixed(2)}
+                        {parseFloat(item.grossWt ).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.stoneWeight || 0).toFixed(2)}
+                        {parseFloat(item.stoneWt ).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.netWeight || 0).toFixed(2)}
+                        {parseFloat(item.netWt ).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.finalWeight || 0).toFixed(2)}
+                        {parseFloat(item.finalWt ).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.stoneAmount || 0).toFixed(2)}
+                        {parseFloat(item.stoneAmt ).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -361,19 +362,21 @@ export default function ReceiptDetailsPage() {
                   <tr className="font-medium bg-accent/20 print:bg-gray-100">
                     <td className="py-2 px-1 text-left">Totals</td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.grossWt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.grossWt ).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.stoneWt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.stoneWt ).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.netWt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.netWt ).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.finalWt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.finalWt ).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.stoneAmt || 0).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.stoneAmt ).toFixed(
+                        2
+                      )}
                     </td>
                   </tr>
                 </tbody>
