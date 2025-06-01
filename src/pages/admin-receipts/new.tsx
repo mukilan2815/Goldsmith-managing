@@ -174,7 +174,7 @@ interface ReceivedItem {
   total: number;
 }
 
-export default function NewAdminReceiptPage() {
+export default function   NewAdminReceiptPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();

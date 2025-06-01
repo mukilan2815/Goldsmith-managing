@@ -48,6 +48,12 @@ interface AdminReceipt {
   createdAt: string;
   updatedAt: string;
   __v: number;
+  manualCalculations: {
+    givenTotal: number;
+    receivedTotal: number;
+    operation: string;
+    result: number;
+  };
 }
 
 // Admin Receipt API functions
@@ -65,29 +71,39 @@ const adminReceiptApi = {
 
 const generatePDF = (receipt: AdminReceipt) => {
   const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 14;
+  let yPos = 20;
 
   // Header
-  doc.setFontSize(20);
-  doc.setTextColor(40, 40, 40);
-  doc.text("GOLDEN ART JEWELLERS", 105, 20, { align: "center" });
-  doc.setFontSize(14);
-  doc.text("Admin Receipt", 105, 30, { align: "center" });
-
-  // Receipt info
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("GOLDEN ART JEWELLERS", pageWidth / 2, yPos, { align: "center" });
+  yPos += 8;
   doc.setFontSize(12);
-  doc.text(`Voucher ID: ${receipt.voucherId}`, 14, 40);
-  doc.text(`Client: ${receipt.clientName}`, 14, 48);
-  doc.text(`Status: ${receipt.status.toUpperCase()}`, 14, 56);
+  doc.text("Admin Receipt", pageWidth / 2, yPos, { align: "center" });
+  yPos += 15;
+
+  // Receipt info - 2 column layout
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Voucher ID: ${receipt.voucherId}`, margin, yPos);
+  doc.text(`Client: ${receipt.clientName}`, pageWidth / 2, yPos);
+  yPos += 6;
+  doc.text(`Status: ${receipt.status.toUpperCase()}`, margin, yPos);
   doc.text(
     `Created: ${new Date(receipt.createdAt).toLocaleDateString()}`,
-    14,
-    64
+    pageWidth / 2,
+    yPos
   );
+  yPos += 15;
 
   // Given Details
-  doc.setFontSize(14);
-  doc.text("Given Details", 14, 80);
-  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Given Details", margin, yPos);
+  yPos += 6;
+
   const givenHeaders = [
     "No.",
     "Product",
@@ -99,43 +115,79 @@ const generatePDF = (receipt: AdminReceipt) => {
   const givenData = receipt.given.items.map((item, i) => [
     i + 1,
     item.productName || "-",
-    item.pureWeight || "0.00",
-    item.purePercent || "0.00",
-    item.melting || "0.00",
+    item.pureWeight ? Number(item.pureWeight).toFixed(2) : "0.00",
+    item.purePercent ? Number(item.purePercent).toFixed(2) : "0.00",
+    item.melting ? Number(item.melting).toFixed(2) : "0.00",
     (item.total || 0).toFixed(2),
   ]);
+
   autoTable(doc, {
-    startY: 85,
+    startY: yPos,
     head: [givenHeaders],
     body: givenData,
     theme: "grid",
     headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
       fontStyle: "bold",
+      textColor: 0,
+      fillColor: 255,
+      lineWidth: 0.2,
     },
+    styles: {
+      fontSize: 9,
+      cellPadding: 2,
+      lineWidth: 0.1,
+      lineColor: 0,
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: "center" },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 20, halign: "right" },
+      3: { cellWidth: 20, halign: "right" },
+      4: { cellWidth: 20, halign: "right" },
+      5: { cellWidth: 20, halign: "right" },
+    },
+    margin: { left: margin },
   });
+
+  yPos = (doc as any).lastAutoTable.finalY + 2;
 
   // Given total
   autoTable(doc, {
-    startY: (doc as any).lastAutoTable.finalY + 5,
+    startY: yPos,
     body: [
       [
-        { content: "Total Given:", styles: { fontStyle: "bold" } },
+        {
+          content: "Total Given:",
+          styles: { fontStyle: "bold", halign: "right" },
+        },
         {
           content: (receipt.given?.total || 0).toFixed(2),
-          styles: { fontStyle: "bold" },
+          styles: { fontStyle: "bold", halign: "right" },
         },
       ],
     ],
-    theme: "plain",
-    columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 30 } },
+    theme: "grid",
+    styles: {
+      fontSize: 9,
+      cellPadding: 2,
+      lineWidth: 0.1,
+      lineColor: 0,
+    },
+    columnStyles: {
+      0: { cellWidth: 110, halign: "right" },
+      1: { cellWidth: 20, halign: "right" },
+    },
+    margin: { left: margin },
   });
 
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+
   // Received Details
-  doc.setFontSize(14);
-  doc.text("Received Details", 14, (doc as any).lastAutoTable.finalY + 15);
-  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Received Details", margin, yPos);
+  yPos += 6;
+
   const receivedHeaders = [
     "No.",
     "Product",
@@ -148,44 +200,81 @@ const generatePDF = (receipt: AdminReceipt) => {
   const receivedData = receipt.received.items.map((item, i) => [
     i + 1,
     item.productName || "-",
-    item.finalOrnamentsWt || "0.00",
-    item.stoneWeight || "0.00",
+    item.finalOrnamentsWt ? Number(item.finalOrnamentsWt).toFixed(2) : "0.00",
+    item.stoneWeight ? Number(item.stoneWeight).toFixed(2) : "0.00",
     (item.subTotal || 0).toFixed(2),
-    item.makingChargePercent || "0.00",
+    item.makingChargePercent
+      ? Number(item.makingChargePercent).toFixed(2)
+      : "0.00",
     (item.total || 0).toFixed(2),
   ]);
+
   autoTable(doc, {
-    startY: (doc as any).lastAutoTable.finalY + 20,
+    startY: yPos,
     head: [receivedHeaders],
     body: receivedData,
     theme: "grid",
     headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
       fontStyle: "bold",
+      textColor: 0,
+      fillColor: 255,
+      lineWidth: 0.2,
     },
+    styles: {
+      fontSize: 9,
+      cellPadding: 2,
+      lineWidth: 0.1,
+      lineColor: 0,
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: "center" },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 20, halign: "right" },
+      3: { cellWidth: 15, halign: "right" },
+      4: { cellWidth: 20, halign: "right" },
+      5: { cellWidth: 15, halign: "right" },
+      6: { cellWidth: 20, halign: "right" },
+    },
+    margin: { left: margin },
   });
+
+  yPos = (doc as any).lastAutoTable.finalY + 2;
 
   // Received total
   autoTable(doc, {
-    startY: (doc as any).lastAutoTable.finalY + 5,
+    startY: yPos,
     body: [
       [
-        { content: "Total Received:", styles: { fontStyle: "bold" } },
+        {
+          content: "Total Received:",
+          styles: { fontStyle: "bold", halign: "right" },
+        },
         {
           content: (receipt.received?.total || 0).toFixed(2),
-          styles: { fontStyle: "bold" },
+          styles: { fontStyle: "bold", halign: "right" },
         },
       ],
     ],
-    theme: "plain",
-    columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 30 } },
+    theme: "grid",
+    styles: {
+      fontSize: 9,
+      cellPadding: 2,
+      lineWidth: 0.1,
+      lineColor: 0,
+    },
+    columnStyles: {
+      0: { cellWidth: 110, halign: "right" },
+      1: { cellWidth: 20, halign: "right" },
+    },
+    margin: { left: margin },
   });
+
+  yPos = (doc as any).lastAutoTable.finalY + 10;
 
   // Balance Summary
   const balance = (receipt.given?.total || 0) - (receipt.received?.total || 0);
   autoTable(doc, {
-    startY: (doc as any).lastAutoTable.finalY + 15,
+    startY: yPos,
     body: [
       [
         {
@@ -193,13 +282,25 @@ const generatePDF = (receipt: AdminReceipt) => {
           colSpan: 2,
           styles: {
             fontStyle: "bold",
-            textColor: [41, 128, 185],
-            fontSize: 14,
+            fontSize: 12,
+            halign: "center",
           },
         },
       ],
-      ["Given Total", (receipt.given?.total || 0).toFixed(2)],
-      ["Received Total", (receipt.received?.total || 0).toFixed(2)],
+      [
+        "Given Total",
+        {
+          content: (receipt.given?.total || 0).toFixed(2),
+          styles: { halign: "right" },
+        },
+      ],
+      [
+        "Received Total",
+        {
+          content: (receipt.received?.total || 0).toFixed(2),
+          styles: { halign: "right" },
+        },
+      ],
       [
         {
           content: "Balance (Given - Received)",
@@ -207,50 +308,102 @@ const generatePDF = (receipt: AdminReceipt) => {
         },
         {
           content: balance.toFixed(2),
-          styles: {
-            fontStyle: "bold",
-            textColor:
-              balance > 0
-                ? [39, 174, 96]
-                : balance < 0
-                ? [231, 76, 60]
-                : [0, 0, 0],
-          },
+          styles: { fontStyle: "bold", halign: "right" },
         },
       ],
     ],
     theme: "grid",
-    headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
-      fontStyle: "bold",
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+      lineWidth: 0.1,
+      lineColor: 0,
     },
+    columnStyles: {
+      0: { cellWidth: 110 },
+      1: { cellWidth: 20, halign: "right" },
+    },
+    margin: { left: margin },
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  // Manual Calculations
+  autoTable(doc, {
+    startY: yPos,
+    body: [
+      [
+        {
+          content: "Manual Calculations",
+          colSpan: 4,
+          styles: {
+            fontStyle: "bold",
+            fontSize: 12,
+            halign: "center",
+          },
+        },
+      ],
+      [
+        { content: "Manual Given", styles: { fontStyle: "bold" } },
+        {
+          content: (receipt.manualCalculations?.givenTotal || 0).toFixed(2),
+          styles: { halign: "right" },
+        },
+        { content: "Operation", styles: { fontStyle: "bold" } },
+        {
+          content:
+            receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
+            "subtract given received",
+          styles: { fontStyle: "bold" },
+        },
+      ],
+      [
+        { content: "Manual Received", styles: { fontStyle: "bold" } },
+        {
+          content: (receipt.manualCalculations?.receivedTotal || 0).toFixed(2),
+          styles: { halign: "right" },
+        },
+        { content: "Manual Result", styles: { fontStyle: "bold" } },
+        {
+          content: (receipt.manualCalculations?.result || 0).toFixed(2),
+          styles: { fontStyle: "bold", halign: "right" },
+        },
+      ],
+    ],
+    theme: "grid",
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+      lineWidth: 0.1,
+      lineColor: 0,
+    },
+    columnStyles: {
+      0: { cellWidth: 40 },
+      1: { cellWidth: 25, halign: "right" },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 25, halign: "right" },
+    },
+    margin: { left: margin },
   });
 
   // Footer
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text(
-    "Thank you for your business!",
-    105,
-    (doc as any).lastAutoTable.finalY + 15,
-    {
-      align: "center",
-    }
-  );
-  doc.text(
-    "Golden Art Jewellers",
-    105,
-    (doc as any).lastAutoTable.finalY + 20,
-    {
-      align: "center",
-    }
-  );
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text("Thank you for your business!", pageWidth / 2, yPos, {
+    align: "center",
+  });
+  yPos += 5;
+  doc.setFont("helvetica", "bold");
+  doc.text("Golden Art Jewellers", pageWidth / 2, yPos, { align: "center" });
 
-  // Save PDF
+  // Ensure it fits on one page
+  if (yPos > 280) {
+    doc.deletePage(2); // Remove any auto-created second page
+  }
+
   doc.save(`receipt-${receipt.voucherId}.pdf`);
 };
-
 export default function AdminReceiptDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -558,7 +711,6 @@ export default function AdminReceiptDetailPage() {
         {/* Balance Summary Section */}
         <div className="mb-4">
           <h2 className="text-xl font-semibold mb-2">Balance Summary</h2>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
             <div>
               <p className="text-sm text-gray-500">Given Total</p>
@@ -587,6 +739,46 @@ export default function AdminReceiptDetailPage() {
               >
                 {calculateBalance()}
               </p>
+            </div>
+          </div>
+
+          {/* Manual Calculations Section */}
+          <div className="mt-6">
+            <h2 className="text-xl font-semibold mb-2">Manual Calculations</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded-lg">
+              <div>
+                <p className="text-sm text-gray-500">Manual Given</p>
+                <p className="font-medium">
+                  {(receipt.manualCalculations?.givenTotal || 0).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Operation</p>
+                <p className="font-medium capitalize">
+                  {receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
+                    "subtract given received"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Manual Received</p>
+                <p className="font-medium">
+                  {(receipt.manualCalculations?.receivedTotal || 0).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Manual Result</p>
+                <p
+                  className={`font-medium ${
+                    receipt.manualCalculations?.result > 0
+                      ? "text-green-600"
+                      : receipt.manualCalculations?.result < 0
+                      ? "text-red-600"
+                      : ""
+                  }`}
+                >
+                  {(receipt.manualCalculations?.result || 0).toFixed(2)}
+                </p>
+              </div>
             </div>
           </div>
         </div>

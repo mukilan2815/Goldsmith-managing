@@ -460,20 +460,23 @@ export default function EditReceiptPage() {
                   <tr className="font-medium bg-accent/20">
                     <td className="py-2 px-1">Totals</td>
                     <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.grossWt?.toFixed(2) || "0.00"}
+                      {editableReceipt.totals?.grossWt?.toFixed(3) || "0.000"}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.stoneWt?.toFixed(2) || "0.00"}
+                      {editableReceipt.totals?.stoneWt?.toFixed(3) || "0.000"}
                     </td>
-                    <td className="py-2 px-1"></td>
-                    <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.netWt?.toFixed(2) || "0.00"}
-                    </td>
-                    <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.finalWt?.toFixed(2) || "0.00"}
+                    <td className="py-2 px-1">
+                      {editableReceipt.totals?.meltingTouch?.toFixed(3) ||
+                        "0.000"}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.stoneAmt?.toFixed(2) || "0.00"}
+                      {editableReceipt.totals?.netWt?.toFixed(3) || "0.000"}
+                    </td>
+                    <td className="py-2 px-1 text-right">
+                      {editableReceipt.totals?.finalWt?.toFixed(3) || "0.000"}
+                    </td>
+                    <td className="py-2 px-1 text-right">
+                      {editableReceipt.totals?.stoneAmt?.toFixed(3) || "0.000"}
                     </td>
                   </tr>
                 </tbody>

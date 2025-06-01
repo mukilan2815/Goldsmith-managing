@@ -64,6 +64,12 @@ interface AdminReceipt {
   createdAt: string;
   updatedAt: string;
   __v: number;
+  manualCalculations: {
+    givenTotal: number;
+    receivedTotal: number;
+    operation: string;
+    result: number;
+  };
 }
 
 // Admin Receipt API functions
