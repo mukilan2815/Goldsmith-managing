@@ -7,7 +7,7 @@ const config = {
   // Base API URL - will be replaced with your deployed backend URL
   apiUrl: import.meta.env.PROD
     ? "https://your-deployed-api.com/api"
-    : "https://backend-goldsmith.onrender.com/api",
+    : "http://localhost:5000/api",
 
   // MongoDB Atlas URI - only used in backend
   mongodbUri: import.meta.env.MONGO_URI || "mongodb://localhost:27017/",

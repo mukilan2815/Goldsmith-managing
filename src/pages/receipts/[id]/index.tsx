@@ -399,7 +399,7 @@ export default function ReceiptDetailsPage() {
                       {receipt.data.items
                         ? receipt.data.items
                             .reduce(
-                              (sum, item) =>
+                              (sum: number, item: { meltingTouch: string }) =>
                                 sum +
                                 (isNaN(parseFloat(item.meltingTouch))
                                   ? 0

@@ -48,13 +48,11 @@ export default function CustomerDetailsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(
-        "https://backend-goldsmith.onrender.com/api/clients"
-      );
+      const response = await axios.get("http://localhost:5000/api/clients");
       setClients(response.data.clients || []);
     } catch (err) {
       setError("Failed to fetch clients. Please try again.");
-      console.error("Error fetching clients:", err);
+      console.error("Error fetching clients:", err);  
       setClients([]);
     } finally {
       setLoading(false);

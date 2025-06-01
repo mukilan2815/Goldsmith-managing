@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // API configuration
-const API_BASE_URL = "https://backend-goldsmith.onrender.com/api";
+const API_BASE_URL = "http://localhost:5000/api";
 
 // Form validation schema
 const clientFormSchema = z.object({

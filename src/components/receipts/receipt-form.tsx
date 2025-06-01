@@ -43,7 +43,7 @@ const receiptItemSchema = z.object({
   tag: z.string().optional(),
   grossWeight: z.coerce.number().positive({ message: "Must be positive" }),
   stoneWeight: z.coerce.number().min(0, { message: "Cannot be negative" }),
-  meltingPercent: z.coerce
+  meltingTouch: z.coerce
     .number()
     .min(0, { message: "Min 0%" })
     .max(100, { message: "Max 100%" }),
@@ -113,7 +113,7 @@ export function ReceiptForm({
       tag: "",
       grossWeight: 0,
       stoneWeight: 0,
-      meltingPercent: 0,
+      meltingTouch: 0,
       rate: 0,
       netWeight: 0,
       finalWeight: 0,
@@ -218,10 +218,10 @@ export function ReceiptForm({
   const calculateDerivedValues = (
     grossWeight: number,
     stoneWeight: number,
-    meltingPercent: number
+    meltingTouch: number
   ) => {
     const netWeight = grossWeight - stoneWeight;
-    const finalWeight = (netWeight * meltingPercent) / 100;
+    const finalWeight = (netWeight * meltingTouch) / 100;
 
     return {
       netWeight,
@@ -237,7 +237,7 @@ export function ReceiptForm({
       tag: "",
       grossWeight: 0,
       stoneWeight: 0,
-      meltingPercent: 0,
+      meltingTouch: 0,
       rate: 0,
       netWeight: 0,
       finalWeight: 0,
@@ -269,13 +269,11 @@ export function ReceiptForm({
           const updatedItem = { ...item, [field]: value };
 
           // Recalculate derived values if needed
-          if (
-            ["grossWeight", "stoneWeight", "meltingPercent"].includes(field)
-          ) {
+          if (["grossWeight", "stoneWeight", "meltingTouch"].includes(field)) {
             const { netWeight, finalWeight } = calculateDerivedValues(
               field === "grossWeight" ? value : item.grossWeight,
               field === "stoneWeight" ? value : item.stoneWeight,
-              field === "meltingPercent" ? value : item.meltingPercent
+              field === "meltingTouch" ? value : item.meltingTouch
             );
 
             updatedItem.netWeight = netWeight;
@@ -310,12 +308,8 @@ export function ReceiptForm({
   );
 
   const handleSaveClick = async () => {
-    console.log("Save button clicked");
-    console.log("Current client:", client);
-
     // Set loading state
     setIsSubmitting(true);
-
     try {
       // Validate client exists - using _id property
       if (!client || !client._id) {
@@ -335,7 +329,6 @@ export function ReceiptForm({
       // Validate required fields
       const formState = form.getFieldState("items");
       if (formState.invalid) {
-        console.log("Form validation failed");
         form.handleSubmit(() => {})(); // Trigger validation without submission
         setIsSubmitting(false);
         return;
@@ -360,7 +353,7 @@ export function ReceiptForm({
           tag: item.tag || "",
           grossWt: parseFloat(item.grossWeight.toString()),
           stoneWt: parseFloat(item.stoneWeight.toString()),
-          meltingTouch: parseFloat(item.meltingPercent.toString()), // Use meltingPercent as the source
+          meltingTouch: parseFloat(item.meltingTouch.toString()), // Use meltingTouch as the source
           netWt: parseFloat(item.netWeight.toString()),
           finalWt: parseFloat(item.finalWeight.toString()),
           stoneAmt: parseFloat(item.stoneAmount?.toString()),
@@ -376,7 +369,7 @@ export function ReceiptForm({
       console.log("Sending data to API:", formattedData);
 
       // Updated API URL with correct port (5000)
-      const API_URL = "https://backend-goldsmith.onrender.com/api/receipts";
+      const API_URL = "http://localhost:5000/api/receipts";
       console.log("Using API URL:", API_URL);
 
       // Make API call with the correct URL
@@ -662,10 +655,9 @@ export function ReceiptForm({
                     <td className="p-2">
                       <Input
                         type="number"
-                        placeholder="0.00"
+                        placeholder="0.000"
                         step="0.01"
                         min="0"
-                        value={item.grossWeight}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -678,10 +670,9 @@ export function ReceiptForm({
                     <td className="p-2">
                       <Input
                         type="number"
-                        placeholder="0.00"
+                        placeholder="0.000"
                         step="0.01"
                         min="0"
-                        value={item.stoneWeight}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -694,22 +685,21 @@ export function ReceiptForm({
                     <td className="p-2">
                       <Input
                         readOnly
-                        value={item.netWeight.toFixed(2)}
+                        value={item.netWeight.toFixed(3)}
                         className="bg-muted/30"
                       />
                     </td>
                     <td className="p-2">
                       <Input
                         type="number"
-                        placeholder="0.00"
+                        placeholder="0.000"
                         step="0.01"
                         min="0"
                         max="100"
-                        value={item.meltingTouch}
                         onChange={(e) =>
                           updateItem(
                             item.id,
-                            "meltingPercent",
+                            "meltingTouch",
                             parseFloat(e.target.value) || 0
                           )
                         }
@@ -718,17 +708,16 @@ export function ReceiptForm({
                     <td className="p-2">
                       <Input
                         readOnly
-                        value={item.finalWeight.toFixed(2)}
+                        value={item.finalWeight.toFixed(3)}
                         className="bg-muted/30"
                       />
                     </td>
                     <td className="p-2">
                       <Input
                         type="number"
-                        placeholder="0.00"
+                        placeholder="0.000"
                         step="0.01"
                         min="0"
-                        value={item.stoneAmount || 0}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -754,16 +743,16 @@ export function ReceiptForm({
                   <td colSpan={2} className="p-2 text-right">
                     Totals:
                   </td>
-                  <td className="p-2">{totals.grossWeight.toFixed(2)}</td>
-                  <td className="p-2">{totals.stoneWeight.toFixed(2)}</td>
-                  <td className="p-2">{totals.netWeight.toFixed(2)}</td>
+                  <td className="p-2">{totals.grossWeight.toFixed(3)}</td>
+                  <td className="p-2">{totals.stoneWeight.toFixed(3)}</td>
+                  <td className="p-2">{totals.netWeight.toFixed(3)}</td>
                   <td className="p-2">
                     {items
-                      .reduce((acc, item) => acc + Number(item.meltingTouch), 0)
-                      .toFixed(2)}
+                      .map((item) => item.meltingTouch)
+                      .reduce((acc, curr) => acc + (curr || 0), 0)}
                   </td>
-                  <td className="p-2">{totals.finalWeight.toFixed(2)}</td>
-                  <td className="p-2">{totals.stoneAmount.toFixed(2)}</td>
+                  <td className="p-2">{totals.finalWeight.toFixed(3)}</td>
+                  <td className="p-2">{totals.stoneAmount.toFixed(3)}</td>
                   <td className="p-2"></td>
                 </tr>
               </tbody>

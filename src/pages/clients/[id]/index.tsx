@@ -26,7 +26,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // API configuration
-const API_BASE_URL = "https://backend-goldsmith.onrender.com/api";
+const API_BASE_URL = "http://localhost:5000/api";
 const CLIENT_RECEIPTS_URL = `${API_BASE_URL}/receipts`;
 const ADMIN_RECEIPTS_URL = `${API_BASE_URL}/admin-receipts`;
 
@@ -138,6 +138,7 @@ function ReceiptsTable({
   onDownloadReceipt,
   onDeleteReceipt,
 }: ReceiptsTableProps) {
+  console.log("Rendering ReceiptsTable with receipts:", receipts);
   if (!receipts || receipts.length === 0) {
     return (
       <div className="text-center py-10 text-muted-foreground">
@@ -209,8 +210,8 @@ function ReceiptsTable({
               <TableCell>
                 ₹
                 {(receipt.type === "admin"
-                  ? receipt.received.total
-                  : receipt.totals.totalInvoiceAmount
+                  ? receipt.given?.total ?? 0
+                  : receipt.totals?.totalInvoiceAmount ?? 0
                 ).toLocaleString()}
               </TableCell>
               <TableCell className="text-right">

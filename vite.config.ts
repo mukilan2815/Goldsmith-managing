@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
     port: 8000,
     proxy: {
       "/api": {
-        target: "https://backend-goldsmith.onrender.com", // Your backend URL
+        target: "http://localhost:5000", // Your backend URL
         changeOrigin: true,
         secure: false,
       },
