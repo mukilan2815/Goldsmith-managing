@@ -369,7 +369,7 @@ export function ReceiptForm({
       console.log("Sending data to API:", formattedData);
 
       // Updated API URL with correct port (5000)
-      const API_URL = "http://localhost:5000/api/receipts";
+      const API_URL = "https://backend-goldsmith.onrender.com/api/receipts";
       console.log("Using API URL:", API_URL);
 
       // Make API call with the correct URL

@@ -14,7 +14,7 @@ import autoTable from "jspdf-autotable";
 
 // API client setup
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "https://backend-goldsmith.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },

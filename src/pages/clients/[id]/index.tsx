@@ -26,7 +26,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // API configuration
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "https://backend-goldsmith.onrender.com/api";
 const CLIENT_RECEIPTS_URL = `${API_BASE_URL}/receipts`;
 const ADMIN_RECEIPTS_URL = `${API_BASE_URL}/admin-receipts`;
 
