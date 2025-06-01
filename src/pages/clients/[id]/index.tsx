@@ -22,9 +22,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 // API configuration
-const API_BASE_URL = "https://backend-goldsmith.onrender.com/api";
+const API_BASE_URL = "http://localhost:5000/api";
 const CLIENT_RECEIPTS_URL = `${API_BASE_URL}/receipts`;
 const ADMIN_RECEIPTS_URL = `${API_BASE_URL}/admin-receipts`;
 
@@ -239,6 +241,432 @@ function ReceiptsTable({
   );
 }
 
+const generateClientReceiptPDF = (receipt: ClientReceipt) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+
+  // Header Section with Background
+  doc.setFillColor(31, 41, 55); // Dark blue-gray background
+  doc.rect(0, 0, pageWidth, 45, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.text("GOLDEN TOUCH JEWELERS", pageWidth / 2, 20, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.text("Premium Goldsmith Services", pageWidth / 2, 28, {
+    align: "center",
+  });
+
+  doc.setFontSize(9);
+  doc.text("Receipt", pageWidth / 2, 38, { align: "center" });
+
+  // Receipt Information Section
+  doc.setTextColor(0, 0, 0);
+  const infoY = 55;
+
+  // Receipt info box
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(margin, infoY, contentWidth, 32, "FD");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+
+  // Left column
+  doc.text("Receipt #:", margin + 8, infoY + 10);
+  doc.text("Date:", margin + 8, infoY + 18);
+  doc.text("Client:", margin + 8, infoY + 26);
+
+  // Right column
+  doc.text("Shop:", pageWidth / 2 + 10, infoY + 10);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(receipt.voucherId, margin + 35, infoY + 10);
+  doc.text(
+    new Date(receipt.issueDate).toLocaleDateString(),
+    margin + 35,
+    infoY + 18
+  );
+  doc.text(receipt.clientInfo.clientName, margin + 35, infoY + 26);
+  doc.text(receipt.clientInfo.shopName, pageWidth / 2 + 35, infoY + 10);
+
+  // Items Table
+  const itemsData = receipt.items.map((item) => [
+    item.itemName,
+    item.tag,
+    `${item.grossWt}g`,
+    `${item.stoneWt}g`,
+    `${item.netWt}g`,
+    `${item.meltingTouch}%`,
+    `${item.finalWt}g`,
+    `₹${item.totalInvoiceAmount.toLocaleString()}`,
+  ]);
+
+  autoTable(doc, {
+    startY: infoY + 40,
+    margin: { left: margin, right: margin },
+    head: [
+      [
+        "Item Name",
+        "Tag",
+        "Gross Wt",
+        "Stone Wt",
+        "Net Wt",
+        "Melting %",
+        "Final Wt",
+        "Amount",
+      ],
+    ],
+    body: itemsData,
+    theme: "grid",
+    headStyles: {
+      fillColor: [31, 41, 55],
+      textColor: 255,
+      fontStyle: "bold",
+      fontSize: 9,
+      halign: "center",
+      valign: "middle",
+    },
+    bodyStyles: {
+      fontSize: 8,
+      halign: "center",
+      valign: "middle",
+    },
+    columnStyles: {
+      0: { halign: "left", cellWidth: 25 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 18 },
+      4: { cellWidth: 16 },
+      5: { cellWidth: 18 },
+      6: { cellWidth: 16 },
+      7: { halign: "right", cellWidth: 25 },
+    },
+    styles: {
+      cellPadding: 3,
+      lineColor: [226, 232, 240],
+      lineWidth: 0.3,
+    },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+  });
+
+  // Totals Section
+  const finalY = (doc as any).lastAutoTable.finalY + 15;
+
+  // Totals box
+  doc.setFillColor(31, 41, 55);
+  doc.rect(margin, finalY, contentWidth, 40, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+
+  const leftCol = margin + 10;
+  const rightCol = pageWidth / 2 + 10;
+
+  doc.text("SUMMARY", leftCol, finalY + 10);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+
+  doc.text(`Total Items: ${receipt.items.length}`, leftCol, finalY + 18);
+  doc.text(
+    `Total Gross Weight: ${receipt.totals.grossWt}g`,
+    leftCol,
+    finalY + 24
+  );
+  doc.text(
+    `Total Stone Weight: ${receipt.totals.stoneWt}g`,
+    leftCol,
+    finalY + 30
+  );
+
+  doc.text(
+    `Total Final Weight: ${receipt.totals.finalWt}g`,
+    rightCol,
+    finalY + 18
+  );
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(
+    `TOTAL VALUE: ₹${receipt.totals.totalInvoiceAmount.toLocaleString()}`,
+    rightCol,
+    finalY + 30
+  );
+
+  // Footer
+  doc.setTextColor(100, 116, 139);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.text("Thank you for choosing Golden Touch Jewelers", pageWidth / 2, 280, {
+    align: "center",
+  });
+  doc.text(
+    "For queries, please contact us with your receipt number",
+    pageWidth / 2,
+    285,
+    { align: "center" }
+  );
+
+  return doc;
+};
+
+const generateAdminReceiptPDF = (receipt: AdminReceipt) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+
+  // Professional Header
+  doc.setFillColor(15, 23, 42); // Slate 900
+  doc.rect(0, 0, pageWidth, 50, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(24);
+  doc.text("GOLDEN TOUCH JEWELERS", pageWidth / 2, 20, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.text("Premium Goldsmith Services", pageWidth / 2, 30, {
+    align: "center",
+  });
+
+  doc.setFontSize(10);
+  doc.text("Administrative Receipt", pageWidth / 2, 42, { align: "center" });
+
+  // Receipt Information Box
+  doc.setTextColor(0, 0, 0);
+  doc.setFillColor(241, 245, 249);
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(margin, 60, contentWidth, 35, "FD");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("RECEIPT DETAILS", margin + 8, 70);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+
+  // Two column layout for receipt info
+  const col1X = margin + 8;
+  const col2X = pageWidth / 2 + 10;
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Receipt #:", col1X, 78);
+  doc.text("Date:", col1X, 84);
+  doc.text("Client:", col1X, 90);
+  doc.text("Status:", col2X, 78);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(receipt.voucherId, col1X + 25, 78);
+  doc.text(new Date(receipt.given.date).toLocaleDateString(), col1X + 25, 84);
+  doc.text(receipt.clientName, col1X + 25, 90);
+
+  // Status with color coding
+  const status =
+    receipt.status.charAt(0).toUpperCase() + receipt.status.slice(1);
+  const statusColor =
+    receipt.status === "completed"
+      ? [34, 197, 94]
+      : receipt.status === "pending"
+      ? [245, 158, 11]
+      : [239, 68, 68];
+  doc.setTextColor(...statusColor);
+  doc.setFont("helvetica", "bold");
+  doc.text(status, col2X + 25, 78);
+  doc.setTextColor(0, 0, 0);
+
+  // Given Items Section
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setFillColor(15, 23, 42);
+  doc.setTextColor(255, 255, 255);
+  doc.rect(margin, 105, contentWidth, 12, "F");
+  doc.text("GIVEN ITEMS", margin + 8, 113);
+
+  const givenItemsData = receipt.given.items.map((item) => [
+    item.productName,
+    `${item.pureWeight}g`,
+    `${item.purePercent}%`,
+    item.melting,
+    `₹${item.total.toLocaleString()}`,
+  ]);
+
+  autoTable(doc, {
+    startY: 117,
+    margin: { left: margin, right: margin },
+    head: [
+      ["Product Name", "Pure Weight", "Pure %", "Melting", "Total Amount"],
+    ],
+    body: givenItemsData,
+    theme: "striped",
+    headStyles: {
+      fillColor: [71, 85, 105],
+      textColor: 255,
+      fontStyle: "bold",
+      fontSize: 9,
+      halign: "center",
+      valign: "middle",
+    },
+    bodyStyles: {
+      fontSize: 8,
+      halign: "center",
+      valign: "middle",
+    },
+    columnStyles: {
+      0: { halign: "left", cellWidth: 40 },
+      1: { cellWidth: 25 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 25 },
+      4: { halign: "right", cellWidth: 30 },
+    },
+    styles: {
+      cellPadding: 4,
+      lineColor: [203, 213, 225],
+      lineWidth: 0.3,
+    },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+  });
+
+  // Received Items Section
+  const givenTableEnd = (doc as any).lastAutoTable.finalY + 15;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setFillColor(15, 23, 42);
+  doc.setTextColor(255, 255, 255);
+  doc.rect(margin, givenTableEnd, contentWidth, 12, "F");
+  doc.text("RECEIVED ITEMS", margin + 8, givenTableEnd + 8);
+
+  const receivedItemsData = receipt.received.items.map((item) => [
+    item.productName,
+    `${item.finalOrnamentsWt}g`,
+    `${item.stoneWeight}g`,
+    `${item.makingChargePercent}%`,
+    `₹${item.subTotal.toLocaleString()}`,
+    `₹${item.total.toLocaleString()}`,
+  ]);
+
+  autoTable(doc, {
+    startY: givenTableEnd + 12,
+    margin: { left: margin, right: margin },
+    head: [
+      [
+        "Product Name",
+        "Final Weight",
+        "Stone Weight",
+        "Making %",
+        "Sub Total",
+        "Total Amount",
+      ],
+    ],
+    body: receivedItemsData,
+    theme: "striped",
+    headStyles: {
+      fillColor: [71, 85, 105],
+      textColor: 255,
+      fontStyle: "bold",
+      fontSize: 9,
+      halign: "center",
+      valign: "middle",
+    },
+    bodyStyles: {
+      fontSize: 8,
+      halign: "center",
+      valign: "middle",
+    },
+    columnStyles: {
+      0: { halign: "left", cellWidth: 28 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 18 },
+      4: { halign: "right", cellWidth: 25 },
+      5: { halign: "right", cellWidth: 25 },
+    },
+    styles: {
+      cellPadding: 4,
+      lineColor: [203, 213, 225],
+      lineWidth: 0.3,
+    },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+  });
+
+  // Summary Section
+  const receivedTableEnd = (doc as any).lastAutoTable.finalY + 15;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setFillColor(15, 23, 42);
+  doc.setTextColor(255, 255, 255);
+  doc.rect(margin, receivedTableEnd, contentWidth, 12, "F");
+  doc.text("TRANSACTION SUMMARY", margin + 8, receivedTableEnd + 8);
+
+  // Summary box
+  doc.setTextColor(0, 0, 0);
+  doc.setFillColor(241, 245, 249);
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(margin, receivedTableEnd + 12, contentWidth, 35, "FD");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+
+  const summaryY = receivedTableEnd + 20;
+  const col1 = margin + 8;
+  const col2 = pageWidth / 3 + 5;
+  const col3 = (pageWidth * 2) / 3;
+
+  // Row 1
+  doc.setFont("helvetica", "bold");
+  doc.text("Given Items:", col1, summaryY);
+  doc.text("Pure Weight:", col2, summaryY);
+  doc.text("Given Value:", col3, summaryY);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(`${receipt.given.items.length}`, col1 + 25, summaryY);
+  doc.text(`${receipt.given.totalPureWeight}g`, col2 + 25, summaryY);
+  doc.text(`₹${receipt.given.total.toLocaleString()}`, col3 + 25, summaryY);
+
+  // Row 2
+  doc.setFont("helvetica", "bold");
+  doc.text("Received Items:", col1, summaryY + 8);
+  doc.text("Ornament Weight:", col2, summaryY + 8);
+  doc.text("Stone Weight:", col3, summaryY + 8);
+
+  doc.setFont("helvetica", "normal");
+  doc.text(`${receipt.received.items.length}`, col1 + 25, summaryY + 8);
+  doc.text(`${receipt.received.totalOrnamentsWt}g`, col2 + 25, summaryY + 8);
+  doc.text(`${receipt.received.totalStoneWeight}g`, col3 + 25, summaryY + 8);
+
+  // Row 3
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("TOTAL RECEIVED VALUE:", col1, summaryY + 18);
+  doc.setFontSize(12);
+  doc.text(`₹${receipt.received.total.toLocaleString()}`, col2, summaryY + 18);
+
+  // Footer
+  const footerY = 275;
+  doc.setTextColor(100, 116, 139);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.text("This is a computer generated receipt", pageWidth / 2, footerY, {
+    align: "center",
+  });
+  doc.text(
+    "Golden Touch Jewelers - Thank you for your business",
+    pageWidth / 2,
+    footerY + 5,
+    { align: "center" }
+  );
+
+  return doc;
+};
+
 export default function ClientDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -271,22 +699,18 @@ export default function ClientDetailsPage() {
 
         // Fetch client data
         const clientResponse = await axios.get(`${API_BASE_URL}/clients/${id}`);
-        console.log("Client data:", clientResponse.data);
         setClient(clientResponse.data);
 
         // Fetch client receipts
         const clientReceiptsResponse = await axios.get(
           `${CLIENT_RECEIPTS_URL}/client/${id}`
         );
-        console.log("Client receipts data:", clientReceiptsResponse);
-
         const clientReceiptsData = clientReceiptsResponse.data.data.map(
           (r: any) => ({
             ...r,
             type: "client",
           })
         );
-        console.log("Client receipts data:", clientReceiptsResponse);
         setClientReceipts(clientReceiptsData);
 
         // Fetch admin receipts for this client
@@ -297,7 +721,6 @@ export default function ClientDetailsPage() {
           ...r,
           type: "admin",
         }));
-        console.log("Admin receipts data:", adminReceiptsData);
         setAdminReceipts(adminReceiptsData);
 
         // Calculate stats
@@ -392,20 +815,20 @@ export default function ClientDetailsPage() {
     type: "client" | "admin"
   ) => {
     try {
-      const url =
-        type === "client"
-          ? `${CLIENT_RECEIPTS_URL}/${receiptId}/download`
-          : `${ADMIN_RECEIPTS_URL}/${receiptId}/download`;
+      let doc;
 
-      const response = await axios.get(url, { responseType: "blob" });
+      if (type === "client") {
+        const receipt = clientReceipts.find((r) => r._id === receiptId);
+        if (!receipt) throw new Error("Receipt not found");
+        doc = generateClientReceiptPDF(receipt);
+      } else {
+        const receipt = adminReceipts.find((r) => r._id === receiptId);
+        if (!receipt) throw new Error("Receipt not found");
+        doc = generateAdminReceiptPDF(receipt);
+      }
 
-      const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.setAttribute("download", `receipt-${receiptId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      // Save the PDF
+      doc.save(`receipt-${receiptId}.pdf`);
 
       toast({
         title: "Download Complete",
@@ -414,7 +837,7 @@ export default function ClientDetailsPage() {
     } catch (error) {
       toast({
         title: "Download Failed",
-        description: "Could not download receipt",
+        description: "Could not generate receipt",
         variant: "destructive",
       });
     }
@@ -820,7 +1243,7 @@ export default function ClientDetailsPage() {
                           <TableHead>Gross Wt</TableHead>
                           <TableHead>Stone Wt</TableHead>
                           <TableHead>Net Wt</TableHead>
-                          <TableHead>Touch%</TableHead>
+                          <TableHead>Melting%</TableHead>
                           <TableHead>Final Wt</TableHead>
                           <TableHead>Amount</TableHead>
                         </TableRow>

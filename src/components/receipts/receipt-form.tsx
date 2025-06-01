@@ -358,12 +358,12 @@ export function ReceiptForm({
           itemName: item.description,
           description: item.description,
           tag: item.tag || "",
-          grossWeight: parseFloat(item.grossWeight.toString()),
-          stoneWeight: parseFloat(item.stoneWeight.toString()),
-          meltingPercent: parseFloat(item.meltingPercent.toString()),
-          netWeight: parseFloat(item.netWeight.toString()),
-          finalWeight: parseFloat(item.finalWeight.toString()),
-          stoneAmount: parseFloat(item.stoneAmount?.toString()),
+          grossWt: parseFloat(item.grossWeight.toString()),
+          stoneWt: parseFloat(item.stoneWeight.toString()),
+          meltingTouch: parseFloat(item.meltingPercent.toString()), // Use meltingPercent as the source
+          netWt: parseFloat(item.netWeight.toString()),
+          finalWt: parseFloat(item.finalWeight.toString()),
+          stoneAmt: parseFloat(item.stoneAmount?.toString()),
         })),
         totals: {
           grossWt: totals.grossWeight,
@@ -376,7 +376,7 @@ export function ReceiptForm({
       console.log("Sending data to API:", formattedData);
 
       // Updated API URL with correct port (5000)
-      const API_URL = "https://backend-goldsmith.onrender.com/api/receipts";
+      const API_URL = "http://localhost:5000/api/receipts";
       console.log("Using API URL:", API_URL);
 
       // Make API call with the correct URL
@@ -605,7 +605,6 @@ export function ReceiptForm({
               Add Item
             </Button>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -645,7 +644,7 @@ export function ReceiptForm({
                     <td className="p-2">
                       <Input
                         placeholder="Item description"
-                        // value={item.description}
+                        value={item.description}
                         onChange={(e) =>
                           updateItem(item.id, "description", e.target.value)
                         }
@@ -654,7 +653,7 @@ export function ReceiptForm({
                     <td className="p-2">
                       <Input
                         placeholder="Tag"
-                        // value={item.tag}
+                        value={item.tag}
                         onChange={(e) =>
                           updateItem(item.id, "tag", e.target.value)
                         }
@@ -666,7 +665,7 @@ export function ReceiptForm({
                         placeholder="0.00"
                         step="0.01"
                         min="0"
-                        // value={item.grossWeight}
+                        value={item.grossWeight}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -682,7 +681,7 @@ export function ReceiptForm({
                         placeholder="0.00"
                         step="0.01"
                         min="0"
-                        // value={item.stoneWeight}
+                        value={item.stoneWeight}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -706,7 +705,7 @@ export function ReceiptForm({
                         step="0.01"
                         min="0"
                         max="100"
-                        // value={item.meltingPercent}
+                        value={item.meltingTouch}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -729,7 +728,7 @@ export function ReceiptForm({
                         placeholder="0.00"
                         step="0.01"
                         min="0"
-                        // value={item.stoneAmount || 0}
+                        value={item.stoneAmount || 0}
                         onChange={(e) =>
                           updateItem(
                             item.id,
@@ -758,7 +757,11 @@ export function ReceiptForm({
                   <td className="p-2">{totals.grossWeight.toFixed(2)}</td>
                   <td className="p-2">{totals.stoneWeight.toFixed(2)}</td>
                   <td className="p-2">{totals.netWeight.toFixed(2)}</td>
-                  <td className="p-2"></td>
+                  <td className="p-2">
+                    {items
+                      .reduce((acc, item) => acc + Number(item.meltingTouch), 0)
+                      .toFixed(2)}
+                  </td>
                   <td className="p-2">{totals.finalWeight.toFixed(2)}</td>
                   <td className="p-2">{totals.stoneAmount.toFixed(2)}</td>
                   <td className="p-2"></td>

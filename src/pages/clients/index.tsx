@@ -29,7 +29,6 @@ interface Client {
   phoneNumber: string;
   address: string;
   email: string;
-  active: boolean;
   createdAt: string;
 }
 
@@ -49,9 +48,7 @@ export default function CustomerDetailsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(
-        "https://backend-goldsmith.onrender.com/api/clients"
-      );
+      const response = await axios.get("http://localhost:5000/api/clients");
       setClients(response.data.clients || []);
     } catch (err) {
       setError("Failed to fetch clients. Please try again.");
@@ -125,11 +122,12 @@ export default function CustomerDetailsPage() {
     try {
       setDeleteLoading(true);
       await axios.delete(`/api/clients/${clientToDelete}`);
-      fetchClients();
+      // Remove the client from the local state immediately
+      setClients(clients.filter((client) => client._id !== clientToDelete));
       toast({
         title: "Client Deleted",
         description:
-          "The client has been successfully removed or marked as inactive.",
+          "The client has been permanently deleted from the database.",
       });
     } catch (err) {
       toast({
@@ -193,7 +191,6 @@ export default function CustomerDetailsPage() {
                 <TableHead>Shop Name</TableHead>
                 <TableHead>Client Name</TableHead>
                 <TableHead>Phone Number</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Date Added</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -201,7 +198,7 @@ export default function CustomerDetailsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10">
+                  <TableCell colSpan={5} className="text-center py-10">
                     <div className="flex justify-center items-center">
                       <Loader2 className="h-6 w-6 animate-spin mr-2" />
                       Loading clients...
@@ -216,17 +213,6 @@ export default function CustomerDetailsPage() {
                     </TableCell>
                     <TableCell>{client.clientName}</TableCell>
                     <TableCell>{client.phoneNumber || "-"}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded text-xs ${
-                          client.active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {client.active ? "Active" : "Inactive"}
-                      </span>
-                    </TableCell>
                     <TableCell>
                       {new Date(client.createdAt).toLocaleDateString()}
                     </TableCell>
@@ -272,7 +258,7 @@ export default function CustomerDetailsPage() {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={5}
                     className="text-center py-10 text-muted-foreground"
                   >
                     {searchTerm
@@ -291,7 +277,8 @@ export default function CustomerDetailsPage() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Enter the password to delete this client.
+              This will permanently delete the client. Enter the password to
+              confirm.
             </DialogDescription>
           </DialogHeader>
 
@@ -323,7 +310,7 @@ export default function CustomerDetailsPage() {
                   Deleting...
                 </>
               ) : (
-                "Delete"
+                "Delete Permanently"
               )}
             </Button>
           </DialogFooter>

@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { parse } from "path";
 
 // Extend jsPDF type to include autoTable for TypeScript
 declare module "jspdf" {
@@ -118,7 +119,11 @@ export default function ReceiptDetailsPage() {
       doc.text("Client Information", 14, 40);
       doc.setFontSize(10);
       doc.text(`Shop Name: ${receipt.data.clientInfo?.shopName || ""}`, 14, 48);
-      doc.text(`Client Name: ${receipt.data.clientInfo?.clientName || ""}`, 14, 54);
+      doc.text(
+        `Client Name: ${receipt.data.clientInfo?.clientName || ""}`,
+        14,
+        54
+      );
       doc.text(`Phone: ${receipt.data.clientInfo?.phoneNumber || ""}`, 14, 60);
 
       doc.setFontSize(12);
@@ -131,17 +136,24 @@ export default function ReceiptDetailsPage() {
         "Net Wt",
         "Final Wt",
         "Stone Amt",
+        "Melting",
       ];
       const tableRows = [];
 
+      let meltingTouchTotal = 0;
+
       receipt.data.items?.forEach((item) => {
+        const meltingTouch = parseFloat(item.meltingTouch);
+        meltingTouchTotal += isNaN(meltingTouch) ? 0 : meltingTouch;
+
         const itemData = [
           item.itemName || "",
-          parseFloat(item.grossWeight ).toFixed(2),
-          parseFloat(item.stoneWeight ).toFixed(2),
-          parseFloat(item.netWeight ).toFixed(2),
-          parseFloat(item.finalWeight ).toFixed(2),
-          parseFloat(item.stoneAmount ).toFixed(2),
+          parseFloat(item.grossWt).toFixed(2),
+          parseFloat(item.stoneWt).toFixed(2),
+          parseFloat(item.netWt).toFixed(2),
+          parseFloat(item.finalWt).toFixed(2),
+          parseFloat(item.stoneAmt).toFixed(2),
+          meltingTouch.toFixed(2),
         ];
         tableRows.push(itemData);
       });
@@ -149,11 +161,12 @@ export default function ReceiptDetailsPage() {
       const totals = receipt.data.totals || {};
       const totalsRow = [
         "Totals",
-        parseFloat(totals.grossWt ).toFixed(2),
-        parseFloat(totals.stoneWt ).toFixed(2),
-        parseFloat(totals.netWt ).toFixed(2),
-        parseFloat(totals.finalWt ).toFixed(2),
-        parseFloat(totals.stoneAmt ).toFixed(2),
+        parseFloat(totals.grossWt).toFixed(2),
+        parseFloat(totals.stoneWt).toFixed(2),
+        parseFloat(totals.netWt).toFixed(2),
+        parseFloat(totals.finalWt).toFixed(2),
+        parseFloat(totals.stoneAmt).toFixed(2),
+        meltingTouchTotal.toFixed(2),
       ];
       tableRows.push(totalsRow);
 
@@ -332,6 +345,9 @@ export default function ReceiptDetailsPage() {
                     <th className="text-right py-2 px-1 text-sm font-medium">
                       Stone Amt
                     </th>
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Melting
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -342,19 +358,22 @@ export default function ReceiptDetailsPage() {
                     >
                       <td className="py-2 px-1">{item.itemName}</td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.grossWt ).toFixed(2)}
+                        {parseFloat(item.grossWt).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.stoneWt ).toFixed(2)}
+                        {parseFloat(item.stoneWt).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.netWt ).toFixed(2)}
+                        {parseFloat(item.netWt).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.finalWt ).toFixed(2)}
+                        {parseFloat(item.finalWt).toFixed(2)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {parseFloat(item.stoneAmt ).toFixed(2)}
+                        {parseFloat(item.stoneAmt).toFixed(2)}
+                      </td>
+                      <td className="py-2 px-1 text-right">
+                        {parseFloat(item.meltingTouch).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -362,21 +381,33 @@ export default function ReceiptDetailsPage() {
                   <tr className="font-medium bg-accent/20 print:bg-gray-100">
                     <td className="py-2 px-1 text-left">Totals</td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.grossWt ).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.grossWt).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.stoneWt ).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.stoneWt).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.netWt ).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.netWt).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.finalWt ).toFixed(2)}
+                      {parseFloat(receipt.data.totals?.finalWt).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {parseFloat(receipt.data.totals?.stoneAmt ).toFixed(
-                        2
-                      )}
+                      {parseFloat(receipt.data.totals?.stoneAmt).toFixed(2)}
+                    </td>
+                    <td className="py-2 px-1 text-right">
+                      {receipt.data.items
+                        ? receipt.data.items
+                            .reduce(
+                              (sum, item) =>
+                                sum +
+                                (isNaN(parseFloat(item.meltingTouch))
+                                  ? 0
+                                  : parseFloat(item.meltingTouch)),
+                              0
+                            )
+                            .toFixed(2)
+                        : "0.00"}
                     </td>
                   </tr>
                 </tbody>

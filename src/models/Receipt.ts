@@ -1,38 +1,43 @@
-
 export interface ReceiptItem {
   id: string;
-  description: string;
+  itemName: string; // Changed from description
   tag?: string;
-  grossWeight: number;
-  stoneWeight: number;
-  meltingPercent: number;
-  rate: number;
-  netWeight: number;
-  finalWeight: number;
-  amount: number;
-  stoneAmount?: number;
+  grossWt: number; // Changed from grossWeight
+  stoneWt: number; // Changed from stoneWeight
+  meltingTouch: number; // Changed from meltingPercent
+  netWt: number; // Changed from netWeight
+  finalWt: number; // Changed from finalWeight
+  stoneAmt?: number; // Changed from stoneAmount
+  // Removed rate and amount as they weren't in the MongoDB document
 }
 
 export interface Receipt {
-  id: string;
-  client: {
-    id: string;
-    name: string;
+  _id: string; // Changed from id to match MongoDB
+  clientId: string; // Changed from client object to just ID
+  clientInfo: {
+    // Changed structure to match MongoDB
+    clientName: string; // Changed from name
     shopName: string;
-    mobile: string;
-    address: string;
+    phoneNumber: string; // Changed from mobile
+    address?: string;
   };
-  date: Date;
   metalType: string;
-  overallWeight?: number;
-  unit?: string;
+  issueDate: string | Date; // Changed from date
+  voucherId: string; // Added this field
   items: ReceiptItem[];
-  totalGrossWeight: number;
-  totalStoneWeight: number;
-  totalNetWeight: number;
-  totalFinalWeight: number;
-  totalAmount: number;
-  totalStoneAmount: number;
-  createdAt: string;
-  updatedAt: string;
+  totals: {
+    // Changed from individual total fields
+    grossWt: number;
+    stoneWt: number;
+    netWt: number;
+    finalWt: number;
+    stoneAmt: number;
+  };
+  overallWeight?: number;
+  paymentStatus: "Pending" | "Paid" | "Partial"; // Added this field
+  isCompleted: boolean; // Added this field
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  // Removed unit as it wasn't in the MongoDB document
+  // Removed totalAmount as it wasn't in the MongoDB document
 }

@@ -1,10 +1,17 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Eye, Edit, Trash, Download, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Eye,
+  Edit,
+  Trash,
+  Download,
+  Loader2,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -45,9 +52,9 @@ export default function ReceiptsPage() {
     data: receiptsData,
     isLoading,
     isError,
-    error
+    error,
   } = useQuery({
-    queryKey: ['receipts'],
+    queryKey: ["receipts"],
     queryFn: () => receiptServices.getReceipts(),
     meta: {
       onError: (err: any) => {
@@ -57,17 +64,17 @@ export default function ReceiptsPage() {
           description: "Failed to load receipts. Please try again.",
           variant: "destructive",
         });
-      }
-    }
+      },
+    },
   });
 
   const receipts = receiptsData?.data || [];
-console.log("Fetched receipts:", receiptsData);
+  console.log("Fetched receipts:", receiptsData);
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => receiptServices.deleteReceipt(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      queryClient.invalidateQueries({ queryKey: ["receipts"] });
       toast({
         title: "Receipt Deleted",
         description: "The receipt has been successfully removed.",
@@ -82,26 +89,26 @@ console.log("Fetched receipts:", receiptsData);
         description: "Failed to delete receipt. Please try again.",
         variant: "destructive",
       });
-    }
+    },
   });
 
   // Filter receipts based on search term and filter type
   const filteredReceipts = receipts.filter((receipt) => {
     const searchLower = searchTerm.toLowerCase();
     let matches = true;
-    
+
     // Search term filter
     if (searchTerm) {
       matches =
         receipt.clientInfo?.clientName?.toLowerCase().includes(searchLower) ||
         receipt.clientInfo?.shopName?.toLowerCase().includes(searchLower) ||
         receipt?.voucherId?.toLowerCase().includes(searchLower);
-      
+
       if (!matches) return false;
     }
-    
+
     // Type filter (if implemented in the future)
-    
+
     return matches;
   });
 
@@ -139,9 +146,7 @@ console.log("Fetched receipts:", receiptsData);
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
           <h1 className="text-3xl font-serif font-bold">Receipts</h1>
-          <p className="text-muted-foreground">
-            Manage your client receipts
-          </p>
+          <p className="text-muted-foreground">Manage your client receipts</p>
         </div>
         <Button onClick={handleCreateReceipt} className="mt-4 md:mt-0">
           <Plus className="mr-2 h-4 w-4" /> Create Receipt
@@ -200,11 +205,19 @@ console.log("Fetched receipts:", receiptsData);
                   filteredReceipts.map((receipt) => (
                     <TableRow key={receipt._id}>
                       <TableCell>{receipt.voucherId}</TableCell>
-                      <TableCell className="font-medium">{receipt.clientInfo.shopName}</TableCell>
+                      <TableCell className="font-medium">
+                        {receipt.clientInfo.shopName}
+                      </TableCell>
                       <TableCell>{receipt.clientInfo.clientName}</TableCell>
-                      <TableCell>{new Date(receipt.issueDate).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">{receipt.totals.grossWt.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{receipt.totals.finalWt.toFixed(2)}</TableCell>
+                      <TableCell>
+                        {new Date(receipt.issueDate).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {receipt.totals.grossWt.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {receipt.totals.finalWt.toFixed(2)}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -223,14 +236,14 @@ console.log("Fetched receipts:", receiptsData);
                           >
                             <Edit className="h-4 w-4" />
                           </Button> */}
-                          <Button
+                          {/* <Button
                             variant="outline"
                             size="icon"
                             onClick={() => handleDownloadPDF(receipt._id)}
                             title="Download PDF"
                           >
                             <Download className="h-4 w-4" />
-                          </Button>
+                          </Button> */}
                           <Button
                             variant="outline"
                             size="icon"
@@ -246,8 +259,13 @@ console.log("Fetched receipts:", receiptsData);
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                      {searchTerm ? "No receipts match your search" : "No receipts found"}
+                    <TableCell
+                      colSpan={7}
+                      className="text-center py-10 text-muted-foreground"
+                    >
+                      {searchTerm
+                        ? "No receipts match your search"
+                        : "No receipts found"}
                     </TableCell>
                   </TableRow>
                 )}
@@ -263,15 +281,20 @@ console.log("Fetched receipts:", receiptsData);
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this receipt? This action cannot be undone.
+              Are you sure you want to delete this receipt? This action cannot
+              be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteMutation.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteMutation.isPending}
+            >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteReceipt}
               disabled={deleteMutation.isPending}
             >

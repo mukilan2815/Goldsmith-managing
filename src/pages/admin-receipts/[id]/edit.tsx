@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Download } from "lucide-react";
+import { ArrowLeft, Save, Download, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
@@ -12,7 +12,7 @@ import autoTable from "jspdf-autotable";
 
 // API client setup
 const api = axios.create({
-  baseURL: "https://backend-goldsmith.onrender.com/api",
+  baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -276,13 +276,59 @@ export default function EditAdminReceiptPage() {
     });
   };
 
+  // Add new item to given or received
+  const addNewItem = (transactionType: "given" | "received") => {
+    setReceipt((prev) => {
+      if (!prev) return null;
+
+      const newItem: ReceiptItem = {
+        productName: "",
+      };
+
+      if (transactionType === "given") {
+        newItem.pureWeight = 0;
+        newItem.purePercent = 0;
+        newItem.melting = 0;
+        newItem.total = 0;
+      } else {
+        newItem.finalOrnamentsWt = 0;
+        newItem.stoneWeight = 0;
+        newItem.subTotal = 0;
+        newItem.makingChargePercent = 0;
+        newItem.total = 0;
+      }
+
+      return {
+        ...prev,
+        [transactionType]: {
+          ...prev[transactionType],
+          items: [...prev[transactionType].items, newItem],
+        },
+      };
+    });
+  };
+
+  // Handle save
   // Handle save
   const handleSave = async () => {
     if (!receipt || !id) return;
 
     setIsUpdating(true);
     try {
-      await adminReceiptApi.updateAdminReceipt(id, receipt);
+      // Check if both given and received have items and totals
+      const shouldBeComplete =
+        receipt.given.items.length > 0 &&
+        receipt.received.items.length > 0 &&
+        receipt.given.total !== undefined &&
+        receipt.received.total !== undefined;
+
+      // Prepare update data
+      const updateData: Partial<AdminReceipt> = {
+        ...receipt,
+        status: shouldBeComplete ? "complete" : receipt.status,
+      };
+
+      await adminReceiptApi.updateAdminReceipt(id, updateData);
       toast({
         title: "Success",
         description: "Receipt updated successfully",
@@ -299,7 +345,6 @@ export default function EditAdminReceiptPage() {
       setIsUpdating(false);
     }
   };
-
   const generatePDF = (receipt: AdminReceipt) => {
     const doc = new jsPDF();
     // ... (same PDF generation code as before)
@@ -432,7 +477,16 @@ export default function EditAdminReceiptPage() {
 
         {/* Given Details Section */}
         <div className="mb-8 border p-4 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">Given Details</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Given Details</h2>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => addNewItem("given")}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add Item
+            </Button>
+          </div>
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -471,6 +525,9 @@ export default function EditAdminReceiptPage() {
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Total
                   </th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -489,6 +546,7 @@ export default function EditAdminReceiptPage() {
                           )
                         }
                         className="w-full border rounded px-2 py-1"
+                        placeholder="Enter product name"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -506,6 +564,7 @@ export default function EditAdminReceiptPage() {
                         className="w-full border rounded px-2 py-1"
                         step="0.01"
                         min="0"
+                        placeholder="0.00"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -524,6 +583,7 @@ export default function EditAdminReceiptPage() {
                         step="0.01"
                         min="0"
                         max="100"
+                        placeholder="0.00"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -542,6 +602,7 @@ export default function EditAdminReceiptPage() {
                         step="0.01"
                         min="0"
                         max="100"
+                        placeholder="0.00"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -550,7 +611,35 @@ export default function EditAdminReceiptPage() {
                         value={safeToFixed(item.total)}
                         readOnly
                         className="w-full border rounded px-2 py-1 bg-gray-100"
+                        placeholder="0.00"
                       />
+                    </td>
+                    <td className="py-2 px-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Remove item logic here
+                          setReceipt((prev) => {
+                            if (!prev) return null;
+                            const updatedItems = [...prev.given.items];
+                            updatedItems.splice(index, 1);
+                            return {
+                              ...prev,
+                              given: {
+                                ...prev.given,
+                                items: updatedItems,
+                                total: updatedItems.reduce(
+                                  (sum, item) => sum + (item.total || 0),
+                                  0
+                                ),
+                              },
+                            };
+                          });
+                        }}
+                      >
+                        Remove
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -563,6 +652,7 @@ export default function EditAdminReceiptPage() {
                   <td className="py-2 px-4 font-medium">
                     {safeToFixed(receipt.given?.total)}
                   </td>
+                  <td></td>
                 </tr>
               </tfoot>
             </table>
@@ -571,7 +661,16 @@ export default function EditAdminReceiptPage() {
 
         {/* Received Details Section */}
         <div className="mb-8 border p-4 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">Received Details</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Received Details</h2>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => addNewItem("received")}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add Item
+            </Button>
+          </div>
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -613,6 +712,9 @@ export default function EditAdminReceiptPage() {
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Total
                   </th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -631,6 +733,7 @@ export default function EditAdminReceiptPage() {
                           )
                         }
                         className="w-full border rounded px-2 py-1"
+                        placeholder="Enter product name"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -648,6 +751,7 @@ export default function EditAdminReceiptPage() {
                         className="w-full border rounded px-2 py-1"
                         step="0.01"
                         min="0"
+                        placeholder="0.00"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -665,6 +769,7 @@ export default function EditAdminReceiptPage() {
                         className="w-full border rounded px-2 py-1"
                         step="0.01"
                         min="0"
+                        placeholder="0.00"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -673,6 +778,7 @@ export default function EditAdminReceiptPage() {
                         value={safeToFixed(item.subTotal)}
                         readOnly
                         className="w-full border rounded px-2 py-1 bg-gray-100"
+                        placeholder="0.00"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -690,6 +796,7 @@ export default function EditAdminReceiptPage() {
                         className="w-full border rounded px-2 py-1"
                         step="0.01"
                         min="0"
+                        placeholder="0.00"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -698,7 +805,35 @@ export default function EditAdminReceiptPage() {
                         value={safeToFixed(item.total)}
                         readOnly
                         className="w-full border rounded px-2 py-1 bg-gray-100"
+                        placeholder="0.00"
                       />
+                    </td>
+                    <td className="py-2 px-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Remove item logic here
+                          setReceipt((prev) => {
+                            if (!prev) return null;
+                            const updatedItems = [...prev.received.items];
+                            updatedItems.splice(index, 1);
+                            return {
+                              ...prev,
+                              received: {
+                                ...prev.received,
+                                items: updatedItems,
+                                total: updatedItems.reduce(
+                                  (sum, item) => sum + (item.total || 0),
+                                  0
+                                ),
+                              },
+                            };
+                          });
+                        }}
+                      >
+                        Remove
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -711,6 +846,7 @@ export default function EditAdminReceiptPage() {
                   <td className="py-2 px-4 font-medium">
                     {safeToFixed(receipt.received?.total)}
                   </td>
+                  <td></td>
                 </tr>
               </tfoot>
             </table>
