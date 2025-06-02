@@ -926,21 +926,7 @@ export default function ClientDetailsPage() {
           <Button onClick={() => navigate(`/clients/${id}/edit`)}>
             <Edit className="mr-2 h-4 w-4" /> Edit Client
           </Button>
-          <div className="inline-flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleCreateReceipt("client")}
-            >
-              <FileText className="mr-2 h-4 w-4" /> New Client Receipt
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleCreateReceipt("admin")}
-            >
-              <FileText className="mr-2 h-4 w-4" /> New Admin Receipt
-            </Button>
           </div>
-        </div>
       </div>
 
       {/* Stats cards */}

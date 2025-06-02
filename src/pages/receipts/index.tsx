@@ -44,7 +44,8 @@ export default function ReceiptsPage() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState("all");
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [password, setPassword] = useState("");
   const [receiptToDelete, setReceiptToDelete] = useState<string | null>(null);
 
   // Fetch receipts
@@ -69,7 +70,7 @@ export default function ReceiptsPage() {
   });
 
   const receipts = receiptsData?.data || [];
-  console.log("Fetched receipts:", receiptsData);
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => receiptServices.deleteReceipt(id),
@@ -79,8 +80,9 @@ export default function ReceiptsPage() {
         title: "Receipt Deleted",
         description: "The receipt has been successfully removed.",
       });
-      setDeleteDialogOpen(false);
+      setPasswordDialogOpen(false);
       setReceiptToDelete(null);
+      setPassword("");
     },
     onError: (err: any) => {
       console.error("Error deleting receipt:", err);
@@ -108,7 +110,6 @@ export default function ReceiptsPage() {
     }
 
     // Type filter (if implemented in the future)
-
     return matches;
   });
 
@@ -126,12 +127,21 @@ export default function ReceiptsPage() {
 
   const openDeleteDialog = (id: string) => {
     setReceiptToDelete(id);
-    setDeleteDialogOpen(true);
+    setPasswordDialogOpen(true);
   };
 
   const handleDeleteReceipt = () => {
     if (!receiptToDelete) return;
-    deleteMutation.mutate(receiptToDelete);
+
+    if (password === "7007") {
+      deleteMutation.mutate(receiptToDelete);
+    } else {
+      toast({
+        title: "Incorrect Password",
+        description: "The password you entered is incorrect. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDownloadPDF = (id: string) => {
@@ -228,22 +238,6 @@ export default function ReceiptsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {/* <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleEditReceipt(receipt._id)}
-                            title="Edit Receipt"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button> */}
-                          {/* <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleDownloadPDF(receipt._id)}
-                            title="Download PDF"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button> */}
                           <Button
                             variant="outline"
                             size="icon"
@@ -275,20 +269,40 @@ export default function ReceiptsPage() {
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* Password Prompt Dialog */}
+      <Dialog
+        open={passwordDialogOpen}
+        onOpenChange={(open) => {
+          setPasswordDialogOpen(open);
+          if (!open) {
+            setPassword("");
+            setReceiptToDelete(null);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this receipt? This action cannot
-              be undone.
+              Please enter the admin password to delete this receipt.
             </DialogDescription>
           </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="password"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={deleteMutation.isPending}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
+              onClick={() => {
+                setPasswordDialogOpen(false);
+                setPassword("");
+              }}
               disabled={deleteMutation.isPending}
             >
               Cancel
@@ -296,7 +310,7 @@ export default function ReceiptsPage() {
             <Button
               variant="destructive"
               onClick={handleDeleteReceipt}
-              disabled={deleteMutation.isPending}
+              disabled={deleteMutation.isPending || !password}
             >
               {deleteMutation.isPending ? (
                 <>
@@ -304,7 +318,7 @@ export default function ReceiptsPage() {
                   Deleting...
                 </>
               ) : (
-                "Delete"
+                "Confirm Delete"
               )}
             </Button>
           </DialogFooter>

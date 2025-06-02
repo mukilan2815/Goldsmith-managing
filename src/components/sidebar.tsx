@@ -112,14 +112,9 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
           isMobile ? (isOpen ? "translate-x-0" : "-translate-x-full") : "translate-x-0"
         )}
       >
-        <div className="flex h-16 items-center border-b px-4">
+        <div className="flex items-center border-b py-2 px-4">
           <Link to="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-gold flex items-center justify-center shadow-md">
-              <span className="text-white text-lg font-serif font-bold">G</span>
-            </div>
-            <h1 className="font-serif font-bold text-lg gold-gradient">
-              GoldCraft
-            </h1>
+           <img src="/logo.jpg" alt="" className=" w-40 h-20" />
           </Link>
         </div>
         <ScrollArea className="h-[calc(100vh-4rem)]">

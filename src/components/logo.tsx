@@ -1,4 +1,3 @@
-
 import React from "react";
 
 interface LogoProps {
@@ -15,14 +14,6 @@ export function Logo({ size = "md", className = "" }: LogoProps) {
 
   return (
     <div className={`flex items-center ${className}`}>
-      <div className="flex items-center gap-2">
-        <div className="h-8 w-8 rounded-full bg-gold flex items-center justify-center shadow-lg">
-          <span className="text-white text-lg font-serif font-bold">G</span>
-        </div>
-        <h1 className={`font-serif font-bold gold-gradient ${sizeClasses[size]}`}>
-          GoldCraft
-        </h1>
-      </div>
     </div>
   );
 }

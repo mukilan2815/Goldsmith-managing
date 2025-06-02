@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, Trash, Edit, Search, Plus } from "lucide-react";
+import { Eye, Trash, Edit, Search, Plus, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Pagination,
@@ -22,6 +22,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import axios from "axios";
 
 // API client setup
@@ -114,6 +122,9 @@ const AdminReceiptsPage = () => {
   const [receiptsPerPage] = useState(10);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [receiptToDelete, setReceiptToDelete] = useState<string | null>(null);
 
   const {
     data: adminReceipts = [],
@@ -132,6 +143,9 @@ const AdminReceiptsPage = () => {
         title: "Success",
         description: "Admin receipt deleted successfully",
       });
+      setPasswordDialogOpen(false);
+      setPassword("");
+      setReceiptToDelete(null);
     },
     onError: () => {
       toast({
@@ -143,8 +157,21 @@ const AdminReceiptsPage = () => {
   });
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this admin receipt?")) {
-      deleteMutation.mutate(id);
+    setReceiptToDelete(id);
+    setPasswordDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!receiptToDelete) return;
+
+    if (password === "7007") {
+      deleteMutation.mutate(receiptToDelete);
+    } else {
+      toast({
+        title: "Incorrect Password",
+        description: "The password you entered is incorrect. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -314,7 +341,12 @@ const AdminReceiptsPage = () => {
                               onClick={() => handleDelete(receipt._id)}
                               disabled={deleteMutation.isPending}
                             >
-                              <Trash className="h-4 w-4" />
+                              {deleteMutation.isPending &&
+                              receiptToDelete === receipt._id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </TableCell>
@@ -386,6 +418,62 @@ const AdminReceiptsPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Password Prompt Dialog */}
+      <Dialog
+        open={passwordDialogOpen}
+        onOpenChange={(open) => {
+          setPasswordDialogOpen(open);
+          if (!open) {
+            setPassword("");
+            setReceiptToDelete(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Please enter the admin password to delete this receipt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="password"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={deleteMutation.isPending}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPasswordDialogOpen(false);
+                setPassword("");
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending || !password}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Confirm Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
