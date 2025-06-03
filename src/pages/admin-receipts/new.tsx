@@ -338,14 +338,16 @@ export default function NewAdminReceiptPage() {
           setReceivedDate(new Date(receipt.received.date));
         }
         if (
-          Array.isArray(received.received.items) &&
+          Array.isArray(receipt.received.items) &&
           receipt.received.items.length > 0
         ) {
           setReceivedItems(
             receipt.received.items.map((item: any) => ({
               ...item,
               id: item.id || uuidv4(),
-              subTotal: (parseFloat(item.finalOrnamentsWt) || 0) - (parseFloat(item.stoneWeight) || 0),
+              subTotal:
+                (parseFloat(item.finalOrnamentsWt) || 0) -
+                (parseFloat(item.stoneWeight) || 0),
             }))
           );
         }
@@ -846,10 +848,18 @@ export default function NewAdminReceiptPage() {
         </p>
         {selectedClient && (
           <div className="mt-4 p-4 border rounded-md bg-muted/50">
-            <div className="flex justify-between items-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="font-medium text-lg">
-                Current Balance: {clientBalance.toFixed(2)} | New Balance After
-                this form: {calculateNewBalance().toFixed(2)}
+                Current Balance: {clientBalance.toFixed(2)}
+              </div>
+              <div className="font-medium text-lg">
+                Given Total: {givenTotals.total.toFixed(2)}
+              </div>
+              <div className="font-medium text-lg">
+                Received Total: {receivedTotals.total.toFixed(2)}
+              </div>
+              <div className="font-medium text-lg md:col-span-3">
+                Final Balance: {calculateNewBalance().toFixed(2)}
               </div>
             </div>
           </div>
@@ -998,7 +1008,6 @@ export default function NewAdminReceiptPage() {
                           <div className="font-medium">Total (g)</div>
                           <div className="font-medium">Action</div>
                         </div>
-
                         {/* Table Rows */}
                         {givenItems.map((item) => (
                           <div
@@ -1097,9 +1106,8 @@ export default function NewAdminReceiptPage() {
                             </div>
                           </div>
                         ))}
-
                         {/* Totals Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
+                        <div className="grid grid-cols-1 md:grid-cols-7 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
                           <div className="md:col-span-2">Totals</div>
                           <div>{givenTotals.totalPureWeight.toFixed(2)}</div>
                           <div>-</div>
@@ -1107,7 +1115,55 @@ export default function NewAdminReceiptPage() {
                           <div>{givenTotals.total.toFixed(2)}</div>
                           <div></div>
                         </div>
-
+                        {/* Balance Calculation Table */}
+                        <div className="mt-4 p-4 border rounded-md bg-muted/50">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="text-left pb-2">Totals</th>
+                                <th className="text-left pb-2">
+                                  Current Balance
+                                </th>
+                                <th className="text-left pb-2">Calculation</th>
+                                <th className="text-left pb-2">
+                                  Final Given Total
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td className="py-2">
+                                  {givenTotals.totalPureWeight.toFixed(2)} g
+                                </td>
+                                <td className="py-2">
+                                  {clientBalance.toFixed(2)}
+                                </td>
+                                <td className="py-2">
+                                  {clientBalance.toFixed(2)} +{" "}
+                                  {givenTotals.total.toFixed(2)}
+                                </td>
+                                <td className="py-2">
+                                  {(clientBalance + givenTotals.total).toFixed(
+                                    2
+                                  )}
+                                </td>
+                              </tr>
+                              <tr className="border-t">
+                                <td className="py-2"></td>
+                                <td className="py-2">
+                                  = {clientBalance.toFixed(2)} +{" "}
+                                  {givenTotals.total.toFixed(2)}
+                                </td>
+                                <td className="py-2">
+                                  ={" "}
+                                  {(clientBalance + givenTotals.total).toFixed(
+                                    2
+                                  )}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
                         <Button
                           variant="outline"
                           className="w-full"
@@ -1343,6 +1399,55 @@ export default function NewAdminReceiptPage() {
                             )}
                           </Button>
                         </div>
+                      </div>
+                      {/* Received Totals Table */}
+                      <div className="mt-4 p-4 border rounded-md bg-muted/50">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left pb-2">Totals</th>
+                              <th className="text-left pb-2">
+                                Current Balance
+                              </th>
+                              <th className="text-left pb-2">Calculation</th>
+                              <th className="text-left pb-2">
+                                Final Received Total
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="py-2">
+                                {receivedTotals.totalOrnamentsWt.toFixed(2)} g
+                              </td>
+                              <td className="py-2">
+                                {clientBalance.toFixed(2)}
+                              </td>
+                              <td className="py-2">
+                                {clientBalance.toFixed(2)} -{" "}
+                                {receivedTotals.total.toFixed(2)}
+                              </td>
+                              <td className="py-2">
+                                {(clientBalance - receivedTotals.total).toFixed(
+                                  2
+                                )}
+                              </td>
+                            </tr>
+                            <tr className="border-t">
+                              <td className="py-2"></td>
+                              <td className="py-2">
+                                = {clientBalance.toFixed(2)} -{" "}
+                                {receivedTotals.total.toFixed(2)}
+                              </td>
+                              <td className="py-2">
+                                ={" "}
+                                {(clientBalance - receivedTotals.total).toFixed(
+                                  2
+                                )}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
