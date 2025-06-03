@@ -497,7 +497,7 @@ export default function NewAdminReceiptPage() {
             const makingChargePercent =
               parseFloat(updatedItem.makingChargePercent) || 0;
 
-            updatedItem.subTotal = finalOrnamentsWt + stoneWeight;
+            updatedItem.subTotal = finalOrnamentsWt - stoneWeight;
             updatedItem.total =
               updatedItem.subTotal * (1 + makingChargePercent / 100);
           }
