@@ -755,7 +755,7 @@ export default function NewAdminReceiptPage() {
         total: receivedTotals.total,
       };
 
-      const status = hasGivenItems ? "received" : "incomplete";
+      const status = hasGivenItems ? "complete" : "incomplete";
 
       // Prepare receipt data
       const receiptData = {
