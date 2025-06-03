@@ -29,7 +29,13 @@ const safeToFixed = (value: unknown, decimals = 2): string => {
   return num.toFixed(decimals);
 };
 
-// Types for our receipt data
+// Types for our data
+interface Client {
+  id: string;
+  name: string;
+  balance: number;
+}
+
 interface ReceiptItem {
   productName: string;
   pureWeight?: number;
@@ -72,6 +78,32 @@ interface AdminReceipt {
   };
 }
 
+// Client API functions
+const clientApi = {
+  getClientById: async (id: string): Promise<Client> => {
+    try {
+      const response = await api.get(`/clients/${id}`);
+      const c = response.data;
+      return {
+        id: c._id,
+        name: c.clientName,
+        balance: Number(c.balance) || 0,
+      };
+    } catch (error) {
+      console.error(`Error fetching client ${id}:`, error);
+      throw error;
+    }
+  },
+  updateClientBalance: async (id: string, balance: number): Promise<void> => {
+    try {
+      await api.put(`/clients/${id}`, { balance });
+    } catch (error) {
+      console.error(`Error updating client ${id} balance:`, error);
+      throw error;
+    }
+  },
+};
+
 // Work Receipt API functions
 const adminReceiptApi = {
   getAdminReceiptById: async (id: string): Promise<AdminReceipt> => {
@@ -102,18 +134,23 @@ export default function EditAdminReceiptPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [receipt, setReceipt] = useState<AdminReceipt | null>(null);
+  const [originalReceipt, setOriginalReceipt] = useState<AdminReceipt | null>(
+    null
+  );
+  const [clientBalance, setClientBalance] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch receipt data
+  // Fetch receipt and client data
   useEffect(() => {
-    const fetchReceiptData = async () => {
+    const fetchData = async () => {
       if (!id) return;
 
       setIsLoading(true);
       setError(null);
       try {
+        // Fetch receipt
         const data = await adminReceiptApi.getAdminReceiptById(id);
 
         // Deep clone and ensure all numeric fields are numbers
@@ -130,6 +167,8 @@ export default function EditAdminReceiptPage() {
           })
         );
         initializedData.given.total = Number(initializedData.given.total) || 0;
+        initializedData.given.totalPureWeight =
+          Number(initializedData.given.totalPureWeight) || 0;
 
         // Process received items
         initializedData.received.items = initializedData.received.items.map(
@@ -144,14 +183,27 @@ export default function EditAdminReceiptPage() {
         );
         initializedData.received.total =
           Number(initializedData.received.total) || 0;
+        initializedData.received.totalOrnamentsWt =
+          Number(initializedData.received.totalOrnamentsWt) || 0;
+        initializedData.received.totalStoneWeight =
+          Number(initializedData.received.totalStoneWeight) || 0;
+        initializedData.received.totalSubTotal =
+          Number(initializedData.received.totalSubTotal) || 0;
 
         setReceipt(initializedData);
+        setOriginalReceipt(initializedData);
+
+        // Fetch client balance
+        if (data.clientId) {
+          const client = await clientApi.getClientById(data.clientId);
+          setClientBalance(client.balance);
+        }
       } catch (err) {
-        console.error("Error fetching receipt:", err);
-        setError("Failed to load receipt data");
+        console.error("Error fetching data:", err);
+        setError("Failed to load receipt or client data");
         toast({
           title: "Error",
-          description: "Could not fetch receipt details",
+          description: "Could not fetch receipt or client details",
           variant: "destructive",
         });
       } finally {
@@ -159,7 +211,7 @@ export default function EditAdminReceiptPage() {
       }
     };
 
-    fetchReceiptData();
+    fetchData();
   }, [id, toast]);
 
   // Handle field changes
@@ -214,11 +266,10 @@ export default function EditAdminReceiptPage() {
       // Recalculate totals for given items
       if (transactionType === "given") {
         if (["pureWeight", "purePercent", "melting"].includes(field)) {
-          updatedItem.total =
-            ((((updatedItem.pureWeight || 0) * (updatedItem.purePercent || 0)) /
-              100) *
-              (updatedItem.melting || 0)) /
-            100;
+          const pureWeight = updatedItem.pureWeight || 0;
+          const purePercent = updatedItem.purePercent || 0;
+          const melting = updatedItem.melting || 1;
+          updatedItem.total = (pureWeight * purePercent) / 100 / melting;
         }
       }
 
@@ -229,11 +280,11 @@ export default function EditAdminReceiptPage() {
             field
           )
         ) {
-          updatedItem.subTotal =
-            (updatedItem.finalOrnamentsWt || 0) +
-            (updatedItem.stoneWeight || 0);
+          const finalOrnamentsWt = updatedItem.finalOrnamentsWt || 0;
+          const stoneWeight = updatedItem.stoneWeight || 0;
+          updatedItem.subTotal = finalOrnamentsWt - stoneWeight;
           updatedItem.total =
-            (updatedItem.subTotal || 0) *
+            updatedItem.subTotal *
             (1 + (updatedItem.makingChargePercent || 0) / 100);
         }
       }
@@ -247,28 +298,30 @@ export default function EditAdminReceiptPage() {
         totalPureWeight:
           transactionType === "given"
             ? updatedItems.reduce(
-                (sum, item) => sum + (item.pureWeight || 0),
+                (sum, item) =>
+                  sum +
+                  ((item.pureWeight || 0) * (item.purePercent || 0)) / 100,
                 0
               )
-            : undefined,
+            : prev[transactionType].totalPureWeight,
         totalOrnamentsWt:
           transactionType === "received"
             ? updatedItems.reduce(
                 (sum, item) => sum + (item.finalOrnamentsWt || 0),
                 0
               )
-            : undefined,
+            : prev[transactionType].totalOrnamentsWt,
         totalStoneWeight:
           transactionType === "received"
             ? updatedItems.reduce(
                 (sum, item) => sum + (item.stoneWeight || 0),
                 0
               )
-            : undefined,
+            : prev[transactionType].totalStoneWeight,
         totalSubTotal:
           transactionType === "received"
             ? updatedItems.reduce((sum, item) => sum + (item.subTotal || 0), 0)
-            : undefined,
+            : prev[transactionType].totalSubTotal,
       };
 
       return {
@@ -294,7 +347,7 @@ export default function EditAdminReceiptPage() {
       if (transactionType === "given") {
         newItem.pureWeight = 0;
         newItem.purePercent = 0;
-        newItem.melting = 0;
+        newItem.melting = 1;
         newItem.total = 0;
       } else {
         newItem.finalOrnamentsWt = 0;
@@ -314,46 +367,246 @@ export default function EditAdminReceiptPage() {
     });
   };
 
-  // Handle save
+  // Remove item
+  const removeItem = (transactionType: "given" | "received", index: number) => {
+    setReceipt((prev) => {
+      if (!prev) return null;
+      const updatedItems = [...prev[transactionType].items];
+      updatedItems.splice(index, 1);
+
+      // Recalculate totals
+      const totals = {
+        total: updatedItems.reduce((sum, item) => sum + (item.total || 0), 0),
+        totalPureWeight:
+          transactionType === "given"
+            ? updatedItems.reduce(
+                (sum, item) =>
+                  sum +
+                  ((item.pureWeight || 0) * (item.purePercent || 0)) / 100,
+                0
+              )
+            : prev[transactionType].totalPureWeight,
+        totalOrnamentsWt:
+          transactionType === "received"
+            ? updatedItems.reduce(
+                (sum, item) => sum + (item.finalOrnamentsWt || 0),
+                0
+              )
+            : prev[transactionType].totalOrnamentsWt,
+        totalStoneWeight:
+          transactionType === "received"
+            ? updatedItems.reduce(
+                (sum, item) => sum + (item.stoneWeight || 0),
+                0
+              )
+            : prev[transactionType].totalStoneWeight,
+        totalSubTotal:
+          transactionType === "received"
+            ? updatedItems.reduce((sum, item) => sum + (item.subTotal || 0), 0)
+            : prev[transactionType].totalSubTotal,
+      };
+
+      return {
+        ...prev,
+        [transactionType]: {
+          ...prev[transactionType],
+          items: updatedItems,
+          ...totals,
+        },
+      };
+    });
+  };
+
+  // Calculate balance
+  const calculateBalance = () => {
+    const givenTotal = Number(receipt?.given?.total) || 0;
+    const receivedTotal = Number(receipt?.received?.total) || 0;
+    const operation =
+      receipt?.manualCalculations?.operation || "subtract-given-received";
+    let result: number;
+    switch (operation) {
+      case "subtract-given-received":
+        result = givenTotal - receivedTotal;
+        break;
+      case "subtract-received-given":
+        result = receivedTotal - givenTotal;
+        break;
+      case "add":
+        result = givenTotal + receivedTotal;
+        break;
+      default:
+        result = 0;
+    }
+    return result;
+  };
+
+  // Calculate new client balance
+  const calculateNewClientBalance = () => {
+    if (!receipt || !originalReceipt) return clientBalance;
+
+    const originalGiven = Number(originalReceipt.given.total) || 0;
+    const originalReceived = Number(originalReceipt.received.total) || 0;
+    const originalBalanceAdjustment = originalGiven - originalReceived;
+    const newBalanceAdjustment = calculateBalance();
+    return clientBalance - originalBalanceAdjustment + newBalanceAdjustment;
+  };
+
   // Handle save
   const handleSave = async () => {
     if (!receipt || !id) return;
 
     setIsUpdating(true);
     try {
-      // Check if both given and received have items and totals
+      // Validate inputs
+      for (const item of receipt.given.items) {
+        if (
+          !item.productName ||
+          (item.pureWeight || 0) <= 0 ||
+          (item.purePercent || 0) <= 0 ||
+          (item.melting || 0) <= 0
+        ) {
+          toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description:
+              "Please fill all required fields for given items with valid values",
+          });
+          setIsUpdating(false);
+          return;
+        }
+      }
+
+      for (const item of receipt.received.items) {
+        if (
+          !item.productName ||
+          (item.finalOrnamentsWt || 0) <= 0 ||
+          (item.makingChargePercent || 0) < 0
+        ) {
+          toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description:
+              "Please fill all required fields for received items with valid values",
+          });
+          setIsUpdating(false);
+          return;
+        }
+      }
+
+      // Update client balance
+      const newClientBalance = calculateNewClientBalance();
+      await clientApi.updateClientBalance(receipt.clientId, newClientBalance);
+
+      // Update receipt status
       const shouldBeComplete =
         receipt.given.items.length > 0 &&
         receipt.received.items.length > 0 &&
         receipt.given.total !== undefined &&
         receipt.received.total !== undefined;
 
+      // Update manual calculations
+      // Update manual calculations
+      const manualCalculations = {
+        givenTotal: Number(receipt.given.total) || 0,
+        receivedTotal: Number(receipt.received.total) || 0,
+        operation:
+          receipt.manualCalculations?.operation || "subtract-given-received",
+        result: calculateBalance(),
+      };
       // Prepare update data
       const updateData: Partial<AdminReceipt> = {
         ...receipt,
         status: shouldBeComplete ? "complete" : receipt.status,
+        manualCalculations,
       };
 
       await adminReceiptApi.updateAdminReceipt(id, updateData);
+      setClientBalance(newClientBalance);
+
       toast({
         title: "Success",
-        description: "Receipt updated successfully",
+        description: `Receipt updated successfully. New client balance: ${newClientBalance.toFixed(
+          2
+        )}`,
       });
       navigate(`/admin-receipts/${id}`);
     } catch (error) {
       console.error("Error updating receipt:", error);
       toast({
         title: "Error",
-        description: "Failed to update receipt",
+        description: "Failed to update receipt or client balance",
         variant: "destructive",
       });
     } finally {
       setIsUpdating(false);
     }
   };
+
   const generatePDF = (receipt: AdminReceipt) => {
     const doc = new jsPDF();
-    // ... (same PDF generation code as before)
+    doc.setFontSize(16);
+    doc.text(`Work Receipt: ${receipt.voucherId}`, 14, 20);
+    doc.setFontSize(12);
+    doc.text(`Client: ${receipt.clientName}`, 14, 30);
+    doc.text(`Status: ${receipt.status}`, 14, 36);
+    doc.text(
+      `Date: ${new Date(receipt.createdAt).toLocaleDateString()}`,
+      14,
+      42
+    );
+
+    // Given Items Table
+    if (receipt.given.items.length > 0) {
+      autoTable(doc, {
+        startY: 50,
+        head: [["Product", "Pure Weight", "Pure %", "Melting", "Total"]],
+        body: receipt.given.items.map((item) => [
+          item.productName,
+          safeToFixed(item.pureWeight),
+          safeToFixed(item.purePercent),
+          safeToFixed(item.melting),
+          safeToFixed(item.total),
+        ]),
+        foot: [["Total", "", "", "", safeToFixed(receipt.given.total)]],
+      });
+    }
+
+    // Received Items Table
+    if (receipt.received.items.length > 0) {
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 10,
+        head: [
+          [
+            "Product",
+            "Final Ornaments Wt",
+            "Stone Weight",
+            "Sub Total",
+            "Making Charge %",
+            "Total",
+          ],
+        ],
+        body: receipt.received.items.map((item) => [
+          item.productName,
+          safeToFixed(item.finalOrnamentsWt),
+          safeToFixed(item.stoneWeight),
+          safeToFixed(item.subTotal),
+          safeToFixed(item.makingChargePercent),
+          safeToFixed(item.total),
+        ]),
+        foot: [["Total", "", "", "", "", safeToFixed(receipt.received.total)]],
+      });
+    }
+
+    // Balance Summary
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      body: [
+        ["Given Total", safeToFixed(receipt.given.total)],
+        ["Received Total", safeToFixed(receipt.received.total)],
+        ["Balance (Given - Received)", safeToFixed(calculateBalance())],
+      ],
+    });
+
     doc.save(`receipt-${receipt.voucherId}.pdf`);
   };
 
@@ -401,13 +654,6 @@ export default function EditAdminReceiptPage() {
       </div>
     );
   }
-
-  // Calculate balance
-  const calculateBalance = () => {
-    const givenTotal = Number(receipt.given?.total) || 0;
-    const receivedTotal = Number(receipt.received?.total) || 0;
-    return safeToFixed(givenTotal - receivedTotal);
-  };
 
   return (
     <div className="container py-6">
@@ -461,8 +707,8 @@ export default function EditAdminReceiptPage() {
             <input
               type="text"
               value={receipt.clientId}
-              onChange={(e) => handleFieldChange("clientId", e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              readOnly
+              className="w-full border rounded px-3 py-2 bg-gray-100"
             />
           </div>
           <div>
@@ -520,7 +766,7 @@ export default function EditAdminReceiptPage() {
                     Product
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
-                    Pure Weight
+                    Pure Weight (g)
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Pure %
@@ -529,7 +775,7 @@ export default function EditAdminReceiptPage() {
                     Melting
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
-                    Total
+                    Total (g)
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Actions
@@ -606,8 +852,7 @@ export default function EditAdminReceiptPage() {
                         }
                         className="w-full border rounded px-2 py-1"
                         step="0.01"
-                        min="0"
-                        max="100"
+                        min="0.01"
                         placeholder="0.00"
                       />
                     </td>
@@ -624,25 +869,7 @@ export default function EditAdminReceiptPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          // Remove item logic here
-                          setReceipt((prev) => {
-                            if (!prev) return null;
-                            const updatedItems = [...prev.given.items];
-                            updatedItems.splice(index, 1);
-                            return {
-                              ...prev,
-                              given: {
-                                ...prev.given,
-                                items: updatedItems,
-                                total: updatedItems.reduce(
-                                  (sum, item) => sum + (item.total || 0),
-                                  0
-                                ),
-                              },
-                            };
-                          });
-                        }}
+                        onClick={() => removeItem("given", index)}
                       >
                         Remove
                       </Button>
@@ -704,19 +931,19 @@ export default function EditAdminReceiptPage() {
                     Product
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
-                    Final Ornaments (wt)
+                    Final Ornaments Wt (g)
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
-                    Stone Weight
+                    Stone Weight (g)
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
-                    Sub Total
+                    Sub Total (g)
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Making Charge %
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
-                    Total
+                    Total (g)
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Actions
@@ -818,25 +1045,7 @@ export default function EditAdminReceiptPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          // Remove item logic here
-                          setReceipt((prev) => {
-                            if (!prev) return null;
-                            const updatedItems = [...prev.received.items];
-                            updatedItems.splice(index, 1);
-                            return {
-                              ...prev,
-                              received: {
-                                ...prev.received,
-                                items: updatedItems,
-                                total: updatedItems.reduce(
-                                  (sum, item) => sum + (item.total || 0),
-                                  0
-                                ),
-                              },
-                            };
-                          });
-                        }}
+                        onClick={() => removeItem("received", index)}
                       >
                         Remove
                       </Button>
@@ -864,29 +1073,39 @@ export default function EditAdminReceiptPage() {
           <h2 className="text-xl font-semibold mb-4">Balance Summary</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-gray-500">Given Total</p>
+              <p className="text-sm text-gray-500">Given Total (g)</p>
               <p className="font-medium">{safeToFixed(receipt.given?.total)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Received Total</p>
+              <p className="text-sm text-gray-500">Received Total (g)</p>
               <p className="font-medium">
                 {safeToFixed(receipt.received?.total)}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">
-                Balance (Given - Received)
+                Current Client Balance (g)
               </p>
+              <p className="font-medium">{safeToFixed(clientBalance)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Balance Adjustment (g)</p>
               <p
                 className={`font-medium ${
-                  parseFloat(calculateBalance()) > 0
+                  calculateBalance() > 0
                     ? "text-green-600"
-                    : parseFloat(calculateBalance()) < 0
+                    : calculateBalance() < 0
                     ? "text-red-600"
                     : ""
                 }`}
               >
-                {calculateBalance()}
+                {safeToFixed(calculateBalance())}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">New Client Balance (g)</p>
+              <p className="font-medium">
+                {safeToFixed(calculateNewClientBalance())}
               </p>
             </div>
           </div>

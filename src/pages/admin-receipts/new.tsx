@@ -57,13 +57,6 @@ const clientApi = {
     }));
   },
 
-  searchClients: async (searchParams: any) => {
-    const response = await api.get("/clients/search", {
-      params: searchParams,
-    });
-    return response.data;
-  },
-
   getClientById: async (id: string) => {
     const response = await api.get(`/clients/${id}`);
     const c = response.data;
@@ -102,13 +95,6 @@ const adminReceiptApi = {
 
   deleteAdminReceipt: async (id: string) => {
     const response = await api.delete(`/admin-receipts/${id}`);
-    return response.data;
-  },
-
-  searchAdminReceipts: async (searchParams: any) => {
-    const response = await api.get("/admin-receipts/search", {
-      params: searchParams,
-    });
     return response.data;
   },
 
@@ -402,7 +388,7 @@ export default function NewAdminReceiptPage() {
   const handleSelectClient = async (client: Client) => {
     try {
       const clientData = await clientApi.getClientById(client.id);
-      setSelectedClient(client);
+      setSelectedClient(clientData);
       setClientBalance(clientData.balance || 0);
     } catch (error) {
       toast({
@@ -453,7 +439,8 @@ export default function NewAdminReceiptPage() {
             const purePercent = parseFloat(updatedItem.purePercent) || 0;
             const melting = parseFloat(updatedItem.melting) || 1;
 
-            updatedItem.total = (pureWeight * purePercent) / melting;
+            // Assuming total is in grams for consistency with balance
+            updatedItem.total = (pureWeight * purePercent) / 100 / melting;
           }
 
           return updatedItem;
@@ -512,7 +499,7 @@ export default function NewAdminReceiptPage() {
 
             updatedItem.subTotal = finalOrnamentsWt - stoneWeight;
             updatedItem.total =
-              updatedItem.subTotal * (makingChargePercent / 100);
+              updatedItem.subTotal * (1 + makingChargePercent / 100);
           }
 
           return updatedItem;
@@ -544,18 +531,48 @@ export default function NewAdminReceiptPage() {
     total: receivedItems.reduce((acc, item) => acc + item.total, 0),
   };
 
+  useEffect(() => {
+    setManualGivenTotal(givenTotals.total);
+  }, [givenTotals.total]);
+
+  useEffect(() => {
+    setManualReceivedTotal(receivedTotals.total);
+  }, [receivedTotals.total]);
 
   const calculateManualResult = () => {
+    const given = manualGivenTotal || 0;
+    const received = manualReceivedTotal || 0;
+    let result;
     switch (operation) {
       case "subtract-given-received":
-        return manualGivenTotal - manualReceivedTotal;
+        result = given - received;
+        break;
       case "subtract-received-given":
-        return manualReceivedTotal - manualGivenTotal;
+        result = received - given;
+        break;
       case "add":
-        return manualGivenTotal + manualReceivedTotal;
+        result = given + received;
+        break;
       default:
-        return 0;
+        result = 0;
     }
+    return result;
+  };
+
+  const calculateNewBalance = () => {
+    const hasGivenItems = givenItems.some((item) => item.productName);
+    const hasReceivedItems = receivedItems.some((item) => item.productName);
+
+    let balanceAdjustment = 0;
+    if (hasGivenItems && hasReceivedItems) {
+      balanceAdjustment = calculateManualResult();
+    } else if (hasGivenItems) {
+      balanceAdjustment = givenTotals.total;
+    } else if (hasReceivedItems) {
+      balanceAdjustment = -receivedTotals.total;
+    }
+
+    return clientBalance + balanceAdjustment;
   };
 
   const saveGivenData = async () => {
@@ -577,31 +594,27 @@ export default function NewAdminReceiptPage() {
           !item.productName ||
           !item.pureWeight ||
           !item.purePercent ||
-          !item.melting
+          !item.melting ||
+          parseFloat(item.pureWeight) <= 0 ||
+          parseFloat(item.purePercent) <= 0 ||
+          parseFloat(item.melting) <= 0
         ) {
           toast({
             variant: "destructive",
             title: "Validation Error",
-            description: "Please fill all required fields for each given item",
+            description:
+              "Please fill all required fields with valid values for each given item",
           });
           setIsSubmittingGiven(false);
           return;
         }
       }
 
-      // Calculate balance adjustment based on operation
-      let balanceAdjustment;
+      // Calculate balance adjustment
       const hasReceivedItems = receivedItems.some((item) => item.productName);
-
-      if (hasReceivedItems) {
-        // If both given and received items exist, use the manual calculation result
-        balanceAdjustment = calculateManualResult();
-      } else {
-        // If only given items, increase balance by given total
-        balanceAdjustment = givenTotals.total;
-      }
-
-      // Update client balance (positive for given, negative for received in manual calc)
+      const balanceAdjustment = hasReceivedItems
+        ? calculateManualResult()
+        : givenTotals.total;
       const newBalance = clientBalance + balanceAdjustment;
 
       // Update client balance in the database
@@ -661,12 +674,12 @@ export default function NewAdminReceiptPage() {
         const newReceipt = await adminReceiptApi.createAdminReceipt(
           receiptData
         );
-
         if (newReceipt && newReceipt._id) {
           navigate(`/admin-receipts/${newReceipt._id}`, { replace: true });
         }
       }
 
+      // Update frontend state
       setClientBalance(newBalance);
 
       toast({
@@ -675,8 +688,6 @@ export default function NewAdminReceiptPage() {
           2
         )}`,
       });
-
-      setManualGivenTotal(givenTotals.total);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -707,32 +718,26 @@ export default function NewAdminReceiptPage() {
         if (
           !item.productName ||
           !item.finalOrnamentsWt ||
-          !item.makingChargePercent
+          !item.makingChargePercent ||
+          parseFloat(item.finalOrnamentsWt) <= 0 ||
+          parseFloat(item.makingChargePercent) < 0
         ) {
           toast({
             variant: "destructive",
             title: "Validation Error",
             description:
-              "Please fill all required fields for each received item",
+              "Please fill all required fields with valid values for each received item",
           });
           setIsSubmittingReceived(false);
           return;
         }
       }
 
-      // Calculate balance adjustment based on operation
-      let balanceAdjustment;
+      // Calculate balance adjustment
       const hasGivenItems = givenItems.some((item) => item.productName);
-
-      if (hasGivenItems) {
-        // If both given and received items exist, use the manual calculation result
-        balanceAdjustment = calculateManualResult();
-      } else {
-        // If only received items, decrease balance by received total
-        balanceAdjustment = -receivedTotals.total;
-      }
-
-      // Update client balance
+      const balanceAdjustment = hasGivenItems
+        ? calculateManualResult()
+        : -receivedTotals.total;
       const newBalance = clientBalance + balanceAdjustment;
 
       // Update client balance in the database
@@ -792,12 +797,12 @@ export default function NewAdminReceiptPage() {
         const newReceipt = await adminReceiptApi.createAdminReceipt(
           receiptData
         );
-
         if (newReceipt && newReceipt._id) {
           navigate(`/admin-receipts/${newReceipt._id}`, { replace: true });
         }
       }
 
+      // Update frontend state
       setClientBalance(newBalance);
 
       toast({
@@ -806,8 +811,6 @@ export default function NewAdminReceiptPage() {
           2
         )}`,
       });
-
-      setManualReceivedTotal(receivedTotals.total);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -845,7 +848,8 @@ export default function NewAdminReceiptPage() {
           <div className="mt-4 p-4 border rounded-md bg-muted/50">
             <div className="flex justify-between items-center">
               <div className="font-medium text-lg">
-                Current Balance: {clientBalance.toFixed(2)}
+                Current Balance: {clientBalance.toFixed(2)} | New Balance After
+                this form: {calculateNewBalance().toFixed(2)}
               </div>
             </div>
           </div>
@@ -988,10 +992,10 @@ export default function NewAdminReceiptPage() {
                           <div className="col-span-2 font-medium">
                             Product Name
                           </div>
-                          <div className="font-medium">Pure Weight</div>
+                          <div className="font-medium">Pure Weight (g)</div>
                           <div className="font-medium">Pure %</div>
                           <div className="font-medium">Melting</div>
-                          <div className="font-medium">Total</div>
+                          <div className="font-medium">Total (g)</div>
                           <div className="font-medium">Action</div>
                         </div>
 
@@ -1019,12 +1023,14 @@ export default function NewAdminReceiptPage() {
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
-                                Pure Weight
+                                Pure Weight (g)
                               </label>
                               <Input
                                 type="number"
                                 placeholder="Pure Weight"
                                 value={item.pureWeight}
+                                min="0"
+                                step="0.01"
                                 onChange={(e) =>
                                   updateGivenItem(
                                     item.id,
@@ -1042,6 +1048,8 @@ export default function NewAdminReceiptPage() {
                                 type="number"
                                 placeholder="Pure %"
                                 value={item.purePercent}
+                                min="0"
+                                step="0.01"
                                 onChange={(e) =>
                                   updateGivenItem(
                                     item.id,
@@ -1059,6 +1067,8 @@ export default function NewAdminReceiptPage() {
                                 type="number"
                                 placeholder="Melting"
                                 value={item.melting}
+                                min="0.01"
+                                step="0.01"
                                 onChange={(e) =>
                                   updateGivenItem(
                                     item.id,
@@ -1070,7 +1080,7 @@ export default function NewAdminReceiptPage() {
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
-                                Total
+                                Total (g)
                               </label>
                               <div className="font-medium">
                                 {item.total.toFixed(2)}
@@ -1168,10 +1178,12 @@ export default function NewAdminReceiptPage() {
                           <div className="col-span-2 font-medium">
                             Product Name
                           </div>
-                          <div className="font-medium">Final Ornaments Wt</div>
-                          <div className="font-medium">Stone Weight</div>
-                          <div className="font-medium">Touch %</div>
-                          <div className="font-medium">SubTotal</div>
+                          <div className="font-medium">
+                            Final Ornaments Wt (g)
+                          </div>
+                          <div className="font-medium">Stone Weight (g)</div>
+                          <div className="font-medium">Making Charge %</div>
+                          <div className="font-medium">Total (g)</div>
                           <div className="font-medium">Action</div>
                         </div>
 
@@ -1199,12 +1211,14 @@ export default function NewAdminReceiptPage() {
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
-                                Final Ornaments Wt
+                                Final Ornaments Wt (g)
                               </label>
                               <Input
                                 type="number"
                                 placeholder="Final Ornaments Wt"
                                 value={item.finalOrnamentsWt}
+                                min="0"
+                                step="0.01"
                                 onChange={(e) =>
                                   updateReceivedItem(
                                     item.id,
@@ -1216,12 +1230,14 @@ export default function NewAdminReceiptPage() {
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
-                                Stone Weight
+                                Stone Weight (g)
                               </label>
                               <Input
                                 type="number"
                                 placeholder="Stone Weight"
                                 value={item.stoneWeight}
+                                min="0"
+                                step="0.01"
                                 onChange={(e) =>
                                   updateReceivedItem(
                                     item.id,
@@ -1233,12 +1249,14 @@ export default function NewAdminReceiptPage() {
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
-                                Touch %
+                                Making Charge %
                               </label>
                               <Input
                                 type="number"
-                                placeholder="Touch %"
+                                placeholder="Making Charge %"
                                 value={item.makingChargePercent}
+                                min="0"
+                                step="0.01"
                                 onChange={(e) =>
                                   updateReceivedItem(
                                     item.id,
@@ -1250,10 +1268,10 @@ export default function NewAdminReceiptPage() {
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
-                                SubTotal
+                                Total (g)
                               </label>
                               <div className="font-medium">
-                                {item.subTotal.toFixed(2)}
+                                {item.total.toFixed(2)}
                               </div>
                             </div>
                             <div className="flex items-center">
@@ -1278,7 +1296,7 @@ export default function NewAdminReceiptPage() {
                             {receivedTotals.totalStoneWeight.toFixed(2)}
                           </div>
                           <div>-</div>
-                          <div>{receivedTotals.totalSubTotal.toFixed(2)}</div>
+                          <div>{receivedTotals.total.toFixed(2)}</div>
                           <div></div>
                         </div>
 
@@ -1331,11 +1349,13 @@ export default function NewAdminReceiptPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-sm font-medium mb-1 block">
-                    Given Total
+                    Given Total (g)
                   </label>
                   <Input
                     type="number"
                     value={manualGivenTotal}
+                    min="0"
+                    step="0.01"
                     onChange={(e) =>
                       setManualGivenTotal(parseFloat(e.target.value) || 0)
                     }
@@ -1361,11 +1381,13 @@ export default function NewAdminReceiptPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">
-                    Received Total
+                    Received Total (g)
                   </label>
                   <Input
                     type="number"
                     value={manualReceivedTotal}
+                    min="0"
+                    step="0.01"
                     onChange={(e) =>
                       setManualReceivedTotal(parseFloat(e.target.value) || 0)
                     }
