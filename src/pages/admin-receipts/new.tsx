@@ -440,7 +440,7 @@ export default function NewAdminReceiptPage() {
             const melting = parseFloat(updatedItem.melting) || 1;
 
             // Assuming total is in grams for consistency with balance
-            updatedItem.total = (pureWeight * purePercent) / 100 / melting;
+            updatedItem.total = (pureWeight * purePercent) / melting;
           }
 
           return updatedItem;
@@ -1249,11 +1249,11 @@ export default function NewAdminReceiptPage() {
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
-                                Making Charge %
+                                Touch
                               </label>
                               <Input
                                 type="number"
-                                placeholder="Making Charge %"
+                                placeholder="Touch"
                                 value={item.makingChargePercent}
                                 min="0"
                                 step="0.01"

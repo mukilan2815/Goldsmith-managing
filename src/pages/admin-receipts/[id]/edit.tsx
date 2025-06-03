@@ -269,7 +269,7 @@ export default function EditAdminReceiptPage() {
           const pureWeight = updatedItem.pureWeight || 0;
           const purePercent = updatedItem.purePercent || 0;
           const melting = updatedItem.melting || 1;
-          updatedItem.total = (pureWeight * purePercent) / 100 / melting;
+          updatedItem.total = (pureWeight * purePercent)  / melting;
         }
       }
 
