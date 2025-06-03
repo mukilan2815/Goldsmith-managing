@@ -1182,7 +1182,7 @@ export default function NewAdminReceiptPage() {
                             Final Ornaments Wt (g)
                           </div>
                           <div className="font-medium">Stone Weight (g)</div>
-                          <div className="font-medium">Making Charge %</div>
+                          <div className="font-medium">Touch</div>
                           <div className="font-medium">Subtotal (g)</div>
                           <div className="font-medium">Total (g)</div>
                           <div className="font-medium">Action</div>
@@ -1250,11 +1250,11 @@ export default function NewAdminReceiptPage() {
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
-                                Making Charge %
+                                Touch
                               </label>
                               <Input
                                 type="number"
-                                placeholder="Making Charge %"
+                                placeholder="Touch"
                                 value={item.makingChargePercent}
                                 min="0"
                                 step="0.01"
