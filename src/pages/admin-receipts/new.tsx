@@ -1435,6 +1435,7 @@ export default function NewAdminReceiptPage() {
                             </tr>
                             <tr className="border-t">
                               <td className="py-2"></td>
+                              <td className="py-2"></td>
                               {/* <td className="py-2">
                                 = {clientBalance.toFixed(2)} -{" "}
                                 {receivedTotals.total.toFixed(2)}
