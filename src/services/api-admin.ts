@@ -14,7 +14,7 @@ const config = {
 };
 
 /**
- * Admin Receipt Services
+ * Work Receipt Services
  */
 export const adminReceiptServices = {
   // Get all clients
@@ -38,7 +38,7 @@ export const adminReceiptServices = {
     return response.json();
   },
 
-  // Create admin receipt
+  // Create Work Receipt
   createAdminReceipt: async (receiptData) => {
     const response = await fetch("/api/admin-receipts", {
       method: "POST",
@@ -47,16 +47,16 @@ export const adminReceiptServices = {
       },
       body: JSON.stringify(receiptData),
     });
-    if (!response.ok) throw new Error("Failed to create admin receipt");
+    if (!response.ok) throw new Error("Failed to create Work Receipt");
     return response.json();
   },
 };
 
 /**
- * Admin Bill Services
+ * Work Bill Services
  */
 export const adminBillServices = {
-  // Get all admin bills
+  // Get all Work Bills
   getAdminBills: async (params = {}) => {
     try {
       // Simulate API call
@@ -149,7 +149,7 @@ export const adminBillServices = {
     }
   },
 
-  // Get admin bill by ID
+  // Get Work Bill by ID
   getAdminBillById: async (id: string) => {
     try {
       // Simulate API call
@@ -205,7 +205,7 @@ export const adminBillServices = {
     }
   },
 
-  // Delete an admin bill
+  // Delete an Work Bill
   deleteAdminBill: async (id: string) => {
     try {
       // Simulate API call
@@ -214,7 +214,7 @@ export const adminBillServices = {
       // Mock response for demo
       await new Promise((resolve) => setTimeout(resolve, 800));
 
-      return { message: "Admin bill deleted successfully" };
+      return { message: "Work Bill deleted successfully" };
     } catch (error) {
       throw error;
     }

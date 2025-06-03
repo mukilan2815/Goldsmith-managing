@@ -181,7 +181,7 @@ export default function ReceiptsPage() {
             <SelectContent>
               <SelectItem value="all">All Receipts</SelectItem>
               <SelectItem value="regular">Regular Receipts</SelectItem>
-              <SelectItem value="admin">Admin Receipts</SelectItem>
+              <SelectItem value="admin">Work Receipts</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -13,7 +13,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { ArrowLeft, Edit, FileText, Weight, Download } from "lucide-react";
+import {
+  ArrowLeft,
+  Edit,
+  FileText,
+  Weight,
+  Download,
+  Plus,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -714,7 +721,7 @@ export default function ClientDetailsPage() {
         );
         setClientReceipts(clientReceiptsData);
 
-        // Fetch admin receipts for this client
+        // Fetch Work Receipts for this client
         const adminReceiptsResponse = await axios.get(
           `${ADMIN_RECEIPTS_URL}?clientId=${id}`
         );
@@ -802,8 +809,8 @@ export default function ClientDetailsPage() {
     }
   };
 
-  const handleCreateReceipt = (type: "client" | "admin") => {
-    navigate(`/receipts/new?clientId=${id}&type=${type}`);
+  const handleCreateReceipt = (type: "client") => {
+    navigate(`/receipts/select-client`);
   };
 
   const handleViewReceipt = (receipt: Receipt) => {
@@ -926,7 +933,13 @@ export default function ClientDetailsPage() {
           <Button onClick={() => navigate(`/clients/${id}/edit`)}>
             <Edit className="mr-2 h-4 w-4" /> Edit Client
           </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => handleCreateReceipt("client")}
+          >
+            <Plus className="mr-2 h-4 w-4" /> New Client Receipt
+          </Button>
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -946,7 +959,7 @@ export default function ClientDetailsPage() {
         <StatCard
           title="Total Admin Value"
           value={stats.totalAdminValue}
-          description="Admin receipts"
+          description="Work Receipts"
           icon={<FileText className="h-4 w-4" />}
         />
         <StatCard
@@ -1216,7 +1229,9 @@ export default function ClientDetailsPage() {
                       </div>
                       <div>
                         Total Received Value: ₹
-                        {selectedReceipt.received.total.toLocaleString()}
+                        {(
+                          selectedReceipt.received?.total ?? 0
+                        ).toLocaleString()}
                       </div>
                     </div>
                   </>

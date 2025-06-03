@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Users,
@@ -7,7 +6,7 @@ import {
   FileText,
   Calendar,
   Loader,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import {
@@ -37,11 +36,11 @@ export default function Dashboard() {
       try {
         setLoading(true);
         setError(null);
-        
+
         console.log("Fetching dashboard statistics");
         const data = await analyticsServices.getDashboardStats();
         console.log("Dashboard stats received:", data);
-        
+
         if (data && data.stats) {
           setDashboardData(data);
         } else {
@@ -49,7 +48,9 @@ export default function Dashboard() {
         }
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
-        setError("Failed to load dashboard data. Please check your connection and try again.");
+        setError(
+          "Failed to load dashboard data. Please check your connection and try again."
+        );
       } finally {
         setLoading(false);
       }
@@ -101,9 +102,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {loading ? (
           <>
-            {Array(4).fill(0).map((_, i) => (
-              <div key={i} className="h-32 bg-card animate-pulse rounded-lg"></div>
-            ))}
+            {Array(4)
+              .fill(0)
+              .map((_, i) => (
+                <div
+                  key={i}
+                  className="h-32 bg-card animate-pulse rounded-lg"
+                ></div>
+              ))}
           </>
         ) : (
           <>
@@ -112,28 +118,48 @@ export default function Dashboard() {
               value={dashboardData?.stats.totalClients.value || "0"}
               description="Active clients"
               icon={<Users className="h-4 w-4" />}
-              trend={dashboardData?.stats.totalClients.trend || { value: 0, isPositive: true }}
+              trend={
+                dashboardData?.stats.totalClients.trend || {
+                  value: 0,
+                  isPositive: true,
+                }
+              }
             />
             <StatCard
               title="Total Receipts"
               value={dashboardData?.stats.totalReceipts.value || "0"}
               description="All receipts"
               icon={<FileText className="h-4 w-4" />}
-              trend={dashboardData?.stats.totalReceipts.trend || { value: 0, isPositive: true }}
+              trend={
+                dashboardData?.stats.totalReceipts.trend || {
+                  value: 0,
+                  isPositive: true,
+                }
+              }
             />
             <StatCard
-              title="Admin Receipts"
+              title="Work Receipts"
               value={dashboardData?.stats.adminReceipts.value || "0"}
               description="Special receipts"
               icon={<FileSpreadsheet className="h-4 w-4" />}
-              trend={dashboardData?.stats.adminReceipts.trend || { value: 0, isPositive: true }}
+              trend={
+                dashboardData?.stats.adminReceipts.trend || {
+                  value: 0,
+                  isPositive: true,
+                }
+              }
             />
             <StatCard
               title="Total Weight"
               value={dashboardData?.stats.totalWeight.value || "0 g"}
               description="Gold processed"
               icon={<Weight className="h-4 w-4" />}
-              trend={dashboardData?.stats.totalWeight.trend || { value: 0, isPositive: true }}
+              trend={
+                dashboardData?.stats.totalWeight.trend || {
+                  value: 0,
+                  isPositive: true,
+                }
+              }
             />
           </>
         )}
@@ -171,7 +197,8 @@ export default function Dashboard() {
             <div className="flex items-center justify-center h-32">
               <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : dashboardData?.recentActivity && dashboardData.recentActivity.length > 0 ? (
+          ) : dashboardData?.recentActivity &&
+            dashboardData.recentActivity.length > 0 ? (
             dashboardData.recentActivity.map((activity, i) => (
               <div
                 key={activity._id || i}
@@ -182,7 +209,8 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
-                    Receipt #{activity.voucherId} - {activity.clientInfo?.clientName || 'Unknown Client'}
+                    Receipt #{activity.voucherId} -{" "}
+                    {activity.clientInfo?.clientName || "Unknown Client"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {activity.metalType} - {activity.totals?.grossWt || 0}g

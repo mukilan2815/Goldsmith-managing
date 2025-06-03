@@ -70,14 +70,14 @@ interface AdminReceipt {
   __v: number;
 }
 
-// Admin Receipt API functions
+// Work Receipt API functions
 const adminReceiptApi = {
   getAdminReceipts: async (): Promise<AdminReceipt[]> => {
     try {
       const response = await api.get("/admin-receipts");
       return response.data as AdminReceipt[];
     } catch (error) {
-      console.error("Error fetching admin receipts:", error);
+      console.error("Error fetching Work Receipts:", error);
       throw error;
     }
   },
@@ -87,7 +87,7 @@ const adminReceiptApi = {
       const response = await api.get(`/admin-receipts/${id}`);
       return response.data as AdminReceipt;
     } catch (error) {
-      console.error(`Error fetching admin receipt ${id}:`, error);
+      console.error(`Error fetching Work Receipt ${id}:`, error);
       throw error;
     }
   },
@@ -96,7 +96,7 @@ const adminReceiptApi = {
     try {
       await api.delete(`/admin-receipts/${id}`);
     } catch (error) {
-      console.error(`Error deleting admin receipt ${id}:`, error);
+      console.error(`Error deleting Work Receipt ${id}:`, error);
       throw error;
     }
   },
@@ -110,7 +110,7 @@ const adminReceiptApi = {
       });
       return response.data as AdminReceipt[];
     } catch (error) {
-      console.error("Error searching admin receipts:", error);
+      console.error("Error searching Work Receipts:", error);
       throw error;
     }
   },
@@ -141,7 +141,7 @@ const AdminReceiptsPage = () => {
       queryClient.invalidateQueries({ queryKey: ["adminReceipts"] });
       toast({
         title: "Success",
-        description: "Admin receipt deleted successfully",
+        description: "Work Receipt deleted successfully",
       });
       setPasswordDialogOpen(false);
       setPassword("");
@@ -150,7 +150,7 @@ const AdminReceiptsPage = () => {
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to delete admin receipt",
+        description: "Failed to delete Work Receipt",
         variant: "destructive",
       });
     },
@@ -211,7 +211,7 @@ const AdminReceiptsPage = () => {
   return (
     <div className="container p-6 mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-serif font-bold">Admin Receipts</h1>
+        <h1 className="text-3xl font-serif font-bold">Work Receipts</h1>
         <Button
           asChild
           className="bg-yellow-400 hover:bg-yellow-500 text-black"
@@ -224,7 +224,7 @@ const AdminReceiptsPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Admin Receipts</CardTitle>
+          <CardTitle>Work Receipts</CardTitle>
           <div className="flex items-center gap-2 mt-4">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -249,9 +249,7 @@ const AdminReceiptsPage = () => {
             </div>
           ) : isError ? (
             <div className="text-center py-8 text-destructive">
-              <p className="text-lg font-medium">
-                Error loading admin receipts
-              </p>
+              <p className="text-lg font-medium">Error loading Work Receipts</p>
               <p className="mt-2">
                 Please try again later or check your connection
               </p>
@@ -403,8 +401,8 @@ const AdminReceiptsPage = () => {
             <div className="py-12 text-center">
               <p className="text-lg text-muted-foreground mb-4">
                 {searchTerm
-                  ? "No matching admin receipts found"
-                  : "No admin receipts found"}
+                  ? "No matching Work Receipts found"
+                  : "No Work Receipts found"}
               </p>
               <Button
                 asChild

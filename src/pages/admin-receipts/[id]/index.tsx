@@ -75,14 +75,14 @@ interface ClientDetails {
   updatedAt: string;
 }
 
-// Admin Receipt API functions
+// Work Receipt API functions
 const adminReceiptApi = {
   getAdminReceiptById: async (id: string): Promise<AdminReceipt> => {
     try {
       const response = await api.get(`/admin-receipts/${id}`);
       return response.data as AdminReceipt;
     } catch (error) {
-      console.error(`Error fetching admin receipt ${id}:`, error);
+      console.error(`Error fetching Work Receipt ${id}:`, error);
       throw error;
     }
   },
@@ -222,7 +222,11 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
   doc.setFont("helvetica", "bold");
   doc.text("Received Date :", marginLeft, newY);
   doc.setFont("helvetica", "normal");
-  doc.text(receivedDate, marginLeft + doc.getTextWidth("Received Date : ") + 1, newY);
+  doc.text(
+    receivedDate,
+    marginLeft + doc.getTextWidth("Received Date : ") + 1,
+    newY
+  );
 
   // Second Table (Received Items)
   const receivedItems = Array.isArray(receipt.received?.items)
@@ -438,7 +442,7 @@ export default function AdminReceiptDetailPage() {
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Admin Receipt View</h1>
+            <h1 className="text-2xl font-bold">Work Receipt View</h1>
             <p className="text-gray-500">Voucher ID: {receipt.voucherId}</p>
             <p className="text-gray-500">
               Client: {client?.clientName || receipt.clientName} (ID:{" "}

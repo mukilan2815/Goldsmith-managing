@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -18,16 +17,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from "@/components/ui/tabs";
-import { 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
   Popover,
   PopoverContent,
-  PopoverTrigger, 
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
@@ -63,9 +57,13 @@ const givenItemSchema = z.object({
 // Validation schema for received items
 const receivedItemSchema = z.object({
   productName: z.string().min(1, { message: "Product name is required" }),
-  finalOrnamentsWt: z.string().min(1, { message: "Final ornaments weight is required" }),
+  finalOrnamentsWt: z
+    .string()
+    .min(1, { message: "Final ornaments weight is required" }),
   stoneWeight: z.string().min(1, { message: "Stone weight is required" }),
-  makingChargePercent: z.string().min(1, { message: "Making charge percent is required" }),
+  makingChargePercent: z
+    .string()
+    .min(1, { message: "Making charge percent is required" }),
 });
 
 // Main form schema
@@ -78,7 +76,9 @@ const adminReceiptSchema = z.object({
   }),
   manualGivenTotal: z.number().optional(),
   manualReceivedTotal: z.number().optional(),
-  operation: z.enum(["subtract-given-received", "subtract-received-given", "add"]).optional(),
+  operation: z
+    .enum(["subtract-given-received", "subtract-received-given", "add"])
+    .optional(),
 });
 
 type AdminReceiptFormValues = z.infer<typeof adminReceiptSchema>;
@@ -91,43 +91,55 @@ interface AdminReceiptFormProps {
   receiptData?: any;
 }
 
-export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFormProps) {
+export function AdminReceiptForm({
+  selectedClient,
+  receiptData,
+}: AdminReceiptFormProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("given");
   const [isSubmittingGiven, setIsSubmittingGiven] = useState(false);
   const [isSubmittingReceived, setIsSubmittingReceived] = useState(false);
   const [voucherId, setVoucherId] = useState("");
-  
+
   // Items state
-  const [givenItems, setGivenItems] = useState<GivenItem[]>([{
-    id: uuidv4(),
-    productName: "",
-    pureWeight: "",
-    purePercent: "",
-    melting: "",
-    total: 0
-  }]);
-  
-  const [receivedItems, setReceivedItems] = useState<ReceivedItem[]>([{
-    id: uuidv4(),
-    productName: "",
-    finalOrnamentsWt: "",
-    stoneWeight: "0",
-    makingChargePercent: "",
-    subTotal: 0,
-    total: 0
-  }]);
+  const [givenItems, setGivenItems] = useState<GivenItem[]>([
+    {
+      id: uuidv4(),
+      productName: "",
+      pureWeight: "",
+      purePercent: "",
+      melting: "",
+      total: 0,
+    },
+  ]);
+
+  const [receivedItems, setReceivedItems] = useState<ReceivedItem[]>([
+    {
+      id: uuidv4(),
+      productName: "",
+      finalOrnamentsWt: "",
+      stoneWeight: "0",
+      makingChargePercent: "",
+      subTotal: 0,
+      total: 0,
+    },
+  ]);
 
   // Form initialization
   const form = useForm<AdminReceiptFormValues>({
     resolver: zodResolver(adminReceiptSchema),
     defaultValues: {
-      givenDate: receiptData?.given?.date ? new Date(receiptData.given.date) : new Date(),
-      receivedDate: receiptData?.received?.date ? new Date(receiptData.received.date) : new Date(),
+      givenDate: receiptData?.given?.date
+        ? new Date(receiptData.given.date)
+        : new Date(),
+      receivedDate: receiptData?.received?.date
+        ? new Date(receiptData.received.date)
+        : new Date(),
       manualGivenTotal: receiptData?.manualCalculation?.givenTotal || 0,
       manualReceivedTotal: receiptData?.manualCalculation?.receivedTotal || 0,
-      operation: receiptData?.manualCalculation?.operation || "subtract-given-received",
+      operation:
+        receiptData?.manualCalculation?.operation || "subtract-given-received",
     },
   });
 
@@ -142,9 +154,9 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
           // For now, we'll generate a mock one
           const date = new Date();
           const year = date.getFullYear().toString().substr(-2);
-          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, "0");
           const randomNum = Math.floor(1000 + Math.random() * 9000);
-          
+
           setVoucherId(`GA-${year}${month}-${randomNum}`);
         } catch (error) {
           console.error("Failed to generate voucher ID:", error);
@@ -163,28 +175,40 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
   // Initialize form with existing data if editing
   useEffect(() => {
     if (receiptData) {
-      if (receiptData.given && receiptData.given.items && receiptData.given.items.length > 0) {
-        const formattedGivenItems = receiptData.given.items.map((item: any) => ({
-          id: item.id || uuidv4(),
-          productName: item.productName || "",
-          pureWeight: String(item.pureWeight || ""),
-          purePercent: String(item.purePercent || ""),
-          melting: String(item.melting || ""),
-          total: item.total || 0
-        }));
+      if (
+        receiptData.given &&
+        receiptData.given.items &&
+        receiptData.given.items.length > 0
+      ) {
+        const formattedGivenItems = receiptData.given.items.map(
+          (item: any) => ({
+            id: item.id || uuidv4(),
+            productName: item.productName || "",
+            pureWeight: String(item.pureWeight || ""),
+            purePercent: String(item.purePercent || ""),
+            melting: String(item.melting || ""),
+            total: item.total || 0,
+          })
+        );
         setGivenItems(formattedGivenItems);
       }
 
-      if (receiptData.received && receiptData.received.items && receiptData.received.items.length > 0) {
-        const formattedReceivedItems = receiptData.received.items.map((item: any) => ({
-          id: item.id || uuidv4(),
-          productName: item.productName || "",
-          finalOrnamentsWt: String(item.finalOrnamentsWt || ""),
-          stoneWeight: String(item.stoneWeight || "0"),
-          makingChargePercent: String(item.makingChargePercent || ""),
-          subTotal: item.subTotal || 0,
-          total: item.total || 0
-        }));
+      if (
+        receiptData.received &&
+        receiptData.received.items &&
+        receiptData.received.items.length > 0
+      ) {
+        const formattedReceivedItems = receiptData.received.items.map(
+          (item: any) => ({
+            id: item.id || uuidv4(),
+            productName: item.productName || "",
+            finalOrnamentsWt: String(item.finalOrnamentsWt || ""),
+            stoneWeight: String(item.stoneWeight || "0"),
+            makingChargePercent: String(item.makingChargePercent || ""),
+            subTotal: item.subTotal || 0,
+            total: item.total || 0,
+          })
+        );
         setReceivedItems(formattedReceivedItems);
       }
     }
@@ -198,16 +222,16 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
       pureWeight: "",
       purePercent: "",
       melting: "",
-      total: 0
+      total: 0,
     };
-    
+
     setGivenItems([...givenItems, newItem]);
   };
 
   // Remove a given item
   const removeGivenItem = (id: string) => {
     if (givenItems.length > 1) {
-      setGivenItems(givenItems.filter(item => item.id !== id));
+      setGivenItems(givenItems.filter((item) => item.id !== id));
     } else {
       toast({
         variant: "destructive",
@@ -226,16 +250,16 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
       stoneWeight: "0",
       makingChargePercent: "",
       subTotal: 0,
-      total: 0
+      total: 0,
     };
-    
+
     setReceivedItems([...receivedItems, newItem]);
   };
 
   // Remove a received item
   const removeReceivedItem = (id: string) => {
     if (receivedItems.length > 1) {
-      setReceivedItems(receivedItems.filter(item => item.id !== id));
+      setReceivedItems(receivedItems.filter((item) => item.id !== id));
     } else {
       toast({
         variant: "destructive",
@@ -246,50 +270,69 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
   };
 
   // Update given item field
-  const updateGivenItem = (id: string, field: keyof Omit<GivenItem, "id" | "total">, value: string) => {
-    setGivenItems(givenItems.map(item => {
-      if (item.id === id) {
-        const updatedItem = { ...item, [field]: value };
-        
-        // Recalculate total if necessary fields are provided
-        if (["pureWeight", "purePercent", "melting"].includes(field)) {
-          const pureWeight = parseFloat(updatedItem.pureWeight) || 0;
-          const purePercent = parseFloat(updatedItem.purePercent) || 0;
-          const melting = parseFloat(updatedItem.melting) || 1;
-          
-          // Calculate as (Pure Weight * Pure Percent) / Melting
-          updatedItem.total = (pureWeight * purePercent) / melting;
+  const updateGivenItem = (
+    id: string,
+    field: keyof Omit<GivenItem, "id" | "total">,
+    value: string
+  ) => {
+    setGivenItems(
+      givenItems.map((item) => {
+        if (item.id === id) {
+          const updatedItem = { ...item, [field]: value };
+
+          // Recalculate total if necessary fields are provided
+          if (["pureWeight", "purePercent", "melting"].includes(field)) {
+            const pureWeight = parseFloat(updatedItem.pureWeight) || 0;
+            const purePercent = parseFloat(updatedItem.purePercent) || 0;
+            const melting = parseFloat(updatedItem.melting) || 1;
+
+            // Calculate as (Pure Weight * Pure Percent) / Melting
+            updatedItem.total = (pureWeight * purePercent) / melting;
+          }
+
+          return updatedItem;
         }
-        
-        return updatedItem;
-      }
-      return item;
-    }));
+        return item;
+      })
+    );
   };
 
   // Update received item field
-  const updateReceivedItem = (id: string, field: keyof Omit<ReceivedItem, "id" | "subTotal" | "total">, value: string) => {
-    setReceivedItems(receivedItems.map(item => {
-      if (item.id === id) {
-        const updatedItem = { ...item, [field]: value };
-        
-        // Recalculate subtotal and total if necessary fields are provided
-        if (["finalOrnamentsWt", "stoneWeight", "makingChargePercent"].includes(field)) {
-          const finalOrnamentsWt = parseFloat(updatedItem.finalOrnamentsWt) || 0;
-          const stoneWeight = parseFloat(updatedItem.stoneWeight) || 0;
-          const makingChargePercent = parseFloat(updatedItem.makingChargePercent) || 0;
-          
-          // Calculate SubTotal = (finalOrnamentsWt - stoneWeight)
-          updatedItem.subTotal = finalOrnamentsWt - stoneWeight;
-          
-          // Calculate Total = SubTotal * (makingChargePercent / 100) - making charge value
-          updatedItem.total = updatedItem.subTotal * (makingChargePercent / 100);
+  const updateReceivedItem = (
+    id: string,
+    field: keyof Omit<ReceivedItem, "id" | "subTotal" | "total">,
+    value: string
+  ) => {
+    setReceivedItems(
+      receivedItems.map((item) => {
+        if (item.id === id) {
+          const updatedItem = { ...item, [field]: value };
+
+          // Recalculate subtotal and total if necessary fields are provided
+          if (
+            ["finalOrnamentsWt", "stoneWeight", "makingChargePercent"].includes(
+              field
+            )
+          ) {
+            const finalOrnamentsWt =
+              parseFloat(updatedItem.finalOrnamentsWt) || 0;
+            const stoneWeight = parseFloat(updatedItem.stoneWeight) || 0;
+            const makingChargePercent =
+              parseFloat(updatedItem.makingChargePercent) || 0;
+
+            // Calculate SubTotal = (finalOrnamentsWt - stoneWeight)
+            updatedItem.subTotal = finalOrnamentsWt - stoneWeight;
+
+            // Calculate Total = SubTotal * (makingChargePercent / 100) - making charge value
+            updatedItem.total =
+              updatedItem.subTotal * (makingChargePercent / 100);
+          }
+
+          return updatedItem;
         }
-        
-        return updatedItem;
-      }
-      return item;
-    }));
+        return item;
+      })
+    );
   };
 
   // Calculate given totals
@@ -297,17 +340,23 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
     totalPureWeight: givenItems.reduce((acc, item) => {
       const pureWeight = parseFloat(item.pureWeight) || 0;
       const purePercent = parseFloat(item.purePercent) || 0;
-      return acc + (pureWeight * purePercent / 100);
+      return acc + (pureWeight * purePercent) / 100;
     }, 0),
-    total: givenItems.reduce((acc, item) => acc + item.total, 0)
+    total: givenItems.reduce((acc, item) => acc + item.total, 0),
   };
 
   // Calculate received totals
   const receivedTotals = {
-    totalOrnamentsWt: receivedItems.reduce((acc, item) => acc + (parseFloat(item.finalOrnamentsWt) || 0), 0),
-    totalStoneWeight: receivedItems.reduce((acc, item) => acc + (parseFloat(item.stoneWeight) || 0), 0),
+    totalOrnamentsWt: receivedItems.reduce(
+      (acc, item) => acc + (parseFloat(item.finalOrnamentsWt) || 0),
+      0
+    ),
+    totalStoneWeight: receivedItems.reduce(
+      (acc, item) => acc + (parseFloat(item.stoneWeight) || 0),
+      0
+    ),
     totalSubTotal: receivedItems.reduce((acc, item) => acc + item.subTotal, 0),
-    total: receivedItems.reduce((acc, item) => acc + item.total, 0)
+    total: receivedItems.reduce((acc, item) => acc + item.total, 0),
   };
 
   // Calculate manual result
@@ -315,7 +364,7 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
     const givenTotal = form.watch("manualGivenTotal") || 0;
     const receivedTotal = form.watch("manualReceivedTotal") || 0;
     const operation = form.watch("operation");
-    
+
     switch (operation) {
       case "subtract-given-received":
         return givenTotal - receivedTotal;
@@ -331,10 +380,10 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
   // Save Given Data
   const saveGivenData = async () => {
     setIsSubmittingGiven(true);
-    
+
     try {
       const givenDate = form.getValues("givenDate");
-      
+
       if (!givenDate) {
         toast({
           variant: "destructive",
@@ -344,7 +393,7 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
         setIsSubmittingGiven(false);
         return;
       }
-      
+
       // Validate given items
       for (const item of givenItems) {
         try {
@@ -359,19 +408,19 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
           return;
         }
       }
-      
+
       const givenData = {
         date: givenDate,
         items: givenItems,
         totalPureWeight: givenTotals.totalPureWeight,
-        total: givenTotals.total
+        total: givenTotals.total,
       };
-      
+
       console.log("Saving given data:", givenData);
-      
+
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       toast({
         title: "Success",
         description: "Given items saved successfully",
@@ -391,10 +440,10 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
   // Save Received Data
   const saveReceivedData = async () => {
     setIsSubmittingReceived(true);
-    
+
     try {
       const receivedDate = form.getValues("receivedDate");
-      
+
       if (!receivedDate) {
         toast({
           variant: "destructive",
@@ -404,7 +453,7 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
         setIsSubmittingReceived(false);
         return;
       }
-      
+
       // Validate received items
       for (const item of receivedItems) {
         try {
@@ -413,27 +462,28 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
           toast({
             variant: "destructive",
             title: "Validation Error",
-            description: "Please fill all required fields for each received item",
+            description:
+              "Please fill all required fields for each received item",
           });
           setIsSubmittingReceived(false);
           return;
         }
       }
-      
+
       const receivedData = {
         date: receivedDate,
         items: receivedItems,
         totalOrnamentsWt: receivedTotals.totalOrnamentsWt,
         totalStoneWeight: receivedTotals.totalStoneWeight,
         totalSubTotal: receivedTotals.totalSubTotal,
-        total: receivedTotals.total
+        total: receivedTotals.total,
       };
-      
+
       console.log("Saving received data:", receivedData);
-      
+
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       toast({
         title: "Success",
         description: "Received items saved successfully",
@@ -454,7 +504,9 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
     <Form {...form}>
       <form className="space-y-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-medium">Admin Receipt for: {selectedClient.name}</h2>
+          <h2 className="text-2xl font-medium">
+            Work Receipt for: {selectedClient.name}
+          </h2>
           <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-medium">
             Voucher ID: {voucherId}
           </div>
@@ -463,15 +515,21 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
         {/* Tabbed Interface for Given and Received Items */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full">
-            <TabsTrigger value="given" className="flex-1">Given Items</TabsTrigger>
-            <TabsTrigger value="received" className="flex-1">Received Items</TabsTrigger>
+            <TabsTrigger value="given" className="flex-1">
+              Given Items
+            </TabsTrigger>
+            <TabsTrigger value="received" className="flex-1">
+              Received Items
+            </TabsTrigger>
           </TabsList>
-          
+
           {/* Given Items Tab */}
           <TabsContent value="given" className="mt-4">
             <div className="bg-background/50 p-6 rounded-md border">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Given Details (Client: {selectedClient.name})</h3>
+                <h3 className="text-lg font-medium">
+                  Given Details (Client: {selectedClient.name})
+                </h3>
               </div>
 
               {/* Given Date */}
@@ -518,12 +576,24 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                 <table className="w-full min-w-[800px]">
                   <thead>
                     <tr className="border-b">
-                      <th className="py-2 px-2 text-sm font-medium text-center">S.No.</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Product Name</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Pure Weight</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Pure %</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Melting</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Total</th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        S.No.
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Product Name
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Pure Weight
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Pure %
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Melting
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Total
+                      </th>
                       <th className="w-10 text-center">Action</th>
                     </tr>
                   </thead>
@@ -534,7 +604,13 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         <td className="py-2 px-2">
                           <Input
                             value={item.productName}
-                            onChange={(e) => updateGivenItem(item.id, "productName", e.target.value)}
+                            onChange={(e) =>
+                              updateGivenItem(
+                                item.id,
+                                "productName",
+                                e.target.value
+                              )
+                            }
                             placeholder="Product name"
                             className="bg-card border border-input"
                           />
@@ -542,7 +618,13 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         <td className="py-2 px-2">
                           <Input
                             value={item.pureWeight}
-                            onChange={(e) => updateGivenItem(item.id, "pureWeight", e.target.value)}
+                            onChange={(e) =>
+                              updateGivenItem(
+                                item.id,
+                                "pureWeight",
+                                e.target.value
+                              )
+                            }
                             placeholder="0.00"
                             className="bg-card border border-input text-center"
                           />
@@ -550,7 +632,13 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         <td className="py-2 px-2">
                           <Input
                             value={item.purePercent}
-                            onChange={(e) => updateGivenItem(item.id, "purePercent", e.target.value)}
+                            onChange={(e) =>
+                              updateGivenItem(
+                                item.id,
+                                "purePercent",
+                                e.target.value
+                              )
+                            }
                             placeholder="0.00"
                             className="bg-card border border-input text-center"
                           />
@@ -558,7 +646,13 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         <td className="py-2 px-2">
                           <Input
                             value={item.melting}
-                            onChange={(e) => updateGivenItem(item.id, "melting", e.target.value)}
+                            onChange={(e) =>
+                              updateGivenItem(
+                                item.id,
+                                "melting",
+                                e.target.value
+                              )
+                            }
                             placeholder="0.00"
                             className="bg-card border border-input text-center"
                           />
@@ -580,20 +674,24 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         </td>
                       </tr>
                     ))}
-                    
+
                     {/* Totals Row */}
                     <tr className="font-medium bg-accent/20">
-                      <td colSpan={5} className="py-2 px-2 text-right">Total:</td>
-                      <td className="py-2 px-2 text-center">{givenTotals.total.toFixed(3)}</td>
+                      <td colSpan={5} className="py-2 px-2 text-right">
+                        Total:
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        {givenTotals.total.toFixed(3)}
+                      </td>
                       <td className="py-2 px-2"></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              
+
               <div className="flex justify-between mt-4">
                 <Button
-                  type="button" 
+                  type="button"
                   onClick={addGivenItem}
                   variant="outline"
                   size="sm"
@@ -606,18 +704,22 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                   variant="default"
                   disabled={isSubmittingGiven}
                 >
-                  {isSubmittingGiven && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                  {isSubmittingGiven && (
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   <Save className="mr-2 h-4 w-4" /> Save Given Data
                 </Button>
               </div>
             </div>
           </TabsContent>
-          
+
           {/* Received Items Tab */}
           <TabsContent value="received" className="mt-4">
             <div className="bg-background/50 p-6 rounded-md border">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Received Details (Client: {selectedClient.name})</h3>
+                <h3 className="text-lg font-medium">
+                  Received Details (Client: {selectedClient.name})
+                </h3>
               </div>
 
               {/* Received Date */}
@@ -664,13 +766,27 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                 <table className="w-full min-w-[800px]">
                   <thead>
                     <tr className="border-b">
-                      <th className="py-2 px-2 text-sm font-medium text-center">S.No.</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Product Name</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Final Ornaments Wt</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Stone Weight</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Sub Total</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Making Charge (%)</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Total</th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        S.No.
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Product Name
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Final Ornaments Wt
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Stone Weight
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Sub Total
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Making Charge (%)
+                      </th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">
+                        Total
+                      </th>
                       <th className="w-10 text-center">Action</th>
                     </tr>
                   </thead>
@@ -681,7 +797,13 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         <td className="py-2 px-2">
                           <Input
                             value={item.productName}
-                            onChange={(e) => updateReceivedItem(item.id, "productName", e.target.value)}
+                            onChange={(e) =>
+                              updateReceivedItem(
+                                item.id,
+                                "productName",
+                                e.target.value
+                              )
+                            }
                             placeholder="Product name"
                             className="bg-card border border-input"
                           />
@@ -689,7 +811,13 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         <td className="py-2 px-2">
                           <Input
                             value={item.finalOrnamentsWt}
-                            onChange={(e) => updateReceivedItem(item.id, "finalOrnamentsWt", e.target.value)}
+                            onChange={(e) =>
+                              updateReceivedItem(
+                                item.id,
+                                "finalOrnamentsWt",
+                                e.target.value
+                              )
+                            }
                             placeholder="0.00"
                             className="bg-card border border-input text-center"
                           />
@@ -697,7 +825,13 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         <td className="py-2 px-2">
                           <Input
                             value={item.stoneWeight}
-                            onChange={(e) => updateReceivedItem(item.id, "stoneWeight", e.target.value)}
+                            onChange={(e) =>
+                              updateReceivedItem(
+                                item.id,
+                                "stoneWeight",
+                                e.target.value
+                              )
+                            }
                             placeholder="0.00"
                             className="bg-card border border-input text-center"
                           />
@@ -708,7 +842,13 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         <td className="py-2 px-2">
                           <Input
                             value={item.makingChargePercent}
-                            onChange={(e) => updateReceivedItem(item.id, "makingChargePercent", e.target.value)}
+                            onChange={(e) =>
+                              updateReceivedItem(
+                                item.id,
+                                "makingChargePercent",
+                                e.target.value
+                              )
+                            }
                             placeholder="0.00"
                             className="bg-card border border-input text-center"
                           />
@@ -730,24 +870,34 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                         </td>
                       </tr>
                     ))}
-                    
+
                     {/* Totals Rows */}
                     <tr className="font-medium bg-accent/20">
-                      <td colSpan={2} className="py-2 px-2 text-right">Total:</td>
-                      <td className="py-2 px-2 text-center">{receivedTotals.totalOrnamentsWt.toFixed(3)}</td>
-                      <td className="py-2 px-2 text-center">{receivedTotals.totalStoneWeight.toFixed(3)}</td>
-                      <td className="py-2 px-2 text-center">{receivedTotals.totalSubTotal.toFixed(3)}</td>
+                      <td colSpan={2} className="py-2 px-2 text-right">
+                        Total:
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        {receivedTotals.totalOrnamentsWt.toFixed(3)}
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        {receivedTotals.totalStoneWeight.toFixed(3)}
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        {receivedTotals.totalSubTotal.toFixed(3)}
+                      </td>
                       <td className="py-2 px-2"></td>
-                      <td className="py-2 px-2 text-center">{receivedTotals.total.toFixed(3)}</td>
+                      <td className="py-2 px-2 text-center">
+                        {receivedTotals.total.toFixed(3)}
+                      </td>
                       <td className="py-2 px-2"></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              
+
               <div className="flex justify-between mt-4">
                 <Button
-                  type="button" 
+                  type="button"
                   onClick={addReceivedItem}
                   variant="outline"
                   size="sm"
@@ -760,7 +910,9 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                   variant="default"
                   disabled={isSubmittingReceived}
                 >
-                  {isSubmittingReceived && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                  {isSubmittingReceived && (
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   <Save className="mr-2 h-4 w-4" /> Save Received Data
                 </Button>
               </div>
@@ -772,9 +924,10 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
         <div className="bg-background/50 p-6 rounded-md border mt-6">
           <h3 className="text-lg font-medium mb-2">Manual Comparison</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Manually input totals for comparison. This section is for on-screen calculation only and is not saved with the receipt.
+            Manually input totals for comparison. This section is for on-screen
+            calculation only and is not saved with the receipt.
           </p>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
               <FormLabel>Given Total</FormLabel>
@@ -782,33 +935,49 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
                 type="number"
                 placeholder="Enter Given Total"
                 value={form.watch("manualGivenTotal") || ""}
-                onChange={(e) => form.setValue("manualGivenTotal", parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  form.setValue(
+                    "manualGivenTotal",
+                    parseFloat(e.target.value) || 0
+                  )
+                }
               />
             </div>
-            
+
             <div className="space-y-2">
               <FormLabel>Operation</FormLabel>
               <select
                 className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={form.watch("operation")}
-                onChange={(e) => form.setValue("operation", e.target.value as any)}
+                onChange={(e) =>
+                  form.setValue("operation", e.target.value as any)
+                }
               >
-                <option value="subtract-given-received">Subtract (Given - Received)</option>
-                <option value="subtract-received-given">Subtract (Received - Given)</option>
+                <option value="subtract-given-received">
+                  Subtract (Given - Received)
+                </option>
+                <option value="subtract-received-given">
+                  Subtract (Received - Given)
+                </option>
                 <option value="add">Add</option>
               </select>
             </div>
-            
+
             <div className="space-y-2">
               <FormLabel>Received Total</FormLabel>
               <Input
                 type="number"
                 placeholder="Enter Received Total"
                 value={form.watch("manualReceivedTotal") || ""}
-                onChange={(e) => form.setValue("manualReceivedTotal", parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  form.setValue(
+                    "manualReceivedTotal",
+                    parseFloat(e.target.value) || 0
+                  )
+                }
               />
             </div>
-            
+
             <div className="space-y-2">
               <FormLabel>Result</FormLabel>
               <div className="w-full h-10 flex items-center justify-center border rounded-md bg-muted/20 font-medium">
@@ -826,7 +995,7 @@ export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFo
               Incomplete
             </span>
           </div>
-          
+
           <div className="flex gap-4">
             <Button
               type="button"

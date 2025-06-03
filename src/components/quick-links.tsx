@@ -1,7 +1,11 @@
-
 import { Link } from "react-router-dom";
 import {
-  User, Users, FileText, Receipt, FileBarChart2, FileStack
+  User,
+  Users,
+  FileText,
+  Receipt,
+  FileBarChart2,
+  FileStack,
 } from "lucide-react";
 
 const quickLinks = [
@@ -26,12 +30,12 @@ const quickLinks = [
     icon: <FileText className="h-4 w-4" />,
   },
   {
-    title: "Admin Receipt",
+    title: "Work Receipt",
     href: "/admin-receipts/new", // Changed from "/admin-receipts" to "/admin-receipts/new"
     icon: <FileBarChart2 className="h-4 w-4" />,
   },
   {
-    title: "Admin Bill",
+    title: "Work Bill",
     href: "/admin-bills",
     icon: <FileStack className="h-4 w-4" />,
   },

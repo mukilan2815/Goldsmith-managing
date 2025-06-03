@@ -1,11 +1,15 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { adminReceiptServices } from "@/services/api-admin";
@@ -23,7 +27,7 @@ import {
 interface AdminReceipt {
   _id: string;
   clientName: string;
-  status: 'complete' | 'incomplete' | 'empty';
+  status: "complete" | "incomplete" | "empty";
   voucherId: string;
   createdAt: string;
   updatedAt: string;
@@ -42,30 +46,30 @@ const AdminReceiptsPage = () => {
   const [page, setPage] = useState(1);
   const [receiptsPerPage] = useState(10);
   const { toast } = useToast();
-  
+
   const {
     data: adminReceipts,
     isLoading,
     isError,
-    refetch
+    refetch,
   } = useQuery({
-    queryKey: ['adminReceipts'],
-    queryFn: adminReceiptServices.getAdminReceipts
+    queryKey: ["adminReceipts"],
+    queryFn: adminReceiptServices.getAdminReceipts,
   });
-  
+
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this admin receipt?')) {
+    if (window.confirm("Are you sure you want to delete this Work Receipt?")) {
       try {
         await adminReceiptServices.deleteAdminReceipt(id);
         toast({
           title: "Success",
-          description: "Admin receipt deleted successfully",
+          description: "Work Receipt deleted successfully",
         });
         refetch();
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to delete admin receipt",
+          description: "Failed to delete Work Receipt",
           variant: "destructive",
         });
       }
@@ -73,31 +77,35 @@ const AdminReceiptsPage = () => {
   };
 
   // Filter receipts based on search term
-  const filteredReceipts = adminReceipts 
-    ? adminReceipts.filter((receipt: AdminReceipt) => 
-        receipt.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        receipt.voucherId.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredReceipts = adminReceipts
+    ? adminReceipts.filter(
+        (receipt: AdminReceipt) =>
+          receipt.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          receipt.voucherId.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : [];
-  
+
   // Calculate pagination
   const indexOfLastReceipt = page * receiptsPerPage;
   const indexOfFirstReceipt = indexOfLastReceipt - receiptsPerPage;
-  const currentReceipts = filteredReceipts.slice(indexOfFirstReceipt, indexOfLastReceipt);
+  const currentReceipts = filteredReceipts.slice(
+    indexOfFirstReceipt,
+    indexOfLastReceipt
+  );
   const totalPages = Math.ceil(filteredReceipts.length / receiptsPerPage);
-  
+
   return (
     <div className="container p-6 mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-serif font-bold">Admin Receipts</h1>
+        <h1 className="text-3xl font-serif font-bold">Work Receipts</h1>
         <Button asChild>
-          <Link to="/admin-receipts/new">New Admin Receipt</Link>
+          <Link to="/admin-receipts/new">New Work Receipt</Link>
         </Button>
       </div>
-      
+
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>Admin Receipts</CardTitle>
+          <CardTitle>Work Receipts</CardTitle>
           <div className="flex items-center gap-2 mt-4">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -116,7 +124,7 @@ const AdminReceiptsPage = () => {
             <p className="text-center py-4">Loading...</p>
           ) : isError ? (
             <p className="text-center py-4 text-destructive">
-              Error loading admin receipts. Please try again later.
+              Error loading Work Receipts. Please try again later.
             </p>
           ) : filteredReceipts.length > 0 ? (
             <>
@@ -135,14 +143,20 @@ const AdminReceiptsPage = () => {
                   <TableBody>
                     {currentReceipts.map((receipt: AdminReceipt) => (
                       <TableRow key={receipt._id}>
-                        <TableCell className="font-medium">{receipt.voucherId}</TableCell>
+                        <TableCell className="font-medium">
+                          {receipt.voucherId}
+                        </TableCell>
                         <TableCell>{receipt.clientName}</TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs capitalize ${
-                            receipt.status === 'complete' ? 'bg-green-100 text-green-800' :
-                            receipt.status === 'incomplete' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs capitalize ${
+                              receipt.status === "complete"
+                                ? "bg-green-100 text-green-800"
+                                : receipt.status === "incomplete"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
                             {receipt.status}
                           </span>
                         </TableCell>
@@ -164,8 +178,8 @@ const AdminReceiptsPage = () => {
                                 <Edit className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => handleDelete(receipt._id)}
                             >
@@ -178,17 +192,21 @@ const AdminReceiptsPage = () => {
                   </TableBody>
                 </Table>
               </div>
-              
+
               {totalPages > 1 && (
                 <Pagination className="mt-4">
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
-                        onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                        className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                        className={
+                          page === 1
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
                       />
                     </PaginationItem>
-                    
+
                     {[...Array(totalPages)].map((_, i) => (
                       <PaginationItem key={i + 1}>
                         <PaginationLink
@@ -199,11 +217,17 @@ const AdminReceiptsPage = () => {
                         </PaginationLink>
                       </PaginationItem>
                     ))}
-                    
+
                     <PaginationItem>
                       <PaginationNext
-                        onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
-                        className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        onClick={() =>
+                          setPage((prev) => Math.min(prev + 1, totalPages))
+                        }
+                        className={
+                          page === totalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
                       />
                     </PaginationItem>
                   </PaginationContent>
@@ -212,9 +236,9 @@ const AdminReceiptsPage = () => {
             </>
           ) : (
             <div className="py-4 text-center">
-              <p>No admin receipts found</p>
+              <p>No Work Receipts found</p>
               <Button asChild className="mt-4">
-                <Link to="/admin-receipts/new">Create New Admin Receipt</Link>
+                <Link to="/admin-receipts/new">Create New Work Receipt</Link>
               </Button>
             </div>
           )}

@@ -53,6 +53,7 @@ const clientApi = {
       shopName: c.shopName,
       phoneNumber: c.phoneNumber,
       address: c.address,
+      balance: c.balance || 0,
     }));
   },
 
@@ -65,7 +66,15 @@ const clientApi = {
 
   getClientById: async (id: string) => {
     const response = await api.get(`/clients/${id}`);
-    return response.data;
+    const c = response.data;
+    return {
+      id: c._id,
+      name: c.clientName,
+      shopName: c.shopName,
+      phoneNumber: c.phoneNumber,
+      address: c.address,
+      balance: c.balance || 0,
+    };
   },
 };
 
@@ -111,11 +120,12 @@ const adminReceiptApi = {
 
 const mockClients = [
   {
-    id: "1001",
-    name: "Golden Creations",
-    shopName: "Golden Store",
-    phoneNumber: "9845939045",
-    address: "123 Gold St",
+    id: "683eb8582febef63b0100fc8",
+    name: "test",
+    shopName: "Testing shop",
+    phoneNumber: "07448359935",
+    address: "Muthumariyamman muttai kadai , Teachers colony podanur",
+    balance: 0,
   },
   {
     id: "1002",
@@ -123,6 +133,7 @@ const mockClients = [
     shopName: "Silver Shop",
     phoneNumber: "9080705040",
     address: "456 Silver Ave",
+    balance: 1000,
   },
   {
     id: "1003",
@@ -130,6 +141,7 @@ const mockClients = [
     shopName: "Gem World",
     phoneNumber: "9845939045",
     address: "789 Gem Blvd",
+    balance: -500,
   },
   {
     id: "1004",
@@ -137,6 +149,7 @@ const mockClients = [
     shopName: "Platinum Gallery",
     phoneNumber: "8090847974",
     address: "101 Platinum Rd",
+    balance: 2500,
   },
   {
     id: "1005",
@@ -144,6 +157,7 @@ const mockClients = [
     shopName: "Diamond Hub",
     phoneNumber: "7070707070",
     address: "202 Diamond Lane",
+    balance: 0,
   },
 ];
 
@@ -153,6 +167,7 @@ interface Client {
   shopName: string;
   phoneNumber: string;
   address: string;
+  balance: number;
 }
 
 interface GivenItem {
@@ -217,6 +232,7 @@ export default function NewAdminReceiptPage() {
   const [manualGivenTotal, setManualGivenTotal] = useState<number>(0);
   const [manualReceivedTotal, setManualReceivedTotal] = useState<number>(0);
   const [operation, setOperation] = useState<string>("subtract-given-received");
+  const [clientBalance, setClientBalance] = useState<number>(0);
 
   useEffect(() => {
     const initPage = async () => {
@@ -294,6 +310,7 @@ export default function NewAdminReceiptPage() {
           const client = await clientApi.getClientById(receipt.clientId);
           if (client) {
             setSelectedClient(client);
+            setClientBalance(client.balance || 0);
           }
         }
       } catch (clientError) {
@@ -304,7 +321,9 @@ export default function NewAdminReceiptPage() {
             shopName: "Unknown Shop",
             phoneNumber: "",
             address: "",
+            balance: 0,
           });
+          setClientBalance(0);
         }
       }
 
@@ -380,8 +399,18 @@ export default function NewAdminReceiptPage() {
       })
     : [];
 
-  const handleSelectClient = (client: Client) => {
-    setSelectedClient(client);
+  const handleSelectClient = async (client: Client) => {
+    try {
+      const clientData = await clientApi.getClientById(client.id);
+      setSelectedClient(client);
+      setClientBalance(clientData.balance || 0);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load client balance",
+      });
+    }
   };
 
   const addGivenItem = () => {
@@ -515,6 +544,7 @@ export default function NewAdminReceiptPage() {
     total: receivedItems.reduce((acc, item) => acc + item.total, 0),
   };
 
+
   const calculateManualResult = () => {
     switch (operation) {
       case "subtract-given-received":
@@ -541,6 +571,7 @@ export default function NewAdminReceiptPage() {
     setIsSubmittingGiven(true);
 
     try {
+      // Validate given items
       for (const item of givenItems) {
         if (
           !item.productName ||
@@ -558,6 +589,27 @@ export default function NewAdminReceiptPage() {
         }
       }
 
+      // Calculate balance adjustment based on operation
+      let balanceAdjustment;
+      const hasReceivedItems = receivedItems.some((item) => item.productName);
+
+      if (hasReceivedItems) {
+        // If both given and received items exist, use the manual calculation result
+        balanceAdjustment = calculateManualResult();
+      } else {
+        // If only given items, increase balance by given total
+        balanceAdjustment = givenTotals.total;
+      }
+
+      // Update client balance (positive for given, negative for received in manual calc)
+      const newBalance = clientBalance + balanceAdjustment;
+
+      // Update client balance in the database
+      await api.put(`/clients/${selectedClient.id}`, {
+        balance: newBalance,
+      });
+
+      // Prepare given data
       const givenData = {
         date: givenDate,
         items: givenItems,
@@ -565,9 +617,9 @@ export default function NewAdminReceiptPage() {
         total: givenTotals.total,
       };
 
-      const hasReceivedItems = receivedItems.some((item) => item.productName);
       const status = hasReceivedItems ? "complete" : "incomplete";
 
+      // Prepare receipt data
       const receiptData = {
         clientId: selectedClient.id,
         clientName: selectedClient.name,
@@ -582,6 +634,7 @@ export default function NewAdminReceiptPage() {
       };
 
       if (id) {
+        // Update existing receipt
         await adminReceiptApi.updateAdminReceipt(id, {
           given: givenData,
           status,
@@ -593,6 +646,7 @@ export default function NewAdminReceiptPage() {
           },
         });
       } else {
+        // Create new receipt
         if (hasReceivedItems) {
           receiptData.received = {
             date: receivedDate,
@@ -613,9 +667,13 @@ export default function NewAdminReceiptPage() {
         }
       }
 
+      setClientBalance(newBalance);
+
       toast({
         title: "Success",
-        description: "Given items saved successfully",
+        description: `Given items saved successfully. New balance: ${newBalance.toFixed(
+          2
+        )}`,
       });
 
       setManualGivenTotal(givenTotals.total);
@@ -644,6 +702,7 @@ export default function NewAdminReceiptPage() {
     setIsSubmittingReceived(true);
 
     try {
+      // Validate received items
       for (const item of receivedItems) {
         if (
           !item.productName ||
@@ -661,6 +720,27 @@ export default function NewAdminReceiptPage() {
         }
       }
 
+      // Calculate balance adjustment based on operation
+      let balanceAdjustment;
+      const hasGivenItems = givenItems.some((item) => item.productName);
+
+      if (hasGivenItems) {
+        // If both given and received items exist, use the manual calculation result
+        balanceAdjustment = calculateManualResult();
+      } else {
+        // If only received items, decrease balance by received total
+        balanceAdjustment = -receivedTotals.total;
+      }
+
+      // Update client balance
+      const newBalance = clientBalance + balanceAdjustment;
+
+      // Update client balance in the database
+      await api.put(`/clients/${selectedClient.id}`, {
+        balance: newBalance,
+      });
+
+      // Prepare received data
       const receivedData = {
         date: receivedDate,
         items: receivedItems,
@@ -670,9 +750,9 @@ export default function NewAdminReceiptPage() {
         total: receivedTotals.total,
       };
 
-      const hasGivenItems = givenItems.some((item) => item.productName);
       const status = hasGivenItems ? "completed" : "incomplete";
 
+      // Prepare receipt data
       const receiptData = {
         clientId: selectedClient.id,
         clientName: selectedClient.name,
@@ -687,6 +767,7 @@ export default function NewAdminReceiptPage() {
       };
 
       if (id) {
+        // Update existing receipt
         await adminReceiptApi.updateAdminReceipt(id, {
           received: receivedData,
           status,
@@ -698,6 +779,7 @@ export default function NewAdminReceiptPage() {
           },
         });
       } else {
+        // Create new receipt
         if (hasGivenItems) {
           receiptData.given = {
             date: givenDate,
@@ -716,9 +798,13 @@ export default function NewAdminReceiptPage() {
         }
       }
 
+      setClientBalance(newBalance);
+
       toast({
         title: "Success",
-        description: "Received items saved successfully",
+        description: `Received items saved successfully. New balance: ${newBalance.toFixed(
+          2
+        )}`,
       });
 
       setManualReceivedTotal(receivedTotals.total);
@@ -734,17 +820,6 @@ export default function NewAdminReceiptPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="container py-6 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-lg">Loading receipt data...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container py-6">
       <Button
@@ -752,20 +827,29 @@ export default function NewAdminReceiptPage() {
         className="mb-6"
         onClick={() => navigate("/admin-receipts")}
       >
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Admin Receipts
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Work Receipts
       </Button>
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold">
           {!selectedClient
-            ? "Admin Receipt - Select Client"
-            : `Admin Receipt for: ${selectedClient.name}`}
+            ? "Work Receipt - Select Client"
+            : `Work Receipt for: ${selectedClient.name}`}
         </h1>
         <p className="text-muted-foreground">
           {selectedClient
             ? "Manage given and received items. Data will be saved to the database."
             : "Filter and select a client. Client data is loaded from the database."}
         </p>
+        {selectedClient && (
+          <div className="mt-4 p-4 border rounded-md bg-muted/50">
+            <div className="flex justify-between items-center">
+              <div className="font-medium text-lg">
+                Current Balance: {clientBalance.toFixed(2)}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {!selectedClient ? (
@@ -817,6 +901,7 @@ export default function NewAdminReceiptPage() {
                             <div>Shop: {client.shopName}</div>
                             <div>Phone: {client.phoneNumber}</div>
                             <div>Address: {client.address}</div>
+                            <div>Balance: {client.balance.toFixed(2)}</div>
                           </div>
                         </div>
                         <Button
@@ -843,7 +928,7 @@ export default function NewAdminReceiptPage() {
             <CardHeader className="flex flex-row items-start justify-between">
               <div>
                 <CardTitle className="text-xl">
-                  Admin Receipt for: {selectedClient.name}
+                  Work Receipt for: {selectedClient.name}
                 </CardTitle>
                 <CardDescription>
                   Manage given and received items. Data will be saved to the
@@ -898,13 +983,26 @@ export default function NewAdminReceiptPage() {
 
                     <div className="p-4">
                       <div className="space-y-4">
-                        {givenItems.map((item, index) => (
+                        {/* Table Header */}
+                        <div className="hidden md:grid grid-cols-7 gap-4 p-3 bg-muted/50 rounded-md">
+                          <div className="col-span-2 font-medium">
+                            Product Name
+                          </div>
+                          <div className="font-medium">Pure Weight</div>
+                          <div className="font-medium">Pure %</div>
+                          <div className="font-medium">Melting</div>
+                          <div className="font-medium">Total</div>
+                          <div className="font-medium">Action</div>
+                        </div>
+
+                        {/* Table Rows */}
+                        {givenItems.map((item) => (
                           <div
                             key={item.id}
-                            className="grid grid-cols-1 md:grid-cols-5 gap-4 p-3 border rounded-md"
+                            className="grid grid-cols-1 md:grid-cols-7 gap-3 p-2 border rounded-md"
                           >
                             <div className="md:col-span-2">
-                              <label className="text-sm font-medium mb-1 block">
+                              <label className="text-sm font-medium mb-1 block md:hidden">
                                 Product Name
                               </label>
                               <Input
@@ -920,7 +1018,7 @@ export default function NewAdminReceiptPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">
+                              <label className="text-sm font-medium mb-1 block md:hidden">
                                 Pure Weight
                               </label>
                               <Input
@@ -937,7 +1035,7 @@ export default function NewAdminReceiptPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">
+                              <label className="text-sm font-medium mb-1 block md:hidden">
                                 Pure %
                               </label>
                               <Input
@@ -954,43 +1052,51 @@ export default function NewAdminReceiptPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">
+                              <label className="text-sm font-medium mb-1 block md:hidden">
                                 Melting
                               </label>
-                              <div className="flex items-center">
-                                <Input
-                                  type="number"
-                                  placeholder="Melting"
-                                  value={item.melting}
-                                  onChange={(e) =>
-                                    updateGivenItem(
-                                      item.id,
-                                      "melting",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="flex-1"
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeGivenItem(item.id)}
-                                  className="ml-2"
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                              <Input
+                                type="number"
+                                placeholder="Melting"
+                                value={item.melting}
+                                onChange={(e) =>
+                                  updateGivenItem(
+                                    item.id,
+                                    "melting",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium mb-1 block md:hidden">
+                                Total
+                              </label>
+                              <div className="font-medium">
+                                {item.total.toFixed(2)}
                               </div>
                             </div>
-                            <div className="md:col-span-5 flex justify-between items-center pt-2 border-t">
-                              <div className="text-sm text-muted-foreground">
-                                Item {index + 1}
-                              </div>
-                              <div className="font-medium">
-                                Total: {item.total.toFixed(2)}
-                              </div>
+                            <div className="flex items-center">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeGivenItem(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
                             </div>
                           </div>
                         ))}
+
+                        {/* Totals Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
+                          <div className="md:col-span-2">Totals</div>
+                          <div>{givenTotals.totalPureWeight.toFixed(2)}</div>
+                          <div>-</div>
+                          <div>-</div>
+                          <div>{givenTotals.total.toFixed(2)}</div>
+                          <div></div>
+                        </div>
 
                         <Button
                           variant="outline"
@@ -1001,35 +1107,24 @@ export default function NewAdminReceiptPage() {
                         </Button>
                       </div>
 
-                      <div className="mt-6 p-4 border rounded-md bg-muted/50">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">
-                              Total Pure Weight:{" "}
-                              {givenTotals.totalPureWeight.toFixed(2)}
-                            </div>
-                            <div className="font-medium mt-1">
-                              Total: {givenTotals.total.toFixed(2)}
-                            </div>
-                          </div>
-                          <Button
-                            className="bg-yellow-400 hover:bg-yellow-500 text-black"
-                            onClick={saveGivenData}
-                            disabled={isSubmittingGiven}
-                          >
-                            {isSubmittingGiven ? (
-                              <>
-                                <Loader className="mr-2 h-4 w-4 animate-spin" />{" "}
-                                Saving...
-                              </>
-                            ) : (
-                              <>
-                                <Save className="mr-2 h-4 w-4" /> Save Given
-                                Items
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                      {/* Save Button Section */}
+                      <div className="mt-6 flex justify-end">
+                        <Button
+                          className="bg-yellow-400 hover:bg-yellow-500 text-black"
+                          onClick={saveGivenData}
+                          disabled={isSubmittingGiven}
+                        >
+                          {isSubmittingGiven ? (
+                            <>
+                              <Loader className="mr-2 h-4 w-4 animate-spin" />{" "}
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" /> Save Given Items
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1068,13 +1163,26 @@ export default function NewAdminReceiptPage() {
 
                     <div className="p-4">
                       <div className="space-y-4">
-                        {receivedItems.map((item, index) => (
+                        {/* Table Header */}
+                        <div className="hidden md:grid grid-cols-7 gap-4 p-3 bg-muted/50 rounded-md">
+                          <div className="col-span-2 font-medium">
+                            Product Name
+                          </div>
+                          <div className="font-medium">Final Ornaments Wt</div>
+                          <div className="font-medium">Stone Weight</div>
+                          <div className="font-medium">Touch %</div>
+                          <div className="font-medium">SubTotal</div>
+                          <div className="font-medium">Action</div>
+                        </div>
+
+                        {/* Table Rows */}
+                        {receivedItems.map((item) => (
                           <div
                             key={item.id}
-                            className="grid grid-cols-1 md:grid-cols-5 gap-4 p-3 border rounded-md"
+                            className="grid grid-cols-1 md:grid-cols-7 gap-4 p-3 border rounded-md"
                           >
                             <div className="md:col-span-2">
-                              <label className="text-sm font-medium mb-1 block">
+                              <label className="text-sm font-medium mb-1 block md:hidden">
                                 Product Name
                               </label>
                               <Input
@@ -1090,7 +1198,7 @@ export default function NewAdminReceiptPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">
+                              <label className="text-sm font-medium mb-1 block md:hidden">
                                 Final Ornaments Wt
                               </label>
                               <Input
@@ -1107,7 +1215,7 @@ export default function NewAdminReceiptPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">
+                              <label className="text-sm font-medium mb-1 block md:hidden">
                                 Stone Weight
                               </label>
                               <Input
@@ -1124,48 +1232,55 @@ export default function NewAdminReceiptPage() {
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium mb-1 block">
-                                Making Charge %
+                              <label className="text-sm font-medium mb-1 block md:hidden">
+                                Touch %
                               </label>
-                              <div className="flex items-center">
-                                <Input
-                                  type="number"
-                                  placeholder="Making Charge %"
-                                  value={item.makingChargePercent}
-                                  onChange={(e) =>
-                                    updateReceivedItem(
-                                      item.id,
-                                      "makingChargePercent",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="flex-1"
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeReceivedItem(item.id)}
-                                  className="ml-2"
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                              <Input
+                                type="number"
+                                placeholder="Touch %"
+                                value={item.makingChargePercent}
+                                onChange={(e) =>
+                                  updateReceivedItem(
+                                    item.id,
+                                    "makingChargePercent",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium mb-1 block md:hidden">
+                                SubTotal
+                              </label>
+                              <div className="font-medium">
+                                {item.subTotal.toFixed(2)}
                               </div>
                             </div>
-                            <div className="md:col-span-5 grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
-                              <div className="text-sm text-muted-foreground">
-                                Item {index + 1}
-                              </div>
-                              <div className="text-right">
-                                <div className="text-sm">
-                                  SubTotal: {item.subTotal.toFixed(2)}
-                                </div>
-                                <div className="font-medium">
-                                  Total: {item.total.toFixed(2)}
-                                </div>
-                              </div>
+                            <div className="flex items-center">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeReceivedItem(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
                             </div>
                           </div>
                         ))}
+
+                        {/* Totals Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
+                          <div className="md:col-span-2">Totals</div>
+                          <div>
+                            {receivedTotals.totalOrnamentsWt.toFixed(2)}
+                          </div>
+                          <div>
+                            {receivedTotals.totalStoneWeight.toFixed(2)}
+                          </div>
+                          <div>-</div>
+                          <div>{receivedTotals.totalSubTotal.toFixed(2)}</div>
+                          <div></div>
+                        </div>
 
                         <Button
                           variant="outline"
@@ -1176,24 +1291,11 @@ export default function NewAdminReceiptPage() {
                         </Button>
                       </div>
 
+                      {/* Grand Total and Save Button */}
                       <div className="mt-6 p-4 border rounded-md bg-muted/50">
                         <div className="flex justify-between items-center">
-                          <div>
-                            <div className="text-sm">
-                              Total Ornaments Wt:{" "}
-                              {receivedTotals.totalOrnamentsWt.toFixed(2)}
-                            </div>
-                            <div className="text-sm">
-                              Total Stone Weight:{" "}
-                              {receivedTotals.totalStoneWeight.toFixed(2)}
-                            </div>
-                            <div className="text-sm">
-                              Total SubTotal:{" "}
-                              {receivedTotals.totalSubTotal.toFixed(2)}
-                            </div>
-                            <div className="font-medium mt-1">
-                              Total: {receivedTotals.total.toFixed(2)}
-                            </div>
+                          <div className="font-medium">
+                            Grand Total: {receivedTotals.total.toFixed(2)}
                           </div>
                           <Button
                             className="bg-yellow-400 hover:bg-yellow-500 text-black"

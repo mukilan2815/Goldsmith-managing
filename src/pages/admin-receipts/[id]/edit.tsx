@@ -72,14 +72,14 @@ interface AdminReceipt {
   };
 }
 
-// Admin Receipt API functions
+// Work Receipt API functions
 const adminReceiptApi = {
   getAdminReceiptById: async (id: string): Promise<AdminReceipt> => {
     try {
       const response = await api.get(`/admin-receipts/${id}`);
       return response.data as AdminReceipt;
     } catch (error) {
-      console.error(`Error fetching admin receipt ${id}:`, error);
+      console.error(`Error fetching Work Receipt ${id}:`, error);
       throw error;
     }
   },
@@ -91,7 +91,7 @@ const adminReceiptApi = {
       const response = await api.put(`/admin-receipts/${id}`, data);
       return response.data as AdminReceipt;
     } catch (error) {
-      console.error(`Error updating admin receipt ${id}:`, error);
+      console.error(`Error updating Work Receipt ${id}:`, error);
       throw error;
     }
   },
@@ -414,7 +414,7 @@ export default function EditAdminReceiptPage() {
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Edit Admin Receipt</h1>
+            <h1 className="text-2xl font-bold">Edit Work Receipt</h1>
             <p className="text-gray-500">Voucher ID: {receipt.voucherId}</p>
           </div>
           <div className="flex gap-2">
