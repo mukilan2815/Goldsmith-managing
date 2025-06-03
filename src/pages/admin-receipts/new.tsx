@@ -1418,7 +1418,7 @@ export default function NewAdminReceiptPage() {
                           <tbody>
                             <tr>
                               <td className="py-2">
-                                {receivedTotals.totalOrnamentsWt.toFixed(2)} g
+                                {receivedTotals.total.toFixed(2)}{" "}
                               </td>
                               <td className="py-2">
                                 {clientBalance.toFixed(2)}
@@ -1435,10 +1435,10 @@ export default function NewAdminReceiptPage() {
                             </tr>
                             <tr className="border-t">
                               <td className="py-2"></td>
-                              <td className="py-2">
+                              {/* <td className="py-2">
                                 = {clientBalance.toFixed(2)} -{" "}
                                 {receivedTotals.total.toFixed(2)}
-                              </td>
+                              </td> */}
                               <td className="py-2">
                                 ={" "}
                                 {(clientBalance - receivedTotals.total).toFixed(
