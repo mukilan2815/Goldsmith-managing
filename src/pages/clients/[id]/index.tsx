@@ -1180,7 +1180,7 @@ export default function ClientDetailsPage() {
                           <TableHead>Product</TableHead>
                           <TableHead>Final Weight</TableHead>
                           <TableHead>Stone Weight</TableHead>
-                          <TableHead>Making Charge %</TableHead>
+                          <TableHead>Touch</TableHead>
                           <TableHead>Sub Total</TableHead>
                           <TableHead>Total</TableHead>
                         </TableRow>

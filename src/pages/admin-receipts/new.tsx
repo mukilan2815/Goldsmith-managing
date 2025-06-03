@@ -338,13 +338,14 @@ export default function NewAdminReceiptPage() {
           setReceivedDate(new Date(receipt.received.date));
         }
         if (
-          Array.isArray(receipt.received.items) &&
+          Array.isArray(received.received.items) &&
           receipt.received.items.length > 0
         ) {
           setReceivedItems(
             receipt.received.items.map((item: any) => ({
               ...item,
               id: item.id || uuidv4(),
+              subTotal: (parseFloat(item.finalOrnamentsWt) || 0) + (parseFloat(item.stoneWeight) || 0),
             }))
           );
         }
@@ -439,7 +440,6 @@ export default function NewAdminReceiptPage() {
             const purePercent = parseFloat(updatedItem.purePercent) || 0;
             const melting = parseFloat(updatedItem.melting) || 1;
 
-            // Assuming total is in grams for consistency with balance
             updatedItem.total = (pureWeight * purePercent) / melting;
           }
 
@@ -497,7 +497,7 @@ export default function NewAdminReceiptPage() {
             const makingChargePercent =
               parseFloat(updatedItem.makingChargePercent) || 0;
 
-            updatedItem.subTotal = finalOrnamentsWt - stoneWeight;
+            updatedItem.subTotal = finalOrnamentsWt + stoneWeight;
             updatedItem.total =
               updatedItem.subTotal * (1 + makingChargePercent / 100);
           }
@@ -755,7 +755,7 @@ export default function NewAdminReceiptPage() {
         total: receivedTotals.total,
       };
 
-      const status = hasGivenItems ? "completed" : "incomplete";
+      const status = hasGivenItems ? "received" : "incomplete";
 
       // Prepare receipt data
       const receiptData = {
@@ -798,7 +798,7 @@ export default function NewAdminReceiptPage() {
           receiptData
         );
         if (newReceipt && newReceipt._id) {
-          navigate(`/admin-receipts/${newReceipt._id}`, { replace: true });
+          navigate(`/admin-received/${newReceipt._id}`, { replace: true });
         }
       }
 
@@ -813,10 +813,10 @@ export default function NewAdminReceiptPage() {
       });
     } catch (error: any) {
       toast({
-        variant: "destructive",
         title: "Error",
         description:
           error.response?.data?.message || "Failed to save received items",
+        variant: "destructive",
       });
     } finally {
       setIsSubmittingReceived(false);
@@ -828,9 +828,9 @@ export default function NewAdminReceiptPage() {
       <Button
         variant="ghost"
         className="mb-6"
-        onClick={() => navigate("/admin-receipts")}
+        onClick={() => navigate("/admin-received")}
       >
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Work Receipts
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Receipts
       </Button>
 
       <div className="mb-8">
@@ -1174,7 +1174,7 @@ export default function NewAdminReceiptPage() {
                     <div className="p-4">
                       <div className="space-y-4">
                         {/* Table Header */}
-                        <div className="hidden md:grid grid-cols-7 gap-4 p-3 bg-muted/50 rounded-md">
+                        <div className="hidden md:grid grid-cols-8 gap-4 p-3 bg-muted/50 rounded-md">
                           <div className="col-span-2 font-medium">
                             Product Name
                           </div>
@@ -1183,6 +1183,7 @@ export default function NewAdminReceiptPage() {
                           </div>
                           <div className="font-medium">Stone Weight (g)</div>
                           <div className="font-medium">Making Charge %</div>
+                          <div className="font-medium">Subtotal (g)</div>
                           <div className="font-medium">Total (g)</div>
                           <div className="font-medium">Action</div>
                         </div>
@@ -1191,7 +1192,7 @@ export default function NewAdminReceiptPage() {
                         {receivedItems.map((item) => (
                           <div
                             key={item.id}
-                            className="grid grid-cols-1 md:grid-cols-7 gap-4 p-3 border rounded-md"
+                            className="grid grid-cols-1 md:grid-cols-8 gap-4 p-3 border rounded-md"
                           >
                             <div className="md:col-span-2">
                               <label className="text-sm font-medium mb-1 block md:hidden">
@@ -1249,11 +1250,11 @@ export default function NewAdminReceiptPage() {
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
-                                Touch
+                                Making Charge %
                               </label>
                               <Input
                                 type="number"
-                                placeholder="Touch"
+                                placeholder="Making Charge %"
                                 value={item.makingChargePercent}
                                 min="0"
                                 step="0.01"
@@ -1265,6 +1266,14 @@ export default function NewAdminReceiptPage() {
                                   )
                                 }
                               />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium mb-1 block md:hidden">
+                                Subtotal (g)
+                              </label>
+                              <div className="font-medium">
+                                {item.subTotal.toFixed(2)}
+                              </div>
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">
@@ -1287,7 +1296,7 @@ export default function NewAdminReceiptPage() {
                         ))}
 
                         {/* Totals Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
+                        <div className="grid grid-cols-1 md:grid-cols-7 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
                           <div className="md:col-span-2">Totals</div>
                           <div>
                             {receivedTotals.totalOrnamentsWt.toFixed(2)}
@@ -1296,6 +1305,7 @@ export default function NewAdminReceiptPage() {
                             {receivedTotals.totalStoneWeight.toFixed(2)}
                           </div>
                           <div>-</div>
+                          <div>{receivedTotals.totalSubTotal.toFixed(2)}</div>
                           <div>{receivedTotals.total.toFixed(2)}</div>
                           <div></div>
                         </div>

@@ -581,7 +581,7 @@ export default function EditAdminReceiptPage() {
             "Final Ornaments Wt",
             "Stone Weight",
             "Sub Total",
-            "Making Charge %",
+            "Touch",
             "Total",
           ],
         ],
@@ -940,7 +940,7 @@ export default function EditAdminReceiptPage() {
                     Sub Total (g)
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
-                    Making Charge %
+                    Touch
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Total (g)
