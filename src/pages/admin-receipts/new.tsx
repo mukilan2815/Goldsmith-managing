@@ -798,7 +798,7 @@ export default function NewAdminReceiptPage() {
           receiptData
         );
         if (newReceipt && newReceipt._id) {
-          navigate(`/admin-received/${newReceipt._id}`, { replace: true });
+          navigate(`/admin-receipts/${newReceipt._id}`, { replace: true });
         }
       }
 
