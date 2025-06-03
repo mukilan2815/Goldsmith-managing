@@ -1133,26 +1133,24 @@ export default function NewAdminReceiptPage() {
                             <tbody>
                               <tr>
                                 <td className="py-2">
-                                  {givenTotals.total.toFixed(2)} g
+                                  {givenTotals.total.toFixed(3)} g
                                 </td>
                                 <td className="py-2">
-                                  {clientBalance.toFixed(2)}
+                                  {clientBalance.toFixed(3)}
                                 </td>
                                 <td className="py-2">
-                                  {clientBalance.toFixed(2)} +{" "}
-                                  {givenTotals.total.toFixed(2)}
+                                  {clientBalance.toFixed(3)} +{" "}
+                                  {givenTotals.total.toFixed(3)}
                                 </td>
                                 <td className="py-2">
                                   {(clientBalance + givenTotals.total).toFixed(
-                                    2
+                                    3
                                   )}
                                 </td>
                               </tr>
                               <tr className="border-t">
                                 <td className="py-2"></td>
-                                <td className="py-2">
-                                 
-                                </td>
+                                <td className="py-2"></td>
                                 <td className="py-2">
                                   ={" "}
                                   {(clientBalance + givenTotals.total).toFixed(
@@ -1417,18 +1415,18 @@ export default function NewAdminReceiptPage() {
                           <tbody>
                             <tr>
                               <td className="py-2">
-                                {receivedTotals.total.toFixed(2)}{" "}
+                                {receivedTotals.total.toFixed(3)}{" "}
                               </td>
                               <td className="py-2">
-                                {clientBalance.toFixed(2)}
+                                {clientBalance.toFixed(3)}
                               </td>
                               <td className="py-2">
-                                {clientBalance.toFixed(2)} -{" "}
-                                {receivedTotals.total.toFixed(2)}
+                                {clientBalance.toFixed(3)} -{" "}
+                                {receivedTotals.total.toFixed(3)}
                               </td>
                               <td className="py-2">
                                 {(clientBalance - receivedTotals.total).toFixed(
-                                  2
+                                  3
                                 )}
                               </td>
                             </tr>
@@ -1442,7 +1440,7 @@ export default function NewAdminReceiptPage() {
                               <td className="py-2">
                                 ={" "}
                                 {(clientBalance - receivedTotals.total).toFixed(
-                                  2
+                                  3
                                 )}
                               </td>
                             </tr>
@@ -1468,7 +1466,8 @@ export default function NewAdminReceiptPage() {
                   </label>
                   <Input
                     type="number"
-                    value={manualGivenTotal}
+                    // value={manualGivenTotal}
+                    placeholder={manualGivenTotal.toFixed(3)}
                     min="0"
                     step="0.01"
                     onChange={(e) =>
@@ -1500,9 +1499,10 @@ export default function NewAdminReceiptPage() {
                   </label>
                   <Input
                     type="number"
-                    value={manualReceivedTotal}
+                    // value={manualReceivedTotal.toFixed(3)}
+                    placeholder={manualReceivedTotal.toFixed(3)}
                     min="0"
-                    step="0.01"
+                    step="0.001"
                     onChange={(e) =>
                       setManualReceivedTotal(parseFloat(e.target.value) || 0)
                     }
