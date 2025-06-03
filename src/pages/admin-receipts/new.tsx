@@ -345,7 +345,7 @@ export default function NewAdminReceiptPage() {
             receipt.received.items.map((item: any) => ({
               ...item,
               id: item.id || uuidv4(),
-              subTotal: (parseFloat(item.finalOrnamentsWt) || 0) + (parseFloat(item.stoneWeight) || 0),
+              subTotal: (parseFloat(item.finalOrnamentsWt) || 0) - (parseFloat(item.stoneWeight) || 0),
             }))
           );
         }
