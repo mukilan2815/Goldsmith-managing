@@ -35,19 +35,22 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { ReceiptItem } from "@/models/Receipt";
 import { receiptServices } from "@/services/receipt-services";
-import { clientServices } from "@/services/api"; // Import client services
+import { clientServices } from "@/services/api";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Validation schema
 const receiptItemSchema = z.object({
-  description: z.string().min(1, { message: "Description is required" }),
+  itemName: z.string().min(1, { message: "Item name is required" }),
   tag: z.string().optional(),
-  grossWeight: z.coerce.number().positive({ message: "Must be positive" }),
-  stoneWeight: z.coerce.number().min(0, { message: "Cannot be negative" }),
+  grossWt: z.coerce.number().positive({ message: "Gross weight is required" }),
+  stoneWt: z.coerce.number().min(0, { message: "Cannot be negative" }),
   meltingTouch: z.coerce
     .number()
     .min(0, { message: "Min 0%" })
     .max(100, { message: "Max 100%" }),
-  stoneAmount: z.coerce
+  netWt: z.coerce.number().optional(),
+  finalWt: z.coerce.number().optional(),
+  stoneAmt: z.coerce
     .number()
     .min(0, { message: "Cannot be negative" })
     .optional(),
@@ -58,17 +61,17 @@ const receiptFormSchema = z.object({
     required_error: "Date is required",
   }),
   metalType: z.string().min(1, { message: "Metal type is required" }),
-  overallWeight: z.coerce
-    .number()
-    .positive({ message: "Must be positive" })
-    .optional(),
+  overallWeight: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : Number(val)),
+    z.number().nonnegative({ message: "Must be 0 or positive" }).optional()
+  ),
   unit: z.string().optional(),
   items: z
     .array(receiptItemSchema)
     .min(1, { message: "Add at least one item" })
     .refine(
       (items) => {
-        return items.every((item) => item.stoneWeight <= item.grossWeight);
+        return items.every((item) => item.stoneWt <= item.grossWt);
       },
       {
         message: "Stone weight cannot exceed gross weight",
@@ -109,41 +112,117 @@ export function ReceiptForm({
   const [items, setItems] = useState<ReceiptItem[]>([
     {
       id: uuidv4(),
-      description: "",
+      itemName: "Item 1", // Default valid name
       tag: "",
-      grossWeight: 0,
-      stoneWeight: 0,
-      meltingTouch: 0,
-      rate: 0,
-      netWeight: 0,
-      finalWeight: 0,
-      amount: 0,
-      stoneAmount: 0,
+      grossWt: 1, // Default valid gross weight
+      stoneWt: 0,
+      meltingTouch: 100,
+      netWt: 1,
+      finalWt: 1,
+      stoneAmt: 0,
     },
   ]);
   const [overallWeight, setOverallWeight] = useState(0);
+  const [activeTab, setActiveTab] = useState<"given" | "received">("given");
+  const [receivedItems, setReceivedItems] = useState([
+    {
+      id: uuidv4(),
+      receivedGold: 0,
+      melting: 0,
+      finalWt: 0,
+    },
+  ]);
+  const [clientBalance, setClientBalance] = useState(0);
 
   // Get client from location state or props
-  const [client, setClient] = useState(propClient || location.state?.client);
+  const [client, setClient] = useState(() => {
+    const c = propClient || location.state?.client;
+    if (!c) return undefined;
+    // If id is missing but _id exists, normalize
+    return { ...c, id: c.id || c._id };
+  });
   const [isLoadingClient, setIsLoadingClient] = useState(false);
 
-  // If client ID is in URL params, fetch client data
+  // Helper to extract balance from MongoDB Extended JSON
+  function extractBalance(balance: any): number {
+    if (typeof balance === "number") return balance;
+    if (balance && typeof balance === "object") {
+      if ("$numberInt" in balance) return parseInt(balance.$numberInt, 10);
+      if ("$numberDouble" in balance) return parseFloat(balance.$numberDouble);
+      if ("$numberLong" in balance) return parseInt(balance.$numberLong, 10);
+    }
+    return 0;
+  }
+
+  // Fetch client data and balance when client changes
+  useEffect(() => {
+    const fetchClientData = async () => {
+      if (!client?.id) return;
+      setIsLoadingClient(true);
+      try {
+        // Fetch client details
+        const clientResponse = await clientServices.getClient(client.id);
+        if (clientResponse && clientResponse.client) {
+          const clientData = {
+            id: clientResponse.client._id,
+            clientName: clientResponse.client.clientName,
+            shopName: clientResponse.client.shopName,
+            phoneNumber: clientResponse.client.phoneNumber,
+            address: clientResponse.client.address || "",
+          };
+          setClient(clientData);
+
+          // Use balance from client object (extract value)
+          const balanceValue = extractBalance(clientResponse.client.balance);
+          setClientBalance(balanceValue);
+
+          // Always add Previous Balance row for any non-zero balance
+          if (
+            balanceValue !== 0 &&
+            !items.some((item) => item.tag === "BALANCE")
+          ) {
+            setItems([
+              {
+                id: uuidv4(),
+                itemName: "Previous Balance",
+                tag: "BALANCE",
+                grossWt: balanceValue, // use the real value, can be negative
+                stoneWt: 0,
+                meltingTouch: 100,
+                netWt: balanceValue,
+                finalWt: balanceValue,
+                stoneAmt: 0,
+              },
+              ...items,
+            ]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching client data:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load client data. Please try again.",
+        });
+      } finally {
+        setIsLoadingClient(false);
+      }
+    };
+    fetchClientData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // If client ID is in URL params but not in state/props, fetch client data
   useEffect(() => {
     const fetchClientIfNeeded = async () => {
-      // If we already have client data, no need to fetch
       if (client) return;
-
-      // Check if client ID is in URL
       const urlParams = new URLSearchParams(window.location.search);
       const clientId = urlParams.get("clientId");
-
       if (clientId) {
         setIsLoadingClient(true);
         try {
-          // Fetch client data using the ID
           const response = await clientServices.getClient(clientId);
           if (response && response.client) {
-            // Format client data to match expected structure
             const clientData = {
               id: response.client._id,
               clientName: response.client.clientName,
@@ -152,8 +231,28 @@ export function ReceiptForm({
               address: response.client.address || "",
             };
             setClient(clientData);
-          } else {
-            throw new Error("Client not found");
+            // Use balance from client object (extract value)
+            const balanceValue = extractBalance(response.client.balance);
+            setClientBalance(balanceValue);
+            if (
+              balanceValue !== 0 &&
+              !items.some((item) => item.tag === "BALANCE")
+            ) {
+              setItems([
+                {
+                  id: uuidv4(),
+                  itemName: "Previous Balance",
+                  tag: "BALANCE",
+                  grossWt: balanceValue, // use the real value, can be negative
+                  stoneWt: 0,
+                  meltingTouch: 100,
+                  netWt: balanceValue,
+                  finalWt: balanceValue,
+                  stoneAmt: 0,
+                },
+                ...items,
+              ]);
+            }
           }
         } catch (error) {
           console.error("Error fetching client:", error);
@@ -163,13 +262,11 @@ export function ReceiptForm({
             description:
               "Failed to load client data. Please select a client again.",
           });
-          // Redirect to client selection page
           navigate(previousPath);
         } finally {
           setIsLoadingClient(false);
         }
       } else if (!location.state?.client) {
-        // No client ID in URL and no client in state, redirect to selection
         toast({
           variant: "destructive",
           title: "No Client Selected",
@@ -178,11 +275,11 @@ export function ReceiptForm({
         navigate(previousPath);
       }
     };
-
     fetchClientIfNeeded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propClient, location.state, navigate, previousPath, toast]);
 
-  // Generate a real voucher ID when component mounts
+  // Generate voucher ID
   useEffect(() => {
     const fetchVoucherId = async () => {
       try {
@@ -192,10 +289,8 @@ export function ReceiptForm({
         }
       } catch (error) {
         console.error("Error fetching voucher ID:", error);
-        // Keep the randomly generated one if API fails
       }
     };
-
     fetchVoucherId();
   }, []);
 
@@ -216,16 +311,15 @@ export function ReceiptForm({
 
   // Calculate derived values
   const calculateDerivedValues = (
-    grossWeight: number,
-    stoneWeight: number,
+    grossWt: number,
+    stoneWt: number,
     meltingTouch: number
   ) => {
-    const netWeight = grossWeight - stoneWeight;
-    const finalWeight = (netWeight * meltingTouch) / 100;
-
+    const netWt = grossWt - stoneWt;
+    const finalWt = (netWt * meltingTouch) / 100;
     return {
-      netWeight,
-      finalWeight,
+      netWt,
+      finalWt,
     };
   };
 
@@ -233,18 +327,15 @@ export function ReceiptForm({
   const addItem = () => {
     const newItem: ReceiptItem = {
       id: uuidv4(),
-      description: "",
+      itemName: `Item ${items.length + 1}`,
       tag: "",
-      grossWeight: 0,
-      stoneWeight: 0,
-      meltingTouch: 0,
-      rate: 0,
-      netWeight: 0,
-      finalWeight: 0,
-      amount: 0,
-      stoneAmount: 0,
+      grossWt: 1,
+      stoneWt: 0,
+      meltingTouch: 100,
+      netWt: 1,
+      finalWt: 1,
+      stoneAmt: 0,
     };
-
     setItems([...items, newItem]);
   };
 
@@ -267,20 +358,52 @@ export function ReceiptForm({
       items.map((item) => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
-
-          // Recalculate derived values if needed
-          if (["grossWeight", "stoneWeight", "meltingTouch"].includes(field)) {
-            const { netWeight, finalWeight } = calculateDerivedValues(
-              field === "grossWeight" ? value : item.grossWeight,
-              field === "stoneWeight" ? value : item.stoneWeight,
+          if (["grossWt", "stoneWt", "meltingTouch"].includes(field)) {
+            const { netWt, finalWt } = calculateDerivedValues(
+              field === "grossWt" ? value : item.grossWt,
+              field === "stoneWt" ? value : item.stoneWt,
               field === "meltingTouch" ? value : item.meltingTouch
             );
-
-            updatedItem.netWeight = netWeight;
-            updatedItem.finalWeight = finalWeight;
+            updatedItem.netWt = netWt;
+            updatedItem.finalWt = finalWt;
           }
-
           return updatedItem;
+        }
+        return item;
+      })
+    );
+  };
+
+  // Add a new received item row
+  const addReceivedItem = () => {
+    setReceivedItems([
+      ...receivedItems,
+      { id: uuidv4(), receivedGold: 0, melting: 0, finalWt: 0 },
+    ]);
+  };
+
+  // Remove a received item row
+  const removeReceivedItem = (id: string) => {
+    if (receivedItems.length > 1) {
+      setReceivedItems(receivedItems.filter((item) => item.id !== id));
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Cannot remove",
+        description: "At least one item is required",
+      });
+    }
+  };
+
+  // Update a received item field
+  const updateReceivedItem = (id: string, field: string, value: any) => {
+    setReceivedItems(
+      receivedItems.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          updated.finalWt =
+            (Number(updated.receivedGold) * Number(updated.melting)) / 100;
+          return updated;
         }
         return item;
       })
@@ -291,11 +414,11 @@ export function ReceiptForm({
   const totals = items.reduce(
     (acc, item) => {
       return {
-        grossWeight: acc.grossWeight + (Number(item.grossWeight) || 0),
-        stoneWeight: acc.stoneWeight + (Number(item.stoneWeight) || 0),
-        netWeight: acc.netWeight + (Number(item.netWeight) || 0),
-        finalWeight: acc.finalWeight + (Number(item.finalWeight) || 0),
-        stoneAmount: acc.stoneAmount + (Number(item.stoneAmount) || 0),
+        grossWeight: acc.grossWeight + (Number(item.grossWt) || 0),
+        stoneWeight: acc.stoneWeight + (Number(item.stoneWt) || 0),
+        netWeight: acc.netWeight + (Number(item.netWt) || 0),
+        finalWeight: acc.finalWeight + (Number(item.finalWt) || 0),
+        stoneAmount: acc.stoneAmount + (Number(item.stoneAmt) || 0),
       };
     },
     {
@@ -307,12 +430,27 @@ export function ReceiptForm({
     }
   );
 
+  // Calculate received totals
+  const receivedTotals = receivedItems.reduce(
+    (acc, item) => {
+      const finalWt = (Number(item.receivedGold) * Number(item.melting)) / 100;
+      return {
+        finalWt: acc.finalWt + finalWt,
+      };
+    },
+    { finalWt: 0 }
+  );
+
+  // Calculate balance and new client balance
+  const balance = totals.finalWeight - receivedTotals.finalWt;
+  const newClientBalance = clientBalance + balance;
+
   const handleSaveClick = async () => {
-    // Set loading state
     setIsSubmitting(true);
     try {
-      // Validate client exists - using _id property
-      if (!client || !client._id) {
+      // Get client ID (support both id and _id)
+      const clientId = client?.id || client?._id;
+      if (!client || !clientId) {
         toast({
           variant: "destructive",
           title: "Missing Client",
@@ -322,99 +460,202 @@ export function ReceiptForm({
         return;
       }
 
-      // Get form values
-      const formValues = form.getValues();
-      console.log("Form values:", formValues);
+      // Validate form
+      const isValid = await form.trigger();
+      if (!isValid) {
+        const errorMessages = Object.entries(form.formState.errors)
+          .map(([field, error]) => {
+            if (field === "items" && Array.isArray(error?.message)) {
+              // Zod array errors: error.message is an array of errors for each item
+              return (
+                "items:\n" +
+                error.message
+                  .map((itemErr: any, idx: number) =>
+                    itemErr
+                      ? `  Row ${idx + 1}: ` +
+                        Object.values(itemErr)
+                          .map((e: any) => e?.message)
+                          .filter(Boolean)
+                          .join(", ")
+                      : ""
+                  )
+                  .filter(Boolean)
+                  .join("\n")
+              );
+            }
+            if (typeof error === "object" && error && "message" in error) {
+              // @ts-ignore
+              return `${field}: ${error.message}`;
+            }
+            return `${field}: Invalid`;
+          })
+          .join("\n");
 
-      // Validate required fields
-      const formState = form.getFieldState("items");
-      if (formState.invalid) {
-        form.handleSubmit(() => {})(); // Trigger validation without submission
+        console.error("Form validation errors:", errorMessages);
+        toast({
+          variant: "destructive",
+          title: "Form Errors",
+          description: "Please fix all errors before saving.",
+        });
         setIsSubmitting(false);
         return;
       }
 
-      // Format data for API
-      const formattedData = {
-        clientId: client._id,
-        metalType: formValues.metalType, // Add as top-level property
+      // Validate items
+      const itemValidationErrors = items
+        .map((item, index) => {
+          const errors: Record<string, string> = {};
+          if (!item.itemName?.trim()) {
+            errors.itemName = "Item name is required";
+          }
+          if (!(item.grossWt > 0)) {
+            errors.grossWt = "Gross weight must be positive";
+          }
+          if (item.stoneWt > item.grossWt) {
+            errors.stoneWt = "Stone weight cannot exceed gross weight";
+          }
+          return { index, errors };
+        })
+        .filter((item) => Object.keys(item.errors).length > 0);
+
+      if (itemValidationErrors.length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Item Validation Errors",
+          description: "Please correct all item errors before saving.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const formValues = form.getValues();
+
+      // Calculate totals with proper decimal precision
+      const calculateTotals = (items: ReceiptItem[]) =>
+        items.reduce(
+          (acc, item) => ({
+            grossWeight:
+              acc.grossWeight + (parseFloat(item.grossWt.toString()) || 0),
+            stoneWeight:
+              acc.stoneWeight + (parseFloat(item.stoneWt.toString()) || 0),
+            netWeight: acc.netWeight + (parseFloat(item.netWt.toString()) || 0),
+            finalWeight:
+              acc.finalWeight + (parseFloat(item.finalWt.toString()) || 0),
+            stoneAmount:
+              acc.stoneAmount + (parseFloat(item.stoneAmt.toString()) || 0),
+          }),
+          {
+            grossWeight: 0,
+            stoneWeight: 0,
+            netWeight: 0,
+            finalWeight: 0,
+            stoneAmount: 0,
+          }
+        );
+
+      const totals = calculateTotals(items);
+      const receivedTotals = receivedItems.reduce(
+        (acc, item) => ({
+          finalWt: acc.finalWt + (parseFloat(item.finalWt.toString()) || 0),
+        }),
+        { finalWt: 0 }
+      );
+
+      const balance = parseFloat(
+        (totals.finalWeight - receivedTotals.finalWt).toFixed(3)
+      );
+      const newClientBalance = parseFloat((clientBalance + balance).toFixed(3));
+
+      // Prepare receipt data
+      const receiptData = {
+        clientId,
+        metalType: formValues.metalType,
         clientInfo: {
           clientName: client.clientName,
-          shopName: client.shopName,
-          phoneNumber: client.phoneNumber,
+          shopName: client.shopName || "",
+          phoneNumber: client.phoneNumber || "",
           metalType: formValues.metalType,
         },
-        overallWeight: formValues.overallWeight,
         issueDate: formValues.date.toISOString(),
-        voucherId: voucherId,
-        tableData: items.map((item) => ({
-          itemName: item.description,
-          description: item.description,
+        voucherId,
+        givenItems: items.map((item) => ({
+          itemName: item.itemName,
           tag: item.tag || "",
-          grossWt: parseFloat(item.grossWeight.toString()),
-          stoneWt: parseFloat(item.stoneWeight.toString()),
-          meltingTouch: parseFloat(item.meltingTouch.toString()), // Use meltingTouch as the source
-          netWt: parseFloat(item.netWeight.toString()),
-          finalWt: parseFloat(item.finalWeight.toString()),
-          stoneAmt: parseFloat(item.stoneAmount?.toString()),
+          grossWt: parseFloat(item.grossWt.toString()),
+          stoneWt: parseFloat(item.stoneWt.toString()),
+          meltingTouch: parseFloat(item.meltingTouch.toString()),
+          netWt: parseFloat(item.netWt.toString()),
+          finalWt: parseFloat(item.finalWt.toString()),
+          stoneAmt: parseFloat(item.stoneAmt.toString()),
+        })),
+        receivedItems: receivedItems.map((item) => ({
+          receivedGold: parseFloat(item.receivedGold.toString()),
+          melting: parseFloat(item.melting.toString()),
+          finalWt: parseFloat(item.finalWt.toString()),
         })),
         totals: {
-          grossWt: totals.grossWeight,
-          stoneWt: totals.stoneWeight,
-          netWt: totals.netWeight,
-          finalWt: totals.finalWeight,
-          stoneAmt: totals.stoneAmount,
+          grossWt: parseFloat(totals.grossWeight.toFixed(3)),
+          stoneWt: parseFloat(totals.stoneWeight.toFixed(3)),
+          netWt: parseFloat(totals.netWeight.toFixed(3)),
+          finalWt: parseFloat(totals.finalWeight.toFixed(3)),
+          stoneAmt: parseFloat(totals.stoneAmount.toFixed(2)),
         },
+        balance,
+        previousBalance: parseFloat(clientBalance.toFixed(3)),
+        newBalance: newClientBalance,
       };
-      console.log("Sending data to API:", formattedData);
 
-      // Updated API URL with correct port (5000)
-      const API_URL = "http://localhost:5000/api/receipts";
-      console.log("Using API URL:", API_URL);
+      // First update client balance via API
+      const balanceUpdateResponse = await clientServices.updateClient(
+        clientId,
+        {
+          balance: newClientBalance,
+          balanceDescription: `Receipt ${voucherId} adjustment`,
+        }
+      );
 
-      // Make API call with the correct URL
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formattedData),
-      });
-
-      // Handle response
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API error response:", errorText);
-        throw new Error(`API error: ${response.status} ${errorText}`);
+      if (!balanceUpdateResponse || !balanceUpdateResponse._id) {
+        console.error("Update client balance error:", balanceUpdateResponse);
+        throw new Error("Failed to update client balance");
       }
 
-      const result = await response.json();
-      console.log("API success response:", result);
+      // Then create the receipt
+      const receiptResponse = await receiptServices.createReceipt(receiptData);
 
-      if (!result.success) {
-        console.error("API returned error:", result.message);
-        throw new Error(result.message || "Failed to save receipt");
+      if (!receiptResponse?.success) {
+        throw new Error(receiptResponse?.message || "Failed to save receipt");
       }
 
-      // Show success message
+      // Update local client balance state
+      setClientBalance(newClientBalance);
+
       toast({
         title: "Success",
-        description: `Receipt saved successfully with ID: ${result.data._id}`,
+        description: `Receipt ${voucherId} saved. New balance: ${newClientBalance}g`,
       });
 
-      // Navigate to receipt details page
-      navigate(`/receipts/${result.data._id}`);
+      // Redirect to receipt detail
+      if (receiptResponse.data?._id) {
+        navigate(`/receipts/${receiptResponse.data._id}`);
+      } else {
+        navigate("/receipts");
+      }
     } catch (error) {
-      console.error("Error saving receipt:", error);
+      console.error("Receipt submission error:", error);
 
-      // Show error message
+      let errorMessage = "Failed to save receipt. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+
       toast({
         variant: "destructive",
-        title: "Error Saving Receipt",
-        description:
-          error.message || "Failed to save receipt. Please try again.",
+        title: "Error",
+        description: errorMessage,
       });
-
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -445,6 +686,9 @@ export function ReceiptForm({
               </span>
               <span>
                 <strong>Phone:</strong> {client.phoneNumber}
+              </span>
+              <span>
+                <strong>Current Balance:</strong> {clientBalance.toFixed(3)}g
               </span>
             </div>
           </div>
@@ -583,180 +827,357 @@ export function ReceiptForm({
           </div>
         </div>
 
-        {/* Items Table */}
-        <div className="bg-background/50 p-6 rounded-md border">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium">Items</h3>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addItem}
-              className="flex items-center"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Add Item
-            </Button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-muted/50">
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Description
-                  </th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Tag
-                  </th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Gross Wt.
-                  </th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Stone Wt.
-                  </th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Net Wt.
-                  </th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Melting %
-                  </th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Final Wt.
-                  </th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Stone Amt.
-                  </th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-b">
-                    <td className="p-2">
-                      <Input
-                        placeholder="Item description"
-                        value={item.description}
-                        onChange={(e) =>
-                          updateItem(item.id, "description", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td className="p-2">
-                      <Input
-                        placeholder="Tag"
-                        value={item.tag}
-                        onChange={(e) =>
-                          updateItem(item.id, "tag", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td className="p-2">
-                      <Input
-                        type="number"
-                        placeholder="0.000"
-                        step="0.01"
-                        min="0"
-                        onChange={(e) =>
-                          updateItem(
-                            item.id,
-                            "grossWeight",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="p-2">
-                      <Input
-                        type="number"
-                        placeholder="0.000"
-                        step="0.01"
-                        min="0"
-                        onChange={(e) =>
-                          updateItem(
-                            item.id,
-                            "stoneWeight",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="p-2">
-                      <Input
-                        readOnly
-                        value={item.netWeight.toFixed(3)}
-                        className="bg-muted/30"
-                      />
-                    </td>
-                    <td className="p-2">
-                      <Input
-                        type="number"
-                        placeholder="0.000"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        onChange={(e) =>
-                          updateItem(
-                            item.id,
-                            "meltingTouch",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="p-2">
-                      <Input
-                        readOnly
-                        value={item.finalWeight.toFixed(3)}
-                        className="bg-muted/30"
-                      />
-                    </td>
-                    <td className="p-2">
-                      <Input
-                        type="number"
-                        placeholder="0.000"
-                        step="0.01"
-                        min="0"
-                        onChange={(e) =>
-                          updateItem(
-                            item.id,
-                            "stoneAmount",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="p-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeItem(item.id)}
-                      >
-                        <Trash className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-                <tr className="bg-muted/30 font-medium">
-                  <td colSpan={2} className="p-2 text-right">
-                    Totals:
-                  </td>
-                  <td className="p-2">{totals.grossWeight.toFixed(3)}</td>
-                  <td className="p-2">{totals.stoneWeight.toFixed(3)}</td>
-                  <td className="p-2">{totals.netWeight.toFixed(3)}</td>
-                  <td className="p-2">
-                    {items
-                      .map((item) => item.meltingTouch)
-                      .reduce((acc, curr) => acc + (curr || 0), 0)}
-                  </td>
-                  <td className="p-2">{totals.finalWeight.toFixed(3)}</td>
-                  <td className="p-2">{totals.stoneAmount.toFixed(3)}</td>
-                  <td className="p-2"></td>
-                </tr>
-              </tbody>
-            </table>
+        {/* Tabs for Given Items and Received Items */}
+        <Tabs
+          defaultValue="given"
+          value={activeTab}
+          onValueChange={(val) => setActiveTab(val as "given" | "received")}
+        >
+          <TabsList className="mb-4">
+            <TabsTrigger value="given">Given Items</TabsTrigger>
+            <TabsTrigger value="received">Received Items</TabsTrigger>
+          </TabsList>
+          <TabsContent value="given">
+            {/* Given Items Table (existing code) */}
+            <div className="bg-background/50 p-6 rounded-md border">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">Items</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addItem}
+                  className="flex items-center"
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add Item
+                </Button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Description
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Tag
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Gross Wt.
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Stone Wt.
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Melting %
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Net Wt.
+                      </th>
+
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Final Wt.
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Stone Amt.
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, idx) => {
+                      const itemErrors =
+                        form.formState.errors.items?.[idx] || {};
+                      return (
+                        <tr key={item.id} className="border-b">
+                          <td className="p-2">
+                            <Input
+                              placeholder="Item name"
+                              value={item.itemName}
+                              onChange={(e) =>
+                                updateItem(item.id, "itemName", e.target.value)
+                              }
+                            />
+                            {itemErrors.itemName && (
+                              <div className="text-xs text-destructive mt-1">
+                                {itemErrors.itemName.message}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              placeholder="Tag"
+                              value={item.tag}
+                              onChange={(e) =>
+                                updateItem(item.id, "tag", e.target.value)
+                              }
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              placeholder="0.000"
+                              step="0.01"
+                              min="0"
+                              value={item.grossWt}
+                              onChange={(e) =>
+                                updateItem(
+                                  item.id,
+                                  "grossWt",
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                            />
+                            {itemErrors.grossWt && (
+                              <div className="text-xs text-destructive mt-1">
+                                {itemErrors.grossWt.message}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              placeholder="0.000"
+                              step="0.01"
+                              min="0"
+                              value={item.stoneWt}
+                              onChange={(e) =>
+                                updateItem(
+                                  item.id,
+                                  "stoneWt",
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              placeholder="0.000"
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              value={item.meltingTouch}
+                              onChange={(e) =>
+                                updateItem(
+                                  item.id,
+                                  "meltingTouch",
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              readOnly
+                              value={item.netWt.toFixed(3)}
+                              className="bg-muted/30"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              readOnly
+                              value={item.finalWt.toFixed(3)}
+                              className="bg-muted/30"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              placeholder="0.000"
+                              step="0.01"
+                              min="0"
+                              value={item.stoneAmt}
+                              onChange={(e) =>
+                                updateItem(
+                                  item.id,
+                                  "stoneAmt",
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeItem(item.id)}
+                            >
+                              <Trash className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-muted/30 font-medium">
+                      <td colSpan={2} className="p-2 text-right">
+                        Totals:
+                      </td>
+                      <td className="p-2">{totals.grossWeight.toFixed(3)}</td>
+                      <td className="p-2">{totals.stoneWeight.toFixed(3)}</td>
+                      <td className="p-2">{totals.netWeight.toFixed(3)}</td>
+                      <td className="p-2">
+                        {items
+                          .map((item) => item.meltingTouch)
+                          .reduce((acc, curr) => acc + (curr || 0), 0)}
+                      </td>
+                      <td className="p-2">{totals.finalWeight.toFixed(3)}</td>
+                      <td className="p-2">{totals.stoneAmount.toFixed(3)}</td>
+                      <td className="p-2"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="received">
+            <div className="bg-background/50 p-6 rounded-md border">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">Received Items</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addReceivedItem}
+                  className="flex items-center"
+                >
+                  <Plus className="mr-1 h-4 w-4" /> Add Received Item
+                </Button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        S.No
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Received Gold
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Melting
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Final Wt.
+                      </th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {receivedItems.map((item, idx) => (
+                      <tr key={item.id} className="border-b">
+                        <td className="p-2">{idx + 1}</td>
+                        <td className="p-2">
+                          <Input
+                            type="number"
+                            placeholder="0.000"
+                            step="0.01"
+                            min="0"
+                            value={item.receivedGold}
+                            onChange={(e) =>
+                              updateReceivedItem(
+                                item.id,
+                                "receivedGold",
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Input
+                            type="number"
+                            placeholder="0.000"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            value={item.melting}
+                            onChange={(e) =>
+                              updateReceivedItem(
+                                item.id,
+                                "melting",
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Input
+                            readOnly
+                            value={(
+                              (Number(item.receivedGold) *
+                                Number(item.melting)) /
+                              100
+                            ).toFixed(3)}
+                            className="bg-muted/30"
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeReceivedItem(item.id)}
+                          >
+                            <Trash className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-muted/30 font-medium">
+                      <td colSpan={3} className="p-2 text-right">
+                        Totals:
+                      </td>
+                      <td className="p-2">
+                        {receivedTotals.finalWt.toFixed(3)}
+                      </td>
+                      <td className="p-2"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Show balance summary */}
+        <div className="bg-background/50 p-4 rounded-md border mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-muted/10 p-3 rounded-md">
+              <div className="text-sm text-muted-foreground">
+                Previous Balance
+              </div>
+              <div className="text-lg font-semibold">
+                {clientBalance.toFixed(3)}g
+              </div>
+            </div>
+            <div className="bg-muted/10 p-3 rounded-md">
+              <div className="text-sm text-muted-foreground">
+                Given Final Wt.
+              </div>
+              <div className="text-lg font-semibold">
+                {totals.finalWeight.toFixed(3)}g
+              </div>
+            </div>
+            <div className="bg-muted/10 p-3 rounded-md">
+              <div className="text-sm text-muted-foreground">
+                Received Final Wt.
+              </div>
+              <div className="text-lg font-semibold">
+                {receivedTotals.finalWt.toFixed(3)}g
+              </div>
+            </div>
+            <div className="bg-primary/10 p-3 rounded-md">
+              <div className="text-sm text-primary">New Client Balance</div>
+              <div className="text-lg font-semibold text-primary">
+                {newClientBalance.toFixed(3)}g
+              </div>
+            </div>
           </div>
         </div>
 
