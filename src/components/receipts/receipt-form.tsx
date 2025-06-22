@@ -649,7 +649,7 @@ export function ReceiptForm({
       // 9) Success toast & navigation
       toast({
         title: "Success",
-        description: `Receipt ${voucherId} saved. New balance: ${newClientBalance}g`,
+        description: `Receipt ${voucherId} saved.`,
       });
       navigate(`/receipts/${receiptResponse.data._id}`);
     } catch (error) {
