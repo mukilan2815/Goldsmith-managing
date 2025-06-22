@@ -20,12 +20,12 @@ const quickLinks = [
     icon: <Users className="h-4 w-4" />,
   },
   {
-    title: "Client Receipt",
+    title: "Shop Reciept ",
     href: "/receipts/select-client",
     icon: <Receipt className="h-4 w-4" />,
   },
   {
-    title: "Client Bills",
+    title: "Shop Bill",
     href: "/receipts",
     icon: <FileText className="h-4 w-4" />,
   },

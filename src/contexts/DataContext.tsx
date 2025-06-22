@@ -132,7 +132,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       const data = await receiptServices.getClientReceipts(clientId);
       return data;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch client receipts';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Shop receipts';
       toast({
         title: 'Error',
         description: errorMessage,
