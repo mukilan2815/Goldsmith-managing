@@ -2,7 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import NotFound from "./pages/NotFound";
@@ -32,6 +38,16 @@ import ClientBillsPage from "./pages/client-bills";
 
 const queryClient = new QueryClient();
 
+// Auth wrapper for protected routes
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const location = useLocation();
+  if (!isLoggedIn) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <DataProvider>
@@ -41,11 +57,18 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<DashboardLayout />}>
+            <Route
+              path="/"
+              element={
+                <RequireAuth>
+                  <DashboardLayout />
+                </RequireAuth>
+              }
+            >
               <Route index element={<Dashboard />} />
 
               {/* Client Routes */}
-              <Route path="clients" element={<CustomerDetailsPage />} />  
+              <Route path="clients" element={<CustomerDetailsPage />} />
               <Route path="clients/new" element={<NewClientPage />} />
               <Route path="clients/:id" element={<ClientDetailsPage />} />
               <Route path="clients/:id/edit" element={<EditClientPage />} />

@@ -116,7 +116,7 @@ export function ReceiptForm({
       tag: "",
       grossWt: 1, // Default valid gross weight
       stoneWt: 0,
-      meltingTouch: 100,
+      meltingTouch: 10,
       netWt: 1,
       finalWt: 1,
       stoneAmt: 0,
@@ -445,221 +445,224 @@ export function ReceiptForm({
   const balance = totals.finalWeight - receivedTotals.finalWt;
   const newClientBalance = clientBalance + balance;
 
+  const balanceToAdd = clientBalance;
+
+  <div className="bg-muted/10 p-3 rounded-md">
+    <div className="text-sm text-muted-foreground">Final Wt. + Balance</div>
+    <div className="text-lg font-semibold">
+      {(totals.finalWeight + balanceToAdd).toFixed(3)}g
+    </div>
+  </div>;
+
   const handleSaveClick = async () => {
     setIsSubmitting(true);
+
     try {
-      // Get client ID (support both id and _id)
-      const clientId = client?.id || client?._id;
+      // 1) Ensure client exists
+      const clientId = client?.id ?? client?._id;
       if (!client || !clientId) {
         toast({
           variant: "destructive",
           title: "Missing Client",
           description: "Please select a client before creating a receipt.",
         });
-        setIsSubmitting(false);
-        return;
+        return setIsSubmitting(false);
       }
 
-      // Validate form
-      const isValid = await form.trigger();
-      if (!isValid) {
-        const errorMessages = Object.entries(form.formState.errors)
-          .map(([field, error]) => {
-            if (field === "items" && Array.isArray(error?.message)) {
-              // Zod array errors: error.message is an array of errors for each item
-              return (
-                "items:\n" +
-                error.message
-                  .map((itemErr: any, idx: number) =>
-                    itemErr
-                      ? `  Row ${idx + 1}: ` +
-                        Object.values(itemErr)
-                          .map((e: any) => e?.message)
-                          .filter(Boolean)
-                          .join(", ")
-                      : ""
-                  )
-                  .filter(Boolean)
-                  .join("\n")
-              );
-            }
-            if (typeof error === "object" && error && "message" in error) {
-              // @ts-ignore
-              return `${field}: ${error.message}`;
-            }
-            return `${field}: Invalid`;
-          })
-          .join("\n");
-
-        console.error("Form validation errors:", errorMessages);
+      // 2) Trigger form‐level validation
+      const formIsValid = await form.trigger();
+      if (!formIsValid) {
+        console.error("Form validation errors:", form.formState.errors);
         toast({
           variant: "destructive",
           title: "Form Errors",
           description: "Please fix all errors before saving.",
         });
-        setIsSubmitting(false);
-        return;
+        return setIsSubmitting(false);
       }
 
-      // Validate items
-      const itemValidationErrors = items
-        .map((item, index) => {
-          const errors: Record<string, string> = {};
-          if (!item.itemName?.trim()) {
-            errors.itemName = "Item name is required";
-          }
-          if (!(item.grossWt > 0)) {
-            errors.grossWt = "Gross weight must be positive";
-          }
-          if (item.stoneWt > item.grossWt) {
-            errors.stoneWt = "Stone weight cannot exceed gross weight";
-          }
-          return { index, errors };
-        })
-        .filter((item) => Object.keys(item.errors).length > 0);
+      // 3) Validate each given item (skip BALANCE rows)
+      const itemValidationErrors = [];
+      items.forEach((item, idx) => {
+        if (item.tag?.toUpperCase() === "BALANCE") return;
 
-      if (itemValidationErrors.length > 0) {
+        const rowErrors = [];
+        const gross = Number(item.grossWt);
+        const stone = Number(item.stoneWt);
+        const melt = Number(item.meltingTouch);
+
+        if (!item.itemName?.trim()) {
+          rowErrors.push("Item name is required");
+        }
+        if (!Number.isFinite(gross) || gross <= 0) {
+          rowErrors.push("Gross weight must be positive");
+        }
+        if (!Number.isFinite(stone) || stone < 0) {
+          rowErrors.push("Stone weight cannot be negative");
+        }
+        if (!Number.isFinite(melt) || melt < 0 || melt > 100) {
+          rowErrors.push("Melting % must be between 0 and 100");
+        }
+        if (stone > gross) {
+          rowErrors.push("Stone weight cannot exceed gross weight");
+        }
+
+        if (rowErrors.length > 0) {
+          itemValidationErrors.push(`Row ${idx + 1}: ${rowErrors.join(", ")}`);
+        }
+      });
+
+      if (itemValidationErrors.length) {
         toast({
           variant: "destructive",
           title: "Item Validation Errors",
-          description: "Please correct all item errors before saving.",
+          description: itemValidationErrors.join("\n"),
         });
-        setIsSubmitting(false);
-        return;
+        return setIsSubmitting(false);
       }
 
-      const formValues = form.getValues();
+      // 4) Validate received items with detailed error handling
+      console.log("Raw receivedItems:", receivedItems); // Debug log
+      const receivedInvalid = receivedItems.some((r, idx) => {
+        const errors = [];
+        const recGold = r.receivedGold;
+        const recMelt = r.melting;
+        const recFinal = r.finalWt;
 
-      // Calculate totals with proper decimal precision
-      const calculateTotals = (items: ReceiptItem[]) =>
-        items.reduce(
-          (acc, item) => ({
-            grossWeight:
-              acc.grossWeight + (parseFloat(item.grossWt.toString()) || 0),
-            stoneWeight:
-              acc.stoneWeight + (parseFloat(item.stoneWt.toString()) || 0),
-            netWeight: acc.netWeight + (parseFloat(item.netWt.toString()) || 0),
-            finalWeight:
-              acc.finalWeight + (parseFloat(item.finalWt.toString()) || 0),
-            stoneAmount:
-              acc.stoneAmount + (parseFloat(item.stoneAmt.toString()) || 0),
-          }),
-          {
-            grossWeight: 0,
-            stoneWeight: 0,
-            netWeight: 0,
-            finalWeight: 0,
-            stoneAmount: 0,
+        // Validate receivedGold
+        if (recGold === undefined || recGold === "" || recGold === null) {
+          errors.push(`Row ${idx + 1}: Received gold is missing or empty`);
+        } else {
+          const numGold = Number(recGold);
+          if (!Number.isFinite(numGold) || numGold < 0) {
+            errors.push(
+              `Row ${idx + 1}: Received gold must be a positive number`
+            );
           }
-        );
+        }
 
-      const totals = calculateTotals(items);
-      const receivedTotals = receivedItems.reduce(
-        (acc, item) => ({
-          finalWt: acc.finalWt + (parseFloat(item.finalWt.toString()) || 0),
-        }),
-        { finalWt: 0 }
+        // Validate melting
+        if (recMelt === undefined || recMelt === "" || recMelt === null) {
+          errors.push(`Row ${idx + 1}: Melting is missing or empty`);
+        } else {
+          const numMelt = Number(recMelt);
+          if (!Number.isFinite(numMelt) || numMelt < 0 || numMelt > 100) {
+            errors.push(`Row ${idx + 1}: Melting % must be between 0 and 100`);
+          }
+        }
+
+        // Validate finalWt
+        if (recFinal === undefined || recFinal === "" || recFinal === null) {
+          errors.push(`Row ${idx + 1}: Final weight is missing or empty`);
+        } else {
+          const numFinal = Number(recFinal);
+          if (!Number.isFinite(numFinal) || numFinal < 0) {
+            errors.push(`Row ${idx + 1}: Final weight must be non-negative`);
+          }
+        }
+
+        if (errors.length > 0) {
+          console.log(
+            `Validation errors for received item ${idx + 1}:`,
+            errors
+          ); // Debug log
+          toast({
+            variant: "destructive",
+            title: "Invalid Received Items",
+            description: errors.join("\n"),
+          });
+          return true;
+        }
+        return false;
+      });
+
+      if (receivedInvalid) {
+        return setIsSubmitting(false);
+      }
+
+      // 5) Compute totals
+      let totalGross = 0,
+        totalStone = 0,
+        totalNet = 0,
+        totalFinal = 0,
+        totalStoneAmt = 0,
+        receivedFinal = 0;
+
+      items.forEach((it) => {
+        totalGross += parseFloat(it.grossWt.toString()) || 0;
+        totalStone += parseFloat(it.stoneWt.toString()) || 0;
+        totalNet += parseFloat(it.netWt.toString()) || 0;
+        totalFinal += parseFloat(it.finalWt.toString()) || 0;
+        totalStoneAmt += parseFloat(it.stoneAmt.toString()) || 0;
+      });
+      receivedItems.forEach((r) => {
+        receivedFinal += parseFloat(r.finalWt.toString()) || 0;
+      });
+
+      const balanceChange = parseFloat((totalFinal - receivedFinal).toFixed(3));
+      const newClientBalance = parseFloat(
+        (clientBalance + balanceChange).toFixed(3)
       );
 
-      const balance = parseFloat(
-        (totals.finalWeight - receivedTotals.finalWt).toFixed(3)
-      );
-      const newClientBalance = parseFloat((clientBalance + balance).toFixed(3));
-
-      // Prepare receipt data
-      const receiptData = {
+      // 6) Build payload for backend
+      const payload = {
         clientId,
-        metalType: formValues.metalType,
         clientInfo: {
           clientName: client.clientName,
           shopName: client.shopName || "",
           phoneNumber: client.phoneNumber || "",
-          metalType: formValues.metalType,
+          address: client.address || "",
         },
-        issueDate: formValues.date.toISOString(),
+        metalType: form.getValues().metalType,
+        issueDate: form.getValues().date.toISOString(),
         voucherId,
-        givenItems: items.map((item) => ({
-          itemName: item.itemName,
-          tag: item.tag || "",
-          grossWt: parseFloat(item.grossWt.toString()),
-          stoneWt: parseFloat(item.stoneWt.toString()),
-          meltingTouch: parseFloat(item.meltingTouch.toString()),
-          netWt: parseFloat(item.netWt.toString()),
-          finalWt: parseFloat(item.finalWt.toString()),
-          stoneAmt: parseFloat(item.stoneAmt.toString()),
+        givenItems: items.map((it) => ({
+          itemName: it.itemName,
+          tag: it.tag || "",
+          grossWt: parseFloat(it.grossWt.toString()),
+          stoneWt: parseFloat(it.stoneWt.toString()),
+          meltingTouch: parseFloat(it.meltingTouch.toString()),
+          netWt: parseFloat(it.netWt.toString()),
+          finalWt: parseFloat(it.finalWt.toString()),
+          stoneAmt: parseFloat(it.stoneAmt.toString()),
         })),
-        receivedItems: receivedItems.map((item) => ({
-          receivedGold: parseFloat(item.receivedGold.toString()),
-          melting: parseFloat(item.melting.toString()),
-          finalWt: parseFloat(item.finalWt.toString()),
+        receivedItems: receivedItems.map((r) => ({
+          receivedGold: parseFloat(r.receivedGold.toString()),
+          melting: parseFloat(r.melting.toString()),
+          finalWt: parseFloat(r.finalWt.toString()),
         })),
-        totals: {
-          grossWt: parseFloat(totals.grossWeight.toFixed(3)),
-          stoneWt: parseFloat(totals.stoneWeight.toFixed(3)),
-          netWt: parseFloat(totals.netWeight.toFixed(3)),
-          finalWt: parseFloat(totals.finalWeight.toFixed(3)),
-          stoneAmt: parseFloat(totals.stoneAmount.toFixed(2)),
-        },
-        balance,
         previousBalance: parseFloat(clientBalance.toFixed(3)),
-        newBalance: newClientBalance,
       };
 
-      // First update client balance via API
-      const balanceUpdateResponse = await clientServices.updateClient(
-        clientId,
-        {
-          balance: newClientBalance,
-          balanceDescription: `Receipt ${voucherId} adjustment`,
-        }
-      );
+      // 7) Update client balance first
+      await clientServices.updateClient(clientId, {
+        balance: newClientBalance,
+        balanceDescription: `Receipt ${voucherId} adjustment`,
+      });
 
-      if (!balanceUpdateResponse || !balanceUpdateResponse._id) {
-        console.error("Update client balance error:", balanceUpdateResponse);
-        throw new Error("Failed to update client balance");
-      }
-
-      // Then create the receipt
-      const receiptResponse = await receiptServices.createReceipt(receiptData);
-
+      // 8) Create receipt
+      const receiptResponse = await receiptServices.createReceipt(payload);
       if (!receiptResponse?.success) {
         throw new Error(receiptResponse?.message || "Failed to save receipt");
       }
 
-      // Update local client balance state
-      setClientBalance(newClientBalance);
-
+      // 9) Success toast & navigation
       toast({
         title: "Success",
         description: `Receipt ${voucherId} saved. New balance: ${newClientBalance}g`,
       });
-
-      // Redirect to receipt detail
-      if (receiptResponse.data?._id) {
-        navigate(`/receipts/${receiptResponse.data._id}`);
-      } else {
-        navigate("/receipts");
-      }
+      navigate(`/receipts/${receiptResponse.data._id}`);
     } catch (error) {
-      console.error("Receipt submission error:", error);
-
-      let errorMessage = "Failed to save receipt. Please try again.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      }
-
+      const msg = error instanceof Error ? error.message : String(error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: errorMessage,
+        description: msg,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-
   // If still loading client data, show loading state
   if (isLoadingClient) {
     return (
@@ -687,9 +690,20 @@ export function ReceiptForm({
               <span>
                 <strong>Phone:</strong> {client.phoneNumber}
               </span>
-              <span>
-                <strong>Current Balance:</strong> {clientBalance.toFixed(3)}g
-              </span>
+              <span></span>
+              {Array.isArray(location.state?.client?.balanceHistory) &&
+                location.state.client.balanceHistory.length > 0 && (
+                  <span>
+                    <strong> Balance :</strong>{" "}
+                    {(() => {
+                      const last =
+                        location.state.client.balanceHistory[
+                          location.state.client.balanceHistory.length - 1
+                        ];
+                      return `${last.amount > 0 ? "+" : ""}${last.amount}`;
+                    })()}
+                  </span>
+                )}
             </div>
           </div>
         )}
@@ -1150,14 +1164,6 @@ export function ReceiptForm({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-muted/10 p-3 rounded-md">
               <div className="text-sm text-muted-foreground">
-                Previous Balance
-              </div>
-              <div className="text-lg font-semibold">
-                {clientBalance.toFixed(3)}g
-              </div>
-            </div>
-            <div className="bg-muted/10 p-3 rounded-md">
-              <div className="text-sm text-muted-foreground">
                 Given Final Wt.
               </div>
               <div className="text-lg font-semibold">
@@ -1176,6 +1182,14 @@ export function ReceiptForm({
               <div className="text-sm text-primary">New Client Balance</div>
               <div className="text-lg font-semibold text-primary">
                 {newClientBalance.toFixed(3)}g
+              </div>
+            </div>
+            <div className="bg-muted/10 p-3 rounded-md">
+              <div className="text-sm text-muted-foreground">
+                Final Wt. + Balance
+              </div>
+              <div className="text-lg font-semibold">
+                {(totals.finalWeight + balanceToAdd).toFixed(3)}g
               </div>
             </div>
           </div>

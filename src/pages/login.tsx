@@ -1,102 +1,81 @@
-
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LoginForm } from "@/components/auth/login-form";
-import { SignupForm } from "@/components/auth/signup-form";
 import { Logo } from "@/components/logo";
 
-export default function Login() {
+const LOGIN_ID = "SG";
+const LOGIN_PASS = "7007";
+
+const Login: React.FC = () => {
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // If already logged in, redirect to dashboard
+    if (localStorage.getItem("isLoggedIn") === "true") {
+      navigate("/");
+    }
+  }, [navigate]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userId === LOGIN_ID && password === LOGIN_PASS) {
+      localStorage.setItem("isLoggedIn", "true");
+      setError("");
+      navigate("/");
+    } else {
+      setError("Invalid ID or password");
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left side with background image - Decorative panel */}
-      <div className="hidden md:flex md:w-1/2 bg-[url('https://images.unsplash.com/photo-1618001789159-ffffe6f96ef2?q=80&w=1287&auto=format&fit=crop')] bg-cover bg-center">
-        <div className="w-full h-full bg-black/30 flex flex-col justify-between p-10">
-          <div>
-            <Logo size="lg" className="text-white" />
-          </div>
-          <div className="max-w-md">
-            <h2 className="text-white font-serif text-3xl mb-4">
-              Goldsmith Business Management System
-            </h2>
-            <p className="text-white/80">
-              Precision tools for professionals in the jewelry industry.
-              Track inventory, manage clients, and streamline your goldsmith business.
-            </p>
-          </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm bg-white p-8 rounded shadow-md border">
+        <div className="flex justify-between items-center mb-6">
+          <Logo size="md" />
+          <ThemeToggle />
         </div>
-      </div>
-
-      {/* Right side with login form */}
-      <div className="flex-1 flex flex-col">
-        <div className="flex justify-between items-center p-6">
-          <div className="md:hidden">
-            <Logo size="md" />
+        <h1 className="text-2xl font-serif font-bold mb-2 text-center">
+          Goldsmith Login
+        </h1>
+        <p className="text-muted-foreground text-center mb-6">
+          Sign in to your account
+        </p>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block mb-1 font-medium">User ID</label>
+            <Input
+              type="text"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder="Enter ID"
+              required
+            />
           </div>
-          <div className="ml-auto">
-            <ThemeToggle />
+          <div className="mb-4">
+            <label className="block mb-1 font-medium">Password</label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter Password"
+              required
+            />
           </div>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10">
-          <div className="w-full max-w-md">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-serif font-bold mb-2">
-                Welcome to GoldCraft
-              </h1>
-              <p className="text-muted-foreground">
-                Sign in to your account or create a new one
-              </p>
-            </div>
-
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-8">
-                <TabsTrigger value="login">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Create Account</TabsTrigger>
-              </TabsList>
-              <TabsContent value="login">
-                <LoginForm />
-                <p className="text-center text-sm text-muted-foreground mt-6">
-                  Don't have an account?{" "}
-                  <Link
-                    to="#"
-                    className="text-gold hover:text-gold-dark underline underline-offset-4"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const element = document.querySelector('[data-value="signup"]');
-                      if (element instanceof HTMLElement) {
-                        element.click();
-                      }
-                    }}
-                  >
-                    Sign up
-                  </Link>
-                </p>
-              </TabsContent>
-              <TabsContent value="signup">
-                <SignupForm />
-                <p className="text-center text-sm text-muted-foreground mt-6">
-                  Already have an account?{" "}
-                  <Link
-                    to="#"
-                    className="text-gold hover:text-gold-dark underline underline-offset-4"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const element = document.querySelector('[data-value="login"]');
-                      if (element instanceof HTMLElement) {
-                        element.click();
-                      }
-                    }}
-                  >
-                    Sign in
-                  </Link>
-                </p>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+          {error && (
+            <div className="text-red-500 mb-4 text-center">{error}</div>
+          )}
+          <Button type="submit" className="w-full">
+            Login
+          </Button>
+        </form>
       </div>
     </div>
   );
-}
+};
+
+export default Login;

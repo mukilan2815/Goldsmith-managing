@@ -463,15 +463,14 @@ export default function ReceiptDetailsPage() {
                       {parseFloat(receipt.data.totals?.stoneAmt).toFixed(2)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {receipt.data.givenItems &&
-                      receipt.data.givenItems.length > 0
-                        ? Number(
-                            receipt.data.givenItems.reduce(
+                      {receipt.data.items && receipt.data.items.length > 0
+                        ? receipt.data.items
+                            .reduce(
                               (acc, item) =>
                                 acc + Number(item.meltingTouch || 0),
                               0
                             )
-                          ).toFixed(2)
+                            .toFixed(2)
                         : "0.00"}
                     </td>
                   </tr>
