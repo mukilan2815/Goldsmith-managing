@@ -33,7 +33,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // API configuration
-const API_BASE_URL = "https://backend-goldsmith.onrender.com/api";
+const API_BASE_URL = "http://localhost:5000/api";
 const CLIENT_RECEIPTS_URL = `${API_BASE_URL}/receipts`;
 const ADMIN_RECEIPTS_URL = `${API_BASE_URL}/admin-receipts`;
 
@@ -429,248 +429,78 @@ const generateAdminReceiptPDF = (receipt: AdminReceipt) => {
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
 
-  // Professional Header
-  doc.setFillColor(15, 23, 42); // Slate 900
-  doc.rect(0, 0, pageWidth, 50, "F");
-
-  doc.setTextColor(255, 255, 255);
+  // Title
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
-  doc.text("GOLDEN TOUCH JEWELERS", pageWidth / 2, 20, { align: "center" });
+  doc.setFontSize(16);
+  doc.text(`Work Receipt: ${receipt.voucherId}`, margin, 20);
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
-  doc.text("Premium Goldsmith Services", pageWidth / 2, 30, {
-    align: "center",
-  });
-
+  // Sub Info
   doc.setFontSize(10);
-  doc.text("Administrative Receipt", pageWidth / 2, 42, { align: "center" });
-
-  // Receipt Information Box
-  doc.setTextColor(0, 0, 0);
-  doc.setFillColor(241, 245, 249);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(margin, 60, contentWidth, 35, "FD");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("RECEIPT DETAILS", margin + 8, 70);
-
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.text(`Client: ${receipt.clientName}`, margin, 30);
+  doc.text(`Status: ${receipt.status}`, margin, 36);
+  doc.text(
+    `Date: ${new Date(receipt.given.date).toLocaleDateString()}`,
+    margin,
+    42
+  );
 
-  // Two column layout for receipt info
-  const col1X = margin + 8;
-  const col2X = pageWidth / 2 + 10;
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Receipt #:", col1X, 78);
-  doc.text("Date:", col1X, 84);
-  doc.text("Client:", col1X, 90);
-  doc.text("Status:", col2X, 78);
-
-  doc.setFont("helvetica", "normal");
-  doc.text(receipt.voucherId, col1X + 25, 78);
-  doc.text(new Date(receipt.given.date).toLocaleDateString(), col1X + 25, 84);
-  doc.text(receipt.clientName, col1X + 25, 90);
-
-  // Status with color coding
-  const status =
-    receipt.status.charAt(0).toUpperCase() + receipt.status.slice(1);
-  const statusColor =
-    receipt.status === "completed"
-      ? [34, 197, 94]
-      : receipt.status === "pending"
-      ? [245, 158, 11]
-      : [239, 68, 68];
-  doc.setTextColor(...statusColor);
-  doc.setFont("helvetica", "bold");
-  doc.text(status, col2X + 25, 78);
-  doc.setTextColor(0, 0, 0);
-
-  // Given Items Section
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setFillColor(15, 23, 42);
-  doc.setTextColor(255, 255, 255);
-  doc.rect(margin, 105, contentWidth, 12, "F");
-  doc.text("GIVEN ITEMS", margin + 8, 113);
-
-  const givenItemsData = receipt.given.items.map((item) => [
+  // Table
+  const tableY = 50;
+  const tableData = receipt.given.items.map((item) => [
     item.productName,
-    `${item.pureWeight}g`,
-    `${item.purePercent}%`,
-    item.melting,
-    `₹${item.total.toLocaleString()}`,
+    Number(item.pureWeight).toFixed(2),
+    Number(item.purePercent).toFixed(2),
+    Number(item.melting).toFixed(2),
+    Number(item.total).toFixed(2),
   ]);
 
   autoTable(doc, {
-    startY: 117,
-    margin: { left: margin, right: margin },
-    head: [
-      ["Product Name", "Pure Weight", "Pure %", "Melting", "Total Amount"],
-    ],
-    body: givenItemsData,
-    theme: "striped",
+    startY: tableY,
+    head: [["Product", "Pure Weight", "Pure %", "Melting", "Total"]],
+    body: tableData,
+    theme: "grid",
     headStyles: {
-      fillColor: [71, 85, 105],
+      fillColor: [37, 99, 235], // Blue header
       textColor: 255,
+      fontSize: 10,
       fontStyle: "bold",
-      fontSize: 9,
-      halign: "center",
-      valign: "middle",
     },
     bodyStyles: {
-      fontSize: 8,
-      halign: "center",
-      valign: "middle",
-    },
-    columnStyles: {
-      0: { halign: "left", cellWidth: 40 },
-      1: { cellWidth: 25 },
-      2: { cellWidth: 20 },
-      3: { cellWidth: 25 },
-      4: { halign: "right", cellWidth: 30 },
-    },
-    styles: {
-      cellPadding: 4,
-      lineColor: [203, 213, 225],
-      lineWidth: 0.3,
-    },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-  });
-
-  // Received Items Section
-  const givenTableEnd = (doc as any).lastAutoTable.finalY + 15;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setFillColor(15, 23, 42);
-  doc.setTextColor(255, 255, 255);
-  doc.rect(margin, givenTableEnd, contentWidth, 12, "F");
-  doc.text("RECEIVED ITEMS", margin + 8, givenTableEnd + 8);
-
-  const receivedItemsData = receipt.received.items.map((item) => [
-    item.productName,
-    `${item.finalOrnamentsWt}g`,
-    `${item.stoneWeight}g`,
-    `${item.makingChargePercent}%`,
-    `₹${item.subTotal.toLocaleString()}`,
-    `₹${item.total.toLocaleString()}`,
-  ]);
-
-  autoTable(doc, {
-    startY: givenTableEnd + 12,
-    margin: { left: margin, right: margin },
-    head: [
-      [
-        "Product Name",
-        "Final Weight",
-        "Stone Weight",
-        "Making %",
-        "Sub Total",
-        "Total Amount",
-      ],
-    ],
-    body: receivedItemsData,
-    theme: "striped",
-    headStyles: {
-      fillColor: [71, 85, 105],
-      textColor: 255,
-      fontStyle: "bold",
       fontSize: 9,
       halign: "center",
-      valign: "middle",
-    },
-    bodyStyles: {
-      fontSize: 8,
-      halign: "center",
-      valign: "middle",
     },
     columnStyles: {
-      0: { halign: "left", cellWidth: 28 },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 22 },
-      3: { cellWidth: 18 },
-      4: { halign: "right", cellWidth: 25 },
-      5: { halign: "right", cellWidth: 25 },
+      0: { halign: "left" },
+      4: { halign: "right" },
     },
-    styles: {
-      cellPadding: 4,
-      lineColor: [203, 213, 225],
-      lineWidth: 0.3,
-    },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: margin, right: margin },
   });
 
   // Summary Section
-  const receivedTableEnd = (doc as any).lastAutoTable.finalY + 15;
+  const summaryY = (doc as any).lastAutoTable.finalY + 10;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setFillColor(15, 23, 42);
-  doc.setTextColor(255, 255, 255);
-  doc.rect(margin, receivedTableEnd, contentWidth, 12, "F");
-  doc.text("TRANSACTION SUMMARY", margin + 8, receivedTableEnd + 8);
+  const givenTotal = receipt.given.total || 0;
+  const receivedTotal = receipt.received?.total || 0;
+  const balance = givenTotal - receivedTotal;
 
-  // Summary box
-  doc.setTextColor(0, 0, 0);
-  doc.setFillColor(241, 245, 249);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(margin, receivedTableEnd + 12, contentWidth, 35, "FD");
+  const summaryData = [
+    ["Given Total", givenTotal.toFixed(2)],
+    ["Received Total", receivedTotal.toFixed(2)],
+    ["Balance (Given - Received)", balance.toFixed(2)],
+  ];
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  summaryData.forEach(([label, value], index) => {
+    const y = summaryY + index * 10;
+    doc.setFillColor(index === 2 ? 243 : 248, 250, 252); // Light gray
+    doc.rect(margin, y, contentWidth, 10, "F");
+    doc.setDrawColor(221, 221, 221);
+    doc.rect(margin, y, contentWidth, 10); // Border
 
-  const summaryY = receivedTableEnd + 20;
-  const col1 = margin + 8;
-  const col2 = pageWidth / 3 + 5;
-  const col3 = (pageWidth * 2) / 3;
-
-  // Row 1
-  doc.setFont("helvetica", "bold");
-  doc.text("Given Items:", col1, summaryY);
-  doc.text("Pure Weight:", col2, summaryY);
-  doc.text("Given Value:", col3, summaryY);
-
-  doc.setFont("helvetica", "normal");
-  doc.text(`${receipt.given.items.length}`, col1 + 25, summaryY);
-  doc.text(`${receipt.given.totalPureWeight}g`, col2 + 25, summaryY);
-  doc.text(`₹${receipt.given.total.toLocaleString()}`, col3 + 25, summaryY);
-
-  // Row 2
-  doc.setFont("helvetica", "bold");
-  doc.text("Received Items:", col1, summaryY + 8);
-  doc.text("Ornament Weight:", col2, summaryY + 8);
-  doc.text("Stone Weight:", col3, summaryY + 8);
-
-  doc.setFont("helvetica", "normal");
-  doc.text(`${receipt.received.items.length}`, col1 + 25, summaryY + 8);
-  doc.text(`${receipt.received.totalOrnamentsWt}g`, col2 + 25, summaryY + 8);
-  doc.text(`${receipt.received.totalStoneWeight}g`, col3 + 25, summaryY + 8);
-
-  // Row 3
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("TOTAL RECEIVED VALUE:", col1, summaryY + 18);
-  doc.setFontSize(12);
-  doc.text(`₹${receipt.received.total.toLocaleString()}`, col2, summaryY + 18);
-
-  // Footer
-  const footerY = 275;
-  doc.setTextColor(100, 116, 139);
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(8);
-  doc.text("This is a computer generated receipt", pageWidth / 2, footerY, {
-    align: "center",
+    doc.setFont("helvetica", index === 2 ? "bold" : "normal");
+    doc.text(label, margin + 5, y + 7);
+    doc.text(value, pageWidth - margin - 5, y + 7, { align: "right" });
   });
-  doc.text(
-    "Golden Touch Jewelers - Thank you for your business",
-    pageWidth / 2,
-    footerY + 5,
-    { align: "center" }
-  );
 
   return doc;
 };
@@ -824,28 +654,47 @@ export default function ClientDetailsPage() {
   ) => {
     try {
       let doc;
-
-      if (type === "client") {
-        const receipt = clientReceipts.find((r) => r._id === receiptId);
-        if (!receipt) throw new Error("Receipt not found");
-        doc = generateClientReceiptPDF(receipt);
-      } else {
-        const receipt = adminReceipts.find((r) => r._id === receiptId);
-        if (!receipt) throw new Error("Receipt not found");
-        doc = generateAdminReceiptPDF(receipt);
+      try {
+        if (type === "client") {
+          const receipt = clientReceipts.find((r) => r._id === receiptId);
+          if (!receipt) throw new Error("Receipt not found");
+          doc = generateClientReceiptPDF(receipt);
+        } else {
+          const receipt = adminReceipts.find((r) => r._id === receiptId);
+          if (!receipt) throw new Error("Receipt not found");
+          doc = generateAdminReceiptPDF(receipt);
+        }
+      } catch (pdfGenError) {
+        console.error("PDF generation error:", pdfGenError);
+        toast({
+          title: "Download Failed",
+          description: "Could not generate receipt (PDF generation error)",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // Save the PDF
-      doc.save(`receipt-${receiptId}.pdf`);
+      try {
+        doc.save(`receipt-${receiptId}.pdf`);
+      } catch (saveError) {
+        console.error("PDF save error:", saveError);
+        toast({
+          title: "Download Failed",
+          description: "Could not save PDF file",
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
         title: "Download Complete",
         description: "Receipt downloaded successfully",
       });
     } catch (error) {
+      console.error("Unknown error in handleDownloadReceipt:", error);
       toast({
         title: "Download Failed",
-        description: "Could not generate receipt",
+        description: "Could not generate receipt (unknown error)",
         variant: "destructive",
       });
     }
@@ -938,6 +787,9 @@ export default function ClientDetailsPage() {
             onClick={() => handleCreateReceipt("client")}
           >
             <Plus className="mr-2 h-4 w-4" /> New Client Receipt
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/clients/new")}>
+            <Plus className="mr-2 h-4 w-4" /> New Client
           </Button>
         </div>
       </div>
@@ -1081,213 +933,90 @@ export default function ClientDetailsPage() {
 
           {selectedReceipt && (
             <div className="mt-4">
-              <div className="border rounded-lg p-6 mb-6 text-center">
-                <h3 className="text-lg font-bold mb-2">
-                  Golden Touch Jewelers
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Premium Goldsmith Services
+              <div className="border rounded-lg p-6 mb-6 text-left">
+                <h2 className="text-xl font-semibold mb-2">
+                  Work Receipt: {selectedReceipt.voucherId}
+                </h2>
+                <p className="text-sm">Client: {selectedReceipt.clientName}</p>
+                <p className="text-sm">
+                  Status:{" "}
+                  {selectedReceipt.status ||
+                    selectedReceipt.totals?.paymentStatus ||
+                    "incomplete"}
+                </p>
+                <p className="text-sm mb-4">
+                  Date:{" "}
+                  {new Date(
+                    selectedReceipt.given?.date || selectedReceipt.issueDate
+                  ).toLocaleDateString()}
                 </p>
 
-                <div className="grid grid-cols-2 mb-4">
-                  <div className="text-left">
-                    <p className="text-sm">
-                      Receipt: #{selectedReceipt.voucherId}
-                    </p>
-                    <p className="text-sm">
-                      Date:{" "}
-                      {selectedReceipt.type === "admin"
-                        ? new Date(
-                            selectedReceipt.given.date
-                          ).toLocaleDateString()
-                        : new Date(
-                            selectedReceipt.issueDate
-                          ).toLocaleDateString()}
-                    </p>
-                    <p className="text-sm">
-                      Type:{" "}
-                      <span
-                        className={`px-2 py-1 rounded text-xs ${
-                          selectedReceipt.type === "admin"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-green-100 text-green-800"
-                        }`}
-                      >
-                        {selectedReceipt.type}
+                <table className="w-full border border-collapse mb-4">
+                  <thead>
+                    <tr className="bg-blue-700 text-white text-sm">
+                      <th className="border px-4 py-2">Product</th>
+                      <th className="border px-4 py-2">Pure Weight</th>
+                      <th className="border px-4 py-2">Pure %</th>
+                      <th className="border px-4 py-2">Melting</th>
+                      <th className="border px-4 py-2">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedReceipt.given.items.map((item, index) => (
+                      <tr key={index} className="text-center text-sm">
+                        <td className="border px-4 py-2">{item.productName}</td>
+                        <td className="border px-4 py-2">
+                          {Number(item.pureWeight).toFixed(2)}
+                        </td>
+                        <td className="border px-4 py-2">
+                          {Number(item.purePercent).toFixed(2)}
+                        </td>
+                        <td className="border px-4 py-2">
+                          {Number(item.melting).toFixed(2)}
+                        </td>
+                        <td className="border px-4 py-2">
+                          {Number(item.total).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-blue-700 text-white text-sm font-semibold">
+                      <td className="border px-4 py-2 text-center" colSpan={4}>
+                        Total
+                      </td>
+                      <td className="border px-4 py-2 text-center">
+                        {Number(selectedReceipt.given.total).toFixed(2)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div className="text-sm w-full">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-gray-50 p-4 border">
+                    <div className="flex justify-between">
+                      <span>Given Total</span>
+                      <span>
+                        {Number(selectedReceipt.given.total).toFixed(2)}
                       </span>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm">
-                      Client:{" "}
-                      {selectedReceipt.type === "admin"
-                        ? selectedReceipt.clientName
-                        : selectedReceipt.clientInfo.clientName}
-                    </p>
-                    <p className="text-sm">
-                      Status:{" "}
-                      <span
-                        className={`px-2 py-1 rounded text-xs ${
-                          (
-                            selectedReceipt.type === "admin"
-                              ? selectedReceipt.status === "complete"
-                              : selectedReceipt.totals.paymentStatus === "Paid"
-                          )
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {selectedReceipt.type === "admin"
-                          ? selectedReceipt.status
-                          : selectedReceipt.totals.paymentStatus}
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Received Total</span>
+                      <span>
+                        {Number(selectedReceipt.received?.total || 0).toFixed(
+                          2
+                        )}
                       </span>
-                    </p>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <span>Balance (Given - Received)</span>
+                      <span>
+                        {(
+                          Number(selectedReceipt.given.total) -
+                          Number(selectedReceipt.received?.total || 0)
+                        ).toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-
-                {selectedReceipt.type === "admin" ? (
-                  <>
-                    <h4 className="font-medium mb-2">Given Items</h4>
-                    <Table className="mb-4">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead>Pure Weight</TableHead>
-                          <TableHead>Pure %</TableHead>
-                          <TableHead>Melting</TableHead>
-                          <TableHead>Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedReceipt.given.items.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{item.productName}</TableCell>
-                            <TableCell>{item.pureWeight}g</TableCell>
-                            <TableCell>{item.purePercent}%</TableCell>
-                            <TableCell>{item.melting}</TableCell>
-                            <TableCell>
-                              ₹{item.total.toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-
-                    <h4 className="font-medium mb-2">Received Items</h4>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Product</TableHead>
-                          <TableHead>Final Weight</TableHead>
-                          <TableHead>Stone Weight</TableHead>
-                          <TableHead>Touch</TableHead>
-                          <TableHead>Sub Total</TableHead>
-                          <TableHead>Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedReceipt.received.items.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{item.productName}</TableCell>
-                            <TableCell>{item.finalOrnamentsWt}g</TableCell>
-                            <TableCell>{item.stoneWeight}g</TableCell>
-                            <TableCell>{item.makingChargePercent}%</TableCell>
-                            <TableCell>
-                              ₹{item.subTotal.toLocaleString()}
-                            </TableCell>
-                            <TableCell>
-                              ₹{item.total.toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-
-                    <div className="flex flex-wrap justify-between mt-6 pt-4 border-t gap-2">
-                      <div>
-                        Total Given Items: {selectedReceipt.given.items.length}
-                      </div>
-                      <div>
-                        Total Pure Weight:{" "}
-                        {selectedReceipt.given.totalPureWeight}g
-                      </div>
-                      <div>
-                        Total Given Value: ₹
-                        {selectedReceipt.given.total.toLocaleString()}
-                      </div>
-                      <div>
-                        Total Received Items:{" "}
-                        {selectedReceipt.received.items.length}
-                      </div>
-                      <div>
-                        Total Ornaments Weight:{" "}
-                        {selectedReceipt.received.totalOrnamentsWt}g
-                      </div>
-                      <div>
-                        Total Stone Weight:{" "}
-                        {selectedReceipt.received.totalStoneWeight}g
-                      </div>
-                      <div>
-                        Total Received Value: ₹
-                        {(
-                          selectedReceipt.received?.total ?? 0
-                        ).toLocaleString()}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item</TableHead>
-                          <TableHead>Tag</TableHead>
-                          <TableHead>Gross Wt</TableHead>
-                          <TableHead>Stone Wt</TableHead>
-                          <TableHead>Net Wt</TableHead>
-                          <TableHead>Melting%</TableHead>
-                          <TableHead>Final Wt</TableHead>
-                          <TableHead>Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedReceipt.items.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{item.itemName}</TableCell>
-                            <TableCell>{item.tag}</TableCell>
-                            <TableCell>{item.grossWt}g</TableCell>
-                            <TableCell>{item.stoneWt}g</TableCell>
-                            <TableCell>{item.netWt}g</TableCell>
-                            <TableCell>{item.meltingTouch}%</TableCell>
-                            <TableCell>{item.finalWt}g</TableCell>
-                            <TableCell>
-                              ₹{(item.totalInvoiceAmount || 0).toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-
-                    <div className="flex flex-wrap justify-between mt-6 pt-4 border-t gap-2">
-                      <div>Total Items: {selectedReceipt.items.length}</div>
-                      <div>
-                        Total Gross Weight: {selectedReceipt.totals.grossWt}g
-                      </div>
-                      <div>
-                        Total Stone Weight: {selectedReceipt.totals.stoneWt}g
-                      </div>
-                      <div>
-                        Total Final Weight: {selectedReceipt.totals.finalWt}g
-                      </div>
-                      <div>
-                        Total Value: ₹
-                        {(
-                          selectedReceipt.totals.totalInvoiceAmount || 0
-                        ).toLocaleString()}
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
 
               <div className="flex justify-end gap-2">

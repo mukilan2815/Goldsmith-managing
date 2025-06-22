@@ -32,7 +32,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://backend-goldsmith.onrender.com/api",
+  baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -163,6 +163,7 @@ interface GivenItem {
   purePercent: string;
   melting: string;
   total: number;
+  tag?: string;
 }
 
 interface ReceivedItem {
@@ -201,6 +202,7 @@ export default function NewAdminReceiptPage() {
       purePercent: "",
       melting: "",
       total: 0,
+      tag: "",
     },
   ]);
   const [receivedDate, setReceivedDate] = useState<Date>(new Date());
@@ -211,6 +213,7 @@ export default function NewAdminReceiptPage() {
       finalOrnamentsWt: "",
       stoneWeight: "0",
       makingChargePercent: "",
+      mc: "",
       subTotal: 0,
       total: 0,
     },
@@ -426,7 +429,11 @@ export default function NewAdminReceiptPage() {
       });
     }
   };
-
+  const handleTagChange = (index: number, value: string) => {
+    const updatedItems = [...givenItems];
+    updatedItems[index] = { ...updatedItems[index], tag: value };
+    setGivenItems(updatedItems);
+  };
   const updateGivenItem = (
     id: string,
     field: keyof GivenItem,
@@ -747,20 +754,21 @@ export default function NewAdminReceiptPage() {
         balance: newBalance,
       });
 
-      // Prepare received data
+      // Prepare received data with MC
+      const receivedItemsWithMC = receivedItems.map((item) => ({
+        ...item,
+        mc: item.total - item.subTotal,
+      }));
       const receivedData = {
         date: receivedDate,
-        items: receivedItems,
+        items: receivedItemsWithMC,
         totalOrnamentsWt: receivedTotals.totalOrnamentsWt,
         totalStoneWeight: receivedTotals.totalStoneWeight,
         totalSubTotal: receivedTotals.totalSubTotal,
         total: receivedTotals.total,
       };
 
-      const status = hasGivenItems ? "complete" : "incomplete";
-
-      // Prepare receipt data
-      const receiptData = {
+      const receiptData: any = {
         clientId: selectedClient.id,
         clientName: selectedClient.name,
         received: receivedData,
@@ -850,7 +858,7 @@ export default function NewAdminReceiptPage() {
           <div className="mt-4 p-4 border rounded-md bg-muted/50">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="font-medium text-lg">
-                Current Balance: {clientBalance.toFixed(2)}
+                OD Balance: {clientBalance.toFixed(2)}
               </div>
               <div className="font-medium text-lg">
                 Given Total: {givenTotals.total.toFixed(2)}
@@ -1124,6 +1132,7 @@ export default function NewAdminReceiptPage() {
                                 <th className="text-left pb-2">
                                   Current Balance
                                 </th>
+                                <th>Tag</th>
                                 <th className="text-left pb-2">Calculation</th>
                                 <th className="text-left pb-2">
                                   Final Given Total
@@ -1131,23 +1140,33 @@ export default function NewAdminReceiptPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              <tr>
-                                <td className="py-2">
-                                  {givenTotals.total.toFixed(3)} g
-                                </td>
-                                <td className="py-2">
-                                  {clientBalance.toFixed(3)}
-                                </td>
-                                <td className="py-2">
-                                  {clientBalance.toFixed(3)} +{" "}
-                                  {givenTotals.total.toFixed(3)}
-                                </td>
-                                <td className="py-2">
-                                  {(clientBalance + givenTotals.total).toFixed(
-                                    3
-                                  )}
-                                </td>
-                              </tr>
+                              {givenItems.map((item, idx) => (
+                                <tr key={item.id}>
+                                  <td className="py-2">
+                                    {item.total.toFixed(3)} g
+                                  </td>
+                                  <td className="py-2">
+                                    {clientBalance.toFixed(3)}
+                                  </td>
+                                  <td className="py-2">
+                                    <Input
+                                      type="text"
+                                      placeholder="Enter tag"
+                                      value={item.tag || ""}
+                                      onChange={(e) =>
+                                        handleTagChange(idx, e.target.value)
+                                      }
+                                    />
+                                  </td>
+                                  <td className="py-2">
+                                    {clientBalance.toFixed(3)} +{" "}
+                                    {item.total.toFixed(3)}
+                                  </td>
+                                  <td className="py-2">
+                                    {(clientBalance + item.total).toFixed(3)}
+                                  </td>
+                                </tr>
+                              ))}
                               <tr className="border-t">
                                 <td className="py-2"></td>
                                 <td className="py-2"></td>
@@ -1227,7 +1246,7 @@ export default function NewAdminReceiptPage() {
                     <div className="p-4">
                       <div className="space-y-4">
                         {/* Table Header */}
-                        <div className="hidden md:grid grid-cols-8 gap-4 p-3 bg-muted/50 rounded-md">
+                        <div className="hidden md:grid grid-cols-9 gap-4 p-3 bg-muted/50 rounded-md">
                           <div className="col-span-2 font-medium">
                             Product Name
                           </div>
@@ -1236,6 +1255,7 @@ export default function NewAdminReceiptPage() {
                           </div>
                           <div className="font-medium">Stone Weight (g)</div>
                           <div className="font-medium">Touch</div>
+                          <div className="font-medium">MC</div>
                           <div className="font-medium">Subtotal (g)</div>
                           <div className="font-medium">Total (g)</div>
                           <div className="font-medium">Action</div>
@@ -1245,7 +1265,7 @@ export default function NewAdminReceiptPage() {
                         {receivedItems.map((item) => (
                           <div
                             key={item.id}
-                            className="grid grid-cols-1 md:grid-cols-8 gap-4 p-3 border rounded-md"
+                            className="grid grid-cols-1 md:grid-cols-9 gap-4 p-3 border rounded-md"
                           >
                             <div className="md:col-span-2">
                               <label className="text-sm font-medium mb-1 block md:hidden">
@@ -1319,6 +1339,14 @@ export default function NewAdminReceiptPage() {
                                   )
                                 }
                               />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium mb-1 block md:hidden">
+                                MC
+                              </label>
+                              <div className="font-medium">
+                                {(item.total - item.subTotal).toFixed(2)}
+                              </div>
                             </div>
                             <div>
                               <label className="text-sm font-medium mb-1 block md:hidden">

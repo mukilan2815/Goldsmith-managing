@@ -13,7 +13,7 @@ import autoTable from "jspdf-autotable";
 
 // API client setup
 const api = axios.create({
-  baseURL: "https://backend-goldsmith.onrender.com/api",
+  baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -174,7 +174,9 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
     : [];
   autoTable(doc, {
     startY: y + 3,
-    head: [["S.NO", "Product Name", "Pure(wt)", "Pure%", "Melting", "Total"]],
+    head: [
+      ["S.NO", "Product Name", "Pure(wt)", "Pure%", "Melting", "Total", "Tag"],
+    ],
     body: givenItems.map((item, index) => [
       index + 1,
       item.productName || "-",
@@ -182,6 +184,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       formatNumber(item.purePercent),
       formatNumber(item.melting),
       formatNumber(item.total),
+      item.tag || "—",
     ]),
     theme: "grid",
     styles: { fontSize: 10, cellPadding: 1, textColor: [0, 0, 0] },
@@ -204,6 +207,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       3: { cellWidth: 25 }, // Pure%
       4: { cellWidth: 25 }, // Melting
       5: { cellWidth: 25 }, // Total
+      6: { cellWidth: 25 }, // Tag
     },
   });
   // Received Date Section
@@ -242,6 +246,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
         "Stone Weight",
         "sub total",
         "Making Charge(%)",
+        "MC",
         "Total",
       ],
     ],
@@ -252,6 +257,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       formatNumber(item.stoneWeight),
       formatNumber(item.subTotal),
       formatNumber(item.makingChargePercent, 2),
+      formatNumber(Number(item.total) - Number(item.subTotal)),
       formatNumber(item.total),
     ]),
     theme: "grid",
@@ -275,7 +281,8 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       3: { cellWidth: 25 }, // Stone Weight
       4: { cellWidth: 20 }, // sub total
       5: { cellWidth: 25 }, // Making Charge(%)
-      6: { cellWidth: 20 }, // Total
+      6: { cellWidth: 20 }, // MC
+      7: { cellWidth: 20 }, // Total
     },
   });
 
@@ -490,23 +497,26 @@ export default function AdminReceiptDetailPage() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b">
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       S.No.
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Product Name
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Pure Weight
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Pure %
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Melting
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Total
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                      Tag
                     </th>
                   </tr>
                 </thead>
@@ -529,13 +539,16 @@ export default function AdminReceiptDetailPage() {
                       <td className="py-2 px-4 text-center">
                         {formatNumber(item.total)}
                       </td>
+                      <td className="py-2 px-4 text-center">
+                        {item.tag || "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="py-2 px-4 text-right font-medium"
                     >
                       Total:
@@ -566,25 +579,28 @@ export default function AdminReceiptDetailPage() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b">
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       S.No.
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Product Name
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Final Ornaments (wt)
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Stone Weight
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Sub Total
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Making Charge (%)
                     </th>
-                    <th className="py-2 px-4 text-left text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                      MC
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Total
                     </th>
                   </tr>
@@ -607,6 +623,11 @@ export default function AdminReceiptDetailPage() {
                       </td>
                       <td className="py-2 px-4 text-center">
                         {formatNumber(item.makingChargePercent, 2)}
+                      </td>
+                      <td className="py-2 px-4 text-center">
+                        {formatNumber(
+                          Number(item.total) - Number(item.subTotal)
+                        )}
                       </td>
                       <td className="py-2 px-4 text-center">
                         {formatNumber(item.total)}
@@ -632,6 +653,7 @@ export default function AdminReceiptDetailPage() {
                       {formatNumber(receipt.received?.totalSubTotal)}
                     </td>
                     <td className="py-2 px-4"></td>
+                    <td className="py-2 px-4"></td>
                     <td className="py-2 px-4 text-center font-medium">
                       {formatNumber(receipt.received?.total)}
                     </td>
@@ -649,7 +671,15 @@ export default function AdminReceiptDetailPage() {
         {/* Balance Summary Section */}
         <div className="mb-4">
           <h2 className="text-xl font-semibold mb-2">Balance Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
+            <div>
+              <p className="text-sm text-gray-500">OD Balance</p>
+              <p className="font-medium">
+                {client && typeof client.balance === "number"
+                  ? client.balance.toFixed(2)
+                  : "N/A"}
+              </p>
+            </div>
             <div>
               <p className="text-sm text-gray-500">Given Total</p>
               <p className="font-medium">

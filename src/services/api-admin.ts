@@ -2,9 +2,7 @@ import axios from "axios";
 
 // Base URL for API calls
 const API_URL =
-  process.env.NODE_ENV === "production"
-    ? "/api"
-    : "https://backend-goldsmith.onrender.com/api";
+  process.env.NODE_ENV === "production" ? "/api" : "http://localhost:5000/api";
 
 // Configuration for API requests
 const config = {

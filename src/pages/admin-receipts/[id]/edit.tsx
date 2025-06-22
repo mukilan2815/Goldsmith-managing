@@ -12,7 +12,7 @@ import autoTable from "jspdf-autotable";
 
 // API client setup
 const api = axios.create({
-  baseURL: "https://backend-goldsmith.onrender.com/api",
+  baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -269,7 +269,7 @@ export default function EditAdminReceiptPage() {
           const pureWeight = updatedItem.pureWeight || 0;
           const purePercent = updatedItem.purePercent || 0;
           const melting = updatedItem.melting || 1;
-          updatedItem.total = (pureWeight * purePercent)  / melting;
+          updatedItem.total = (pureWeight * purePercent) / melting;
         }
       }
 
