@@ -249,258 +249,186 @@ function ReceiptsTable({
   );
 }
 
-const generateClientReceiptPDF = (receipt: ClientReceipt) => {
+const generatePDF = (receipt: any) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
 
-  // Header Section with Background
-  doc.setFillColor(31, 41, 55); // Dark blue-gray background
-  doc.rect(0, 0, pageWidth, 45, "F");
-
-  doc.setTextColor(255, 255, 255);
+  // Header Text
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text("GOLDEN TOUCH JEWELERS", pageWidth / 2, 20, { align: "center" });
+  doc.setFontSize(14);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Work Receipt: ${receipt.voucherId || "N/A"}`, margin, 20);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  doc.text("Premium Goldsmith Services", pageWidth / 2, 28, {
-    align: "center",
-  });
+  const infoYStart = 28;
+  const lineHeight = 7;
 
-  doc.setFontSize(9);
-  doc.text("Receipt", pageWidth / 2, 38, { align: "center" });
-
-  // Receipt Information Section
-  doc.setTextColor(0, 0, 0);
-  const infoY = 55;
-
-  // Receipt info box
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.rect(margin, infoY, contentWidth, 32, "FD");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-
-  // Left column
-  doc.text("Receipt #:", margin + 8, infoY + 10);
-  doc.text("Date:", margin + 8, infoY + 18);
-  doc.text("Client:", margin + 8, infoY + 26);
-
-  // Right column
-  doc.text("Shop:", pageWidth / 2 + 10, infoY + 10);
-
-  doc.setFont("helvetica", "normal");
-  doc.text(receipt.voucherId, margin + 35, infoY + 10);
+  doc.text(`Client: ${receipt.clientName || "N/A"}`, margin, infoYStart);
   doc.text(
-    new Date(receipt.issueDate).toLocaleDateString(),
-    margin + 35,
-    infoY + 18
+    `Status: ${receipt.status || "incomplete"}`,
+    margin,
+    infoYStart + lineHeight
   );
-  doc.text(receipt.clientInfo.clientName, margin + 35, infoY + 26);
-  doc.text(receipt.clientInfo.shopName, pageWidth / 2 + 35, infoY + 10);
+  doc.text(
+    `Date: ${
+      receipt.issueDate
+        ? new Date(receipt.issueDate).toLocaleDateString()
+        : "N/A"
+    }`,
+    margin,
+    infoYStart + lineHeight * 2
+  );
 
-  // Items Table
-  const itemsData = receipt.items.map((item) => [
-    item.itemName,
-    item.tag,
-    `${item.grossWt}g`,
-    `${item.stoneWt}g`,
-    `${item.netWt}g`,
-    `${item.meltingTouch}%`,
-    `${item.finalWt}g`,
-    `₹${item.totalInvoiceAmount.toLocaleString()}`,
+  // Given Items Table
+  const givenItems = receipt.given?.items || [];
+  const givenTotal = Number(receipt.given?.total || 0);
+  const receivedItems = receipt.received?.items || [];
+  const receivedTotal = Number(receipt.received?.total || 0);
+  const balance = givenTotal - receivedTotal;
+
+  const tableY = infoYStart + lineHeight * 3 + 5;
+
+  const givenTableData = givenItems.map((item: any) => [
+    item.productName || "—",
+    Number(item.pureWeight || 0).toFixed(2),
+    Number(item.purePercent || 0).toFixed(2),
+    Number(item.melting || 0).toFixed(2),
+    Number(item.total || 0).toFixed(2),
   ]);
 
+  const givenTotalRow = [
+    "Total",
+    givenTotal.toFixed(2),
+    "",
+    "",
+    givenTotal.toFixed(2),
+  ];
+
+  givenTableData.push(givenTotalRow);
+
   autoTable(doc, {
-    startY: infoY + 40,
+    startY: tableY,
     margin: { left: margin, right: margin },
-    head: [
-      [
-        "Item Name",
-        "Tag",
-        "Gross Wt",
-        "Stone Wt",
-        "Net Wt",
-        "Melting %",
-        "Final Wt",
-        "Amount",
-      ],
-    ],
-    body: itemsData,
+    head: [["Product", "Pure Weight", "Pure %", "Melting", "Total"]],
+    body: givenTableData,
     theme: "grid",
     headStyles: {
       fillColor: [31, 41, 55],
       textColor: 255,
       fontStyle: "bold",
-      fontSize: 9,
-      halign: "center",
-      valign: "middle",
-    },
-    bodyStyles: {
-      fontSize: 8,
-      halign: "center",
-      valign: "middle",
-    },
-    columnStyles: {
-      0: { halign: "left", cellWidth: 25 },
-      1: { cellWidth: 20 },
-      2: { cellWidth: 18 },
-      3: { cellWidth: 18 },
-      4: { cellWidth: 16 },
-      5: { cellWidth: 18 },
-      6: { cellWidth: 16 },
-      7: { halign: "right", cellWidth: 25 },
-    },
-    styles: {
-      cellPadding: 3,
-      lineColor: [226, 232, 240],
-      lineWidth: 0.3,
-    },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-  });
-
-  // Totals Section
-  const finalY = (doc as any).lastAutoTable.finalY + 15;
-
-  // Totals box
-  doc.setFillColor(31, 41, 55);
-  doc.rect(margin, finalY, contentWidth, 40, "F");
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-
-  const leftCol = margin + 10;
-  const rightCol = pageWidth / 2 + 10;
-
-  doc.text("SUMMARY", leftCol, finalY + 10);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-
-  doc.text(`Total Items: ${receipt.items.length}`, leftCol, finalY + 18);
-  doc.text(
-    `Total Gross Weight: ${receipt.totals.grossWt}g`,
-    leftCol,
-    finalY + 24
-  );
-  doc.text(
-    `Total Stone Weight: ${receipt.totals.stoneWt}g`,
-    leftCol,
-    finalY + 30
-  );
-
-  doc.text(
-    `Total Final Weight: ${receipt.totals.finalWt}g`,
-    rightCol,
-    finalY + 18
-  );
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text(
-    `TOTAL VALUE: ₹${receipt.totals.totalInvoiceAmount.toLocaleString()}`,
-    rightCol,
-    finalY + 30
-  );
-
-  // Footer
-  doc.setTextColor(100, 116, 139);
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(8);
-  doc.text("Thank you for choosing Golden Touch Jewelers", pageWidth / 2, 280, {
-    align: "center",
-  });
-  doc.text(
-    "For queries, please contact us with your receipt number",
-    pageWidth / 2,
-    285,
-    { align: "center" }
-  );
-
-  return doc;
-};
-
-const generateAdminReceiptPDF = (receipt: AdminReceipt) => {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  const contentWidth = pageWidth - margin * 2;
-
-  // Title
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(`Work Receipt: ${receipt.voucherId}`, margin, 20);
-
-  // Sub Info
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Client: ${receipt.clientName}`, margin, 30);
-  doc.text(`Status: ${receipt.status}`, margin, 36);
-  doc.text(
-    `Date: ${new Date(receipt.given.date).toLocaleDateString()}`,
-    margin,
-    42
-  );
-
-  // Table
-  const tableY = 50;
-  const tableData = receipt.given.items.map((item) => [
-    item.productName,
-    Number(item.pureWeight).toFixed(2),
-    Number(item.purePercent).toFixed(2),
-    Number(item.melting).toFixed(2),
-    Number(item.total).toFixed(2),
-  ]);
-
-  autoTable(doc, {
-    startY: tableY,
-    head: [["Product", "Pure Weight", "Pure %", "Melting", "Total"]],
-    body: tableData,
-    theme: "grid",
-    headStyles: {
-      fillColor: [37, 99, 235], // Blue header
-      textColor: 255,
       fontSize: 10,
-      fontStyle: "bold",
+      halign: "center",
     },
     bodyStyles: {
       fontSize: 9,
       halign: "center",
+      textColor: [0, 0, 0],
     },
+    alternateRowStyles: { fillColor: [255, 255, 255] },
     columnStyles: {
-      0: { halign: "left" },
-      4: { halign: "right" },
+      0: { halign: "left", cellWidth: 60 },
+      1: { cellWidth: 25 },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 25 },
+      4: { halign: "right", cellWidth: 25 },
     },
-    margin: { left: margin, right: margin },
+    didDrawCell: (data) => {
+      if (data.row.index === givenTableData.length - 1) {
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.fillColor = [191, 219, 254]; // Light Blue
+        data.cell.styles.textColor = [0, 0, 0]; // Optional: Use black text for contrast
+      }
+    },
   });
+
+  // Received Items Table (if any)
+  if (receivedItems.length > 0) {
+    const receivedTableData = receivedItems.map((item: any) => [
+      item.productName || "—",
+      Number(item.pureWeight || 0).toFixed(2),
+      Number(item.purePercent || 0).toFixed(2),
+      Number(item.melting || 0).toFixed(2),
+      Number(item.total || 0).toFixed(2),
+    ]);
+
+    const receivedTotalRow = [
+      "Total",
+      receivedTotal.toFixed(2),
+      "",
+      "",
+      receivedTotal.toFixed(2),
+    ];
+
+    receivedTableData.push(receivedTotalRow);
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      margin: { left: margin, right: margin },
+      head: [["Product", "Pure Weight", "Pure %", "Melting", "Total"]],
+      body: receivedTableData,
+      theme: "grid",
+      headStyles: {
+        fillColor: [31, 41, 55],
+        textColor: 255,
+        fontStyle: "bold",
+        fontSize: 10,
+        halign: "center",
+      },
+      bodyStyles: {
+        fontSize: 9,
+        halign: "center",
+        textColor: [0, 0, 0],
+      },
+      alternateRowStyles: { fillColor: [255, 255, 255] },
+      columnStyles: {
+        0: { halign: "left", cellWidth: 60 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 25 },
+        4: { halign: "right", cellWidth: 25 },
+      },
+      didDrawCell: (data) => {
+        if (data.row.index === receivedTableData.length - 1) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [191, 219, 254]; // Light Blue
+          data.cell.styles.textColor = [0, 0, 0]; // Optional: Use black text for contrast
+        }
+      },
+    });
+  }
 
   // Summary Section
-  const summaryY = (doc as any).lastAutoTable.finalY + 10;
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  const rowHeight = 8;
+  const spacing = 2;
+  const lineGap = rowHeight + spacing;
 
-  const givenTotal = receipt.given.total || 0;
-  const receivedTotal = receipt.received?.total || 0;
-  const balance = givenTotal - receivedTotal;
+  const drawRow = (label: string, value: string, yPos: number) => {
+    doc.setFillColor(248, 250, 252); // #F8FAFC
+    doc.rect(margin, yPos, contentWidth, rowHeight, "F");
 
-  const summaryData = [
-    ["Given Total", givenTotal.toFixed(2)],
-    ["Received Total", receivedTotal.toFixed(2)],
-    ["Balance (Given - Received)", balance.toFixed(2)],
-  ];
+    doc.setDrawColor(226, 232, 240); // border
+    doc.rect(margin, yPos, contentWidth, rowHeight);
 
-  summaryData.forEach(([label, value], index) => {
-    const y = summaryY + index * 10;
-    doc.setFillColor(index === 2 ? 243 : 248, 250, 252); // Light gray
-    doc.rect(margin, y, contentWidth, 10, "F");
-    doc.setDrawColor(221, 221, 221);
-    doc.rect(margin, y, contentWidth, 10); // Border
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.text(label, margin + 5, yPos + 5.5);
 
-    doc.setFont("helvetica", index === 2 ? "bold" : "normal");
-    doc.text(label, margin + 5, y + 7);
-    doc.text(value, pageWidth - margin - 5, y + 7, { align: "right" });
-  });
+    doc.setFont("helvetica", "bold");
+    doc.text(value, pageWidth - margin - 5, yPos + 5.5, { align: "right" });
+  };
+
+  drawRow("Given Total", givenTotal.toFixed(2), finalY);
+  drawRow("Received Total", receivedTotal.toFixed(2), finalY + lineGap);
+  drawRow(
+    "Balance (Given - Received)",
+    balance.toFixed(2),
+    finalY + lineGap * 2
+  );
 
   return doc;
 };
@@ -658,11 +586,11 @@ export default function ClientDetailsPage() {
         if (type === "client") {
           const receipt = clientReceipts.find((r) => r._id === receiptId);
           if (!receipt) throw new Error("Receipt not found");
-          doc = generateClientReceiptPDF(receipt);
+          doc = generatePDF(receipt);
         } else {
           const receipt = adminReceipts.find((r) => r._id === receiptId);
           if (!receipt) throw new Error("Receipt not found");
-          doc = generateAdminReceiptPDF(receipt);
+          doc = generatePDF(receipt);
         }
       } catch (pdfGenError) {
         console.error("PDF generation error:", pdfGenError);
@@ -921,7 +849,7 @@ export default function ClientDetailsPage() {
           <DialogHeader>
             <DialogTitle>Receipt Details</DialogTitle>
             <DialogDescription>
-              {selectedReceipt?.type === "admin" ? "Admin " : "Client "}
+              {selectedReceipt?.type === "admin" ? "Work " : "Client "}
               Receipt #{selectedReceipt?.voucherId || "N/A"} from{" "}
               {selectedReceipt?.type === "admin"
                 ? new Date(selectedReceipt.given.date).toLocaleDateString()
@@ -935,88 +863,184 @@ export default function ClientDetailsPage() {
             <div className="mt-4">
               <div className="border rounded-lg p-6 mb-6 text-left">
                 <h2 className="text-xl font-semibold mb-2">
-                  Work Receipt: {selectedReceipt.voucherId}
+                  {selectedReceipt.type === "admin" ? "Work" : "Client"}{" "}
+                  Receipt: #{selectedReceipt.voucherId}
                 </h2>
-                <p className="text-sm">Client: {selectedReceipt.clientName}</p>
+                <p className="text-sm">
+                  Client:{" "}
+                  {selectedReceipt.type === "admin"
+                    ? selectedReceipt.clientName
+                    : selectedReceipt.clientInfo.clientName}
+                </p>
                 <p className="text-sm">
                   Status:{" "}
-                  {selectedReceipt.status ||
-                    selectedReceipt.totals?.paymentStatus ||
-                    "incomplete"}
+                  {selectedReceipt.type === "admin"
+                    ? selectedReceipt.status
+                    : selectedReceipt.totals?.paymentStatus || "N/A"}
                 </p>
                 <p className="text-sm mb-4">
                   Date:{" "}
                   {new Date(
-                    selectedReceipt.given?.date || selectedReceipt.issueDate
+                    selectedReceipt.type === "admin"
+                      ? selectedReceipt.given?.date
+                      : selectedReceipt.issueDate
                   ).toLocaleDateString()}
                 </p>
 
-                <table className="w-full border border-collapse mb-4">
-                  <thead>
-                    <tr className="bg-blue-700 text-white text-sm">
-                      <th className="border px-4 py-2">Product</th>
-                      <th className="border px-4 py-2">Pure Weight</th>
-                      <th className="border px-4 py-2">Pure %</th>
-                      <th className="border px-4 py-2">Melting</th>
-                      <th className="border px-4 py-2">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedReceipt.given.items.map((item, index) => (
-                      <tr key={index} className="text-center text-sm">
-                        <td className="border px-4 py-2">{item.productName}</td>
-                        <td className="border px-4 py-2">
-                          {Number(item.pureWeight).toFixed(2)}
-                        </td>
-                        <td className="border px-4 py-2">
-                          {Number(item.purePercent).toFixed(2)}
-                        </td>
-                        <td className="border px-4 py-2">
-                          {Number(item.melting).toFixed(2)}
-                        </td>
-                        <td className="border px-4 py-2">
-                          {Number(item.total).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                    <tr className="bg-blue-700 text-white text-sm font-semibold">
-                      <td className="border px-4 py-2 text-center" colSpan={4}>
-                        Total
-                      </td>
-                      <td className="border px-4 py-2 text-center">
-                        {Number(selectedReceipt.given.total).toFixed(2)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                {selectedReceipt.type === "admin" ? (
+                  <>
+                    <table className="w-full border border-collapse mb-4">
+                      <thead>
+                        <tr className="bg-blue-700 text-white text-sm">
+                          <th className="border px-4 py-2">Product</th>
+                          <th className="border px-4 py-2">Pure Weight</th>
+                          <th className="border px-4 py-2">Pure %</th>
+                          <th className="border px-4 py-2">Melting</th>
+                          <th className="border px-4 py-2">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedReceipt.given.items.map((item, index) => (
+                          <tr key={index} className="text-center text-sm">
+                            <td className="border px-4 py-2">
+                              {item.productName}
+                            </td>
+                            <td className="border px-4 py-2">
+                              {Number(item.pureWeight).toFixed(2)}
+                            </td>
+                            <td className="border px-4 py-2">
+                              {Number(item.purePercent).toFixed(2)}
+                            </td>
+                            <td className="border px-4 py-2">
+                              {Number(item.melting).toFixed(2)}
+                            </td>
+                            <td className="border px-4 py-2">
+                              {Number(item.total).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-blue-700 text-white text-sm font-semibold">
+                          <td
+                            className="border px-4 py-2 text-center"
+                            colSpan={4}
+                          >
+                            Total
+                          </td>
+                          <td className="border px-4 py-2 text-center">
+                            {Number(selectedReceipt.given.total).toFixed(2)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
 
-                <div className="text-sm w-full">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-gray-50 p-4 border">
-                    <div className="flex justify-between">
-                      <span>Given Total</span>
-                      <span>
-                        {Number(selectedReceipt.given.total).toFixed(2)}
-                      </span>
+                    <div className="text-sm w-full">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-gray-50 p-4 border">
+                        <div className="flex justify-between">
+                          <span>Given Total</span>
+                          <span>
+                            {Number(selectedReceipt.given.total).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Received Total</span>
+                          <span>
+                            {Number(
+                              selectedReceipt.received?.total || 0
+                            ).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between font-semibold">
+                          <span>Balance (Given - Received)</span>
+                          <span>
+                            {(
+                              Number(selectedReceipt.given.total) -
+                              Number(selectedReceipt.received?.total || 0)
+                            ).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Received Total</span>
-                      <span>
-                        {Number(selectedReceipt.received?.total || 0).toFixed(
-                          2
-                        )}
-                      </span>
+                  </>
+                ) : (
+                  <>
+                    <table className="w-full border border-collapse mb-4">
+                      <thead>
+                        <tr className="bg-blue-700 text-white text-sm">
+                          <th className="border px-4 py-2">Item Name</th>
+                          <th className="border px-4 py-2">Tag</th>
+                          <th className="border px-4 py-2">Gross Wt</th>
+                          <th className="border px-4 py-2">Stone Wt</th>
+                          <th className="border px-4 py-2">Net Wt</th>
+                          <th className="border px-4 py-2">Melting %</th>
+                          <th className="border px-4 py-2">Final Wt</th>
+                          <th className="border px-4 py-2">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedReceipt.items.map((item, index) => (
+                          <tr key={index} className="text-center text-sm">
+                            <td className="border px-4 py-2">
+                              {item.itemName}
+                            </td>
+                            <td className="border px-4 py-2">{item.tag}</td>
+                            <td className="border px-4 py-2">
+                              {item.grossWt}g
+                            </td>
+                            <td className="border px-4 py-2">
+                              {item.stoneWt}g
+                            </td>
+                            <td className="border px-4 py-2">{item.netWt}g</td>
+                            <td className="border px-4 py-2">
+                              {item.meltingTouch}%
+                            </td>
+                            <td className="border px-4 py-2">
+                              {item.finalWt}g
+                            </td>
+                            <td className="border px-4 py-2">
+                              ₹{item.totalInvoiceAmount.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-blue-700 text-white text-sm font-semibold">
+                          <td
+                            className="border px-4 py-2 text-center"
+                            colSpan={7}
+                          >
+                            Total
+                          </td>
+                          <td className="border px-4 py-2 text-center">
+                            ₹
+                            {selectedReceipt.totals.totalInvoiceAmount.toLocaleString()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div className="text-sm w-full">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-50 p-4 border">
+                        <div className="flex justify-between">
+                          <span>Total Gross Weight:</span>
+                          <span>{selectedReceipt.totals.grossWt}g</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Total Stone Weight:</span>
+                          <span>{selectedReceipt.totals.stoneWt}g</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Total Final Weight:</span>
+                          <span>{selectedReceipt.totals.finalWt}g</span>
+                        </div>
+                        <div className="flex justify-between font-semibold">
+                          <span>TOTAL VALUE:</span>
+                          <span>
+                            ₹
+                            {selectedReceipt.totals.totalInvoiceAmount.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex justify-between font-semibold">
-                      <span>Balance (Given - Received)</span>
-                      <span>
-                        {(
-                          Number(selectedReceipt.given.total) -
-                          Number(selectedReceipt.received?.total || 0)
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
 
               <div className="flex justify-end gap-2">

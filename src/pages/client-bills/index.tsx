@@ -31,7 +31,7 @@ const mockClientBills = [
     metalType: "Gold",
     totalFinalWeight: 120.5,
     totalStoneAmount: 450,
-    voucherId: "RC-123456"
+    voucherId: "SH-123456"
   },
   {
     id: "2",
@@ -41,7 +41,7 @@ const mockClientBills = [
     metalType: "Silver",
     totalFinalWeight: 350.25,
     totalStoneAmount: 120,
-    voucherId: "RC-123457"
+    voucherId: "SH-123457"
   },
   {
     id: "3",
@@ -51,7 +51,7 @@ const mockClientBills = [
     metalType: "Platinum",
     totalFinalWeight: 85.75,
     totalStoneAmount: 1200,
-    voucherId: "RC-123458"
+    voucherId: "SH-123458"
   },
   {
     id: "4",
@@ -61,7 +61,7 @@ const mockClientBills = [
     metalType: "Gold",
     totalFinalWeight: 65.30,
     totalStoneAmount: 850,
-    voucherId: "RC-123459"
+    voucherId: "SH-123459"
   },
   {
     id: "5",
@@ -71,7 +71,7 @@ const mockClientBills = [
     metalType: "Silver",
     totalFinalWeight: 425.10,
     totalStoneAmount: 90,
-    voucherId: "RC-123460"
+    voucherId: "SH-123460"
   }
 ];
 

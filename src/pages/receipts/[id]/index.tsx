@@ -99,182 +99,275 @@ export default function ReceiptDetailsPage() {
   };
   const generatePDF = async () => {
     if (!receipt) return;
-
     setIsGeneratingPDF(true);
+
     try {
       const doc = new jsPDF("p", "mm", "a4");
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - margin * 2;
 
-      // Golden border
-      doc.setDrawColor(204, 153, 0);
-      doc.setLineWidth(0.5);
-      doc.rect(5, 5, 200, 287);
+      // === ENHANCED HEADER ===
+      // Main header background
+      doc.setFillColor(15, 23, 42); // Darker, more professional blue
+      doc.rect(0, 0, pageWidth, 35, "F");
 
-      // 1. First try using a properly encoded base64 logo
-      try {
-        // Example of a properly formatted base64 image (replace with your actual logo)
-        const base64Logo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."; // shortened for example
-        doc.addImage(base64Logo, "PNG", pageWidth / 2 - 20, 10, 40, 15);
-      } catch (error) {
-        console.log("Base64 logo failed, trying URL...");
+      // Header accent line
+      doc.setFillColor(59, 130, 246); // Bright blue accent
+      doc.rect(0, 32, pageWidth, 3, "F");
 
-        // 2. Fallback to loading from URL
-        try {
-          const logoUrl = "/logo.png"; // or "/logo.jpg"
-          const response = await fetch(logoUrl);
-          const blob = await response.blob();
-          const dataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          });
-          doc.addImage(dataUrl, "PNG", pageWidth / 2 - 20, 10, 40, 15);
-        } catch (urlError) {
-          console.log("URL logo failed, using text fallback");
+      // Company/Receipt title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(255, 255, 255);
+      doc.text("RECEIPT", margin, 22);
 
-          // 3. Final fallback to text
-          doc.setFontSize(16);
-          doc.setTextColor(204, 153, 0);
-          doc.setFont("helvetica", "bold");
-          doc.text("COMPANY LOGO", pageWidth / 2, 20, { align: "center" });
-        }
-      }
+      // Receipt number in header
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      const receiptNum = `#${receipt.data.voucherId || "N/A"}`;
+      doc.text(receiptNum, pageWidth - margin, 22, { align: "right" });
 
-      doc.setFontSize(11);
-      doc.setTextColor(0, 0, 0);
-      let y = 30;
-      const marginLeft = 15;
-      const labelWidth = 35; // width for label column to align colons
+      // Date in header
+      doc.setFontSize(10);
+      const issueDate = receipt.data.issueDate
+        ? new Date(receipt.data.issueDate).toLocaleDateString("en-IN", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })
+        : new Date().toLocaleDateString("en-IN");
+      doc.text(issueDate, pageWidth - margin, 28, { align: "right" });
 
-      // Helper to draw label and value with aligned colon
-      const drawLabelValue = (label: string, value: string, y: number) => {
-        doc.setFont("helvetica", "bold");
-        doc.text(label, marginLeft, y, { baseline: "top" });
-        doc.text(":", marginLeft + labelWidth, y, { baseline: "top" });
-        doc.setFont("helvetica", "normal");
-        doc.text(value, marginLeft + labelWidth + 3, y, { baseline: "top" });
-      };
+      // === CLIENT INFORMATION SECTION ===
+      let y = 50;
 
-      drawLabelValue(
-        "Name",
-        `${receipt.data.clientInfo?.clientName || "-"}`,
-        y
-      );
-      y += 6;
+      // Section header
+      doc.setFillColor(248, 250, 252); // Very light gray
+      doc.rect(margin, y - 5, contentWidth, 8, "F");
 
-      drawLabelValue(
-        "Date",
-        receipt.data.issueDate
-          ? new Date(receipt.data.issueDate).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })
-          : "-",
-        y
-      );
-      y += 6;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text("CLIENT INFORMATION", margin + 3, y);
 
-      drawLabelValue("Shop", `${receipt.data.clientInfo?.shopName || "-"}`, y);
-      y += 6;
+      y += 12;
 
-      drawLabelValue(
-        "Phone Number",
-        `${receipt.data.clientInfo?.phoneNumber || "-"}`,
-        y
-      );
-      y += 6;
+      // Client info with better layout
+      doc.setFontSize(10);
+      doc.setTextColor(55, 65, 81);
 
-      y = 60;
+      const data = receipt.data;
+      const leftColX = margin + 5;
+      const rightColX = margin + contentWidth / 2 + 10;
+
+      // Left column
+      doc.setFont("helvetica", "bold");
+      doc.text("Client Name:", leftColX, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(data.clientInfo?.clientName || "-", leftColX + 25, y);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Shop Name:", leftColX, y + 8);
+      doc.setFont("helvetica", "normal");
+      doc.text(data.clientInfo?.shopName || "-", leftColX + 25, y + 8);
+
+      // Right column
+      doc.setFont("helvetica", "bold");
+      doc.text("Phone:", rightColX, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(data.clientInfo?.phoneNumber || "-", rightColX + 15, y);
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Status:", rightColX, y + 8);
+      doc.setFont("helvetica", "normal");
+      doc.text(data.status || "Active", rightColX + 15, y + 8);
+
+      y += 25;
+
+      // === ITEMS TABLE WITH ENHANCED STYLING ===
+      const items = data.items || [];
+
       autoTable(doc, {
         startY: y,
         head: [
           [
-            "S.NO",
-            "Item",
-            "Gross Wt",
-            "Stone Wt",
-            "Melting",
-            "Net Wt",
-            "Final Wt",
-            "Stone Amt",
+            "S.No",
+            "Item Name",
+            "Gross Wt (g)",
+            "Stone Wt (g)",
+            "Melting %",
+            "Net Wt (g)",
+            "Final Wt (g)",
+            "Stone Amt (₹)",
           ],
         ],
-        body: receipt.data.items?.map((item, index) => [
+        body: items.map((item, index) => [
           index + 1,
           item.itemName || "-",
           formatNumber(item.grossWt, 3),
           formatNumber(item.stoneWt, 3),
-          formatNumber(item.meltingTouch, 3),
+          formatNumber(item.meltingTouch, 2) + "%",
           formatNumber(item.netWt, 3),
           formatNumber(item.finalWt, 3),
-          formatNumber(item.stoneAmt, 2),
+          "₹" + formatNumber(item.stoneAmt, 2),
         ]),
         theme: "grid",
+        margin: { left: margin, right: margin },
         styles: {
-          fontSize: 8,
-          cellPadding: 2,
-          textColor: [0, 0, 0],
-          lineWidth: 0.3,
-          lineColor: [0, 0, 0],
+          fontSize: 9,
+          halign: "center",
+          cellPadding: 4,
+          lineColor: [209, 213, 219],
+          lineWidth: 0.5,
+          textColor: [31, 41, 55],
+          overflow: "linebreak",
         },
         headStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0],
+          fillColor: [15, 23, 42],
+          textColor: [255, 255, 255],
           fontStyle: "bold",
-          lineWidth: 0.3,
-          lineColor: [0, 0, 0],
+          fontSize: 9,
+          halign: "center",
         },
-        bodyStyles: {
-          lineWidth: 0.3,
-          lineColor: [0, 0, 0],
+        alternateRowStyles: {
+          fillColor: [249, 250, 251],
         },
-        margin: { left: marginLeft, right: 15 },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 15 },
+          1: { halign: "left", cellWidth: 35 },
+          2: { halign: "right", cellWidth: 20 },
+          3: { halign: "right", cellWidth: 20 },
+          4: { halign: "center", cellWidth: 18 },
+          5: { halign: "right", cellWidth: 20 },
+          6: { halign: "right", cellWidth: 20 },
+          7: { halign: "right", cellWidth: 22 },
+        },
       });
 
-      let finalY = doc.lastAutoTable.finalY + 15;
-      doc.setFontSize(11);
-      const totalsX = pageWidth - 50;
-      doc.text(
-        `Gross Total: ${formatNumber(receipt.data.totals?.grossWt, 3)}`,
-        totalsX,
-        finalY,
-        { align: "right" }
-      );
-      finalY += 6;
-      doc.text(
-        `Stone Total: ${formatNumber(receipt.data.totals?.stoneWt, 3)}`,
-        totalsX,
-        finalY,
-        { align: "right" }
-      );
-      finalY += 6;
-      doc.text(
-        `Net Total: ${formatNumber(receipt.data.totals?.netWt, 3)}`,
-        totalsX,
-        finalY,
-        { align: "right" }
-      );
+      // === ENHANCED TOTALS SECTION ===
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
 
-      doc.setFontSize(10);
+      // Subtotals section with clean design
+      const totalsStartY = finalY;
+      const labelX = margin + contentWidth * 0.6;
+      const valueX = pageWidth - margin;
 
-      doc.setFont("helvetica", "bold");
-      doc.text("Antiques", 180, pageHeight - 30, { align: "center" });
-      doc.text("Jewellery Manufacturers", 180, pageHeight - 25, {
-        align: "center",
-      });
+      // Subtotals background
+      doc.setFillColor(248, 250, 252);
+      doc.rect(labelX - 10, totalsStartY - 5, contentWidth * 0.4 + 10, 35, "F");
+
+      // Subtotals
       doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(75, 85, 99);
 
-      doc.save(
-        `receipt_${receipt.data.clientInfo?.clientName || "unknown"}_${
-          receipt.data.voucherId || id
-        }.pdf`
+      let currentY = totalsStartY + 3;
+
+      doc.text("Gross Weight:", labelX, currentY);
+      doc.text(`${formatNumber(data.totals?.grossWt, 3)} g`, valueX, currentY, {
+        align: "right",
+      });
+
+      currentY += 6;
+      doc.text("Stone Weight:", labelX, currentY);
+      doc.text(`${formatNumber(data.totals?.stoneWt, 3)} g`, valueX, currentY, {
+        align: "right",
+      });
+
+      currentY += 6;
+      doc.text("Net Weight:", labelX, currentY);
+      doc.text(`${formatNumber(data.totals?.netWt, 3)} g`, valueX, currentY, {
+        align: "right",
+      });
+
+      // Separator line
+      currentY += 8;
+      doc.setDrawColor(209, 213, 219);
+      doc.setLineWidth(0.5);
+      doc.line(labelX, currentY, valueX, currentY);
+
+      // === GRAND TOTAL - PROMINENT DESIGN ===
+      currentY += 10;
+
+      // Total amount box
+      const totalBoxY = currentY - 3;
+      const totalBoxHeight = 16;
+
+      // Main total box with gradient effect (simulated with multiple rectangles)
+      doc.setFillColor(15, 23, 42);
+      doc.rect(
+        labelX - 10,
+        totalBoxY,
+        contentWidth * 0.4 + 10,
+        totalBoxHeight,
+        "F"
       );
-    } catch (error) {
+
+      // Accent border
+      doc.setDrawColor(59, 130, 246);
+      doc.setLineWidth(2);
+      doc.rect(labelX - 10, totalBoxY, contentWidth * 0.4 + 10, totalBoxHeight);
+
+      // Total amount text
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+
+      const totalAmount = data.totals?.totalInvoiceAmount || 0;
+      doc.text("TOTAL AMOUNT", labelX - 5, currentY + 5);
+      doc.text(`₹${formatNumber(totalAmount, 2)}`, valueX - 5, currentY + 5, {
+        align: "right",
+      });
+
+      // === ENHANCED FOOTER ===
+      const footerY = pageHeight - 30;
+
+      // Footer separator line
+      doc.setDrawColor(209, 213, 219);
+      doc.setLineWidth(0.5);
+      doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+
+      // Thank you message
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Thank you for your business!", margin, footerY + 5);
+
+      // Footer notes
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(107, 114, 128);
+      doc.text(
+        "This is a computer generated receipt and does not require a signature.",
+        margin,
+        footerY + 12
+      );
+      doc.text(
+        `Generated on: ${new Date().toLocaleString("en-IN")}`,
+        margin,
+        footerY + 18
+      );
+
+      // Contact info (if available)
+      doc.text(
+        "For queries, please contact support.",
+        pageWidth - margin,
+        footerY + 12,
+        { align: "right" }
+      );
+
+      // === SAVE PDF ===
+      const fileName = `Receipt_${
+        data.clientInfo?.clientName?.replace(/[^a-zA-Z0-9]/g, "_") || "Client"
+      }_${data.voucherId || Date.now()}.pdf`;
+      doc.save(fileName);
+    } catch (err) {
+      console.error("PDF Generation Error:", err);
       toast({
         title: "PDF Generation Failed",
-        description: "Could not generate PDF. Please try again.",
+        description: "Unable to generate PDF. Please try again.",
         variant: "destructive",
       });
     } finally {

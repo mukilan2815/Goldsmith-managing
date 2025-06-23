@@ -106,7 +106,7 @@ export function ReceiptForm({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voucherId, setVoucherId] = useState(
-    `RC-${Math.floor(100000 + Math.random() * 900000)}`
+    `SH-${Math.floor(100000 + Math.random() * 900000)}`
   );
   const [metalType, setMetalType] = useState("Gold");
   const [items, setItems] = useState<ReceiptItem[]>([
