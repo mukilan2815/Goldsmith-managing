@@ -30,6 +30,8 @@ interface ReceiptItem {
   stoneWeight?: number | string;
   subTotal?: number | string;
   makingChargePercent?: number | string;
+  date?: string;
+  tag?: string;
   _id: string;
 }
 
@@ -71,6 +73,7 @@ interface ClientDetails {
   address: string;
   email: string;
   active: boolean;
+  balance?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -105,6 +108,16 @@ const formatNumber = (
   if (value === undefined || value === null) return "0.000";
   const num = typeof value === "string" ? parseFloat(value) : value;
   return isNaN(num) ? "0.000" : num.toFixed(decimals);
+};
+
+// Helper to format date
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return "N/A";
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 };
 
 // Updated generatePDF function to use client details
@@ -175,7 +188,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
   autoTable(doc, {
     startY: y + 3,
     head: [
-      ["S.NO", "Product Name", "Pure(wt)", "Pure%", "Melting", "Total", "Tag"],
+      ["S.NO", "Product Name", "Pure(wt)", "Pure%", "Melting", "Total", "Date"],
     ],
     body: givenItems.map((item, index) => [
       index + 1,
@@ -184,7 +197,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       formatNumber(item.purePercent),
       formatNumber(item.melting),
       formatNumber(item.total),
-      item.tag || "—",
+      item.date ? formatDate(item.date) : "—",
     ]),
     theme: "grid",
     styles: { fontSize: 10, cellPadding: 1, textColor: [0, 0, 0] },
@@ -207,11 +220,11 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       3: { cellWidth: 25 }, // Pure%
       4: { cellWidth: 25 }, // Melting
       5: { cellWidth: 25 }, // Total
-      6: { cellWidth: 25 }, // Tag
+      6: { cellWidth: 25 }, // Date
     },
   });
   // Received Date Section
-  let newY = doc.lastAutoTable.finalY + 10;
+  let newY = (doc as any).lastAutoTable.finalY + 10;
   doc.setFontSize(12);
   doc.setFont("helvetica", "thin");
   const receivedDate = receipt.given?.date
@@ -242,22 +255,24 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       [
         "S.NO",
         "Product Name",
+        "Date",
         "Final Ornament(wt)",
         "Stone Weight",
-        "sub total",
-        "Making Charge(%)",
+        "Touch",
         "MC",
+        "Subtotal",
         "Total",
       ],
     ],
     body: receivedItems.map((item, index) => [
       index + 1,
       item.productName || "-",
+      item.date ? formatDate(item.date) : "—",
       formatNumber(item.finalOrnamentsWt),
       formatNumber(item.stoneWeight),
-      formatNumber(item.subTotal),
       formatNumber(item.makingChargePercent, 2),
       formatNumber(Number(item.total) - Number(item.subTotal)),
+      formatNumber(item.subTotal),
       formatNumber(item.total),
     ]),
     theme: "grid",
@@ -273,21 +288,22 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       lineWidth: 0.1, // Match border thickness with head
       lineColor: [0, 0, 0],
     },
-    margin: { left: marginLeft, right: 15 },
+    margin: { left: marginLeft, right: 10 },
     columnStyles: {
       0: { cellWidth: 15 }, // S.NO
-      1: { cellWidth: 30 }, // Product Name
-      2: { cellWidth: 30 }, // Final Ornament(wt)
-      3: { cellWidth: 25 }, // Stone Weight
-      4: { cellWidth: 20 }, // sub total
-      5: { cellWidth: 25 }, // Making Charge(%)
-      6: { cellWidth: 20 }, // MC
-      7: { cellWidth: 20 }, // Total
+      1: { cellWidth: 25 }, // Product Name
+      2: { cellWidth: 22 }, // Date
+      3: { cellWidth: 25 }, // Final Ornament(wt)
+      4: { cellWidth: 20 }, // Stone Weight
+      5: { cellWidth: 18 }, // Touch
+      6: { cellWidth: 18 }, // MC
+      7: { cellWidth: 18 }, // Subtotal
+      8: { cellWidth: 22 }, // Total
     },
   });
 
   // Totals Section (Right-aligned as in the image)
-  let finalY = doc.lastAutoTable.finalY + 15;
+  let finalY = (doc as any).lastAutoTable.finalY + 15;
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   const totalsX = pageWidth - 80;
@@ -427,16 +443,6 @@ export default function AdminReceiptDetailPage() {
     );
   }
 
-  // Helper to format date
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
   // Calculate balance
   const calculateBalance = () => {
     const givenTotal = parseFloat(String(receipt.given?.total || 0));
@@ -516,7 +522,7 @@ export default function AdminReceiptDetailPage() {
                       Total
                     </th>
                     <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Tag
+                      Date
                     </th>
                   </tr>
                 </thead>
@@ -540,7 +546,7 @@ export default function AdminReceiptDetailPage() {
                         {formatNumber(item.total)}
                       </td>
                       <td className="py-2 px-4 text-center">
-                        {item.tag || "—"}
+                        {item.date ? formatDate(item.date) : "—"}
                       </td>
                     </tr>
                   ))}
@@ -586,19 +592,22 @@ export default function AdminReceiptDetailPage() {
                       Product Name
                     </th>
                     <th className="py-2 px-4 text-sm font-semibold text-center">
+                      Date
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
                       Final Ornaments (wt)
                     </th>
                     <th className="py-2 px-4 text-sm font-semibold text-center">
                       Stone Weight
                     </th>
                     <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Sub Total
-                    </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Making Charge (%)
+                      Touch
                     </th>
                     <th className="py-2 px-4 text-sm font-semibold text-center">
                       MC
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                      Subtotal
                     </th>
                     <th className="py-2 px-4 text-sm font-semibold text-center">
                       Total
@@ -613,13 +622,13 @@ export default function AdminReceiptDetailPage() {
                         {item.productName || "N/A"}
                       </td>
                       <td className="py-2 px-4 text-center">
+                        {item.date ? formatDate(item.date) : "—"}
+                      </td>
+                      <td className="py-2 px-4 text-center">
                         {formatNumber(item.finalOrnamentsWt)}
                       </td>
                       <td className="py-2 px-4 text-center">
                         {formatNumber(item.stoneWeight)}
-                      </td>
-                      <td className="py-2 px-4 text-center">
-                        {formatNumber(item.subTotal)}
                       </td>
                       <td className="py-2 px-4 text-center">
                         {formatNumber(item.makingChargePercent, 2)}
@@ -630,6 +639,9 @@ export default function AdminReceiptDetailPage() {
                         )}
                       </td>
                       <td className="py-2 px-4 text-center">
+                        {formatNumber(item.subTotal)}
+                      </td>
+                      <td className="py-2 px-4 text-center">
                         {formatNumber(item.total)}
                       </td>
                     </tr>
@@ -638,7 +650,7 @@ export default function AdminReceiptDetailPage() {
                 <tfoot>
                   <tr className="bg-gray-50">
                     <td
-                      colSpan={2}
+                      colSpan={3}
                       className="py-2 px-4 text-right font-medium"
                     >
                       Total:
@@ -649,11 +661,11 @@ export default function AdminReceiptDetailPage() {
                     <td className="py-2 px-4 text-center font-medium">
                       {formatNumber(receipt.received?.totalStoneWeight)}
                     </td>
+                    <td className="py-2 px-4"></td>
+                    <td className="py-2 px-4"></td>
                     <td className="py-2 px-4 text-center font-medium">
                       {formatNumber(receipt.received?.totalSubTotal)}
                     </td>
-                    <td className="py-2 px-4"></td>
-                    <td className="py-2 px-4"></td>
                     <td className="py-2 px-4 text-center font-medium">
                       {formatNumber(receipt.received?.total)}
                     </td>

@@ -1,13 +1,23 @@
+export interface ReceivedItem {
+  id: string;
+  description: string;
+  type: string;
+  weight: number | string;
+  amount: number | string;
+  date?: string; // Add date field for each received item
+}
+
 export interface ReceiptItem {
   id: string;
   itemName: string; // Changed from description
   tag?: string;
-  grossWt: number; // Changed from grossWeight
-  stoneWt: number; // Changed from stoneWeight
-  meltingTouch: number; // Changed from meltingPercent
-  netWt: number; // Changed from netWeight
-  finalWt: number; // Changed from finalWeight
-  stoneAmt?: number; // Changed from stoneAmount
+  grossWt: number | string; // Allow string for empty state
+  stoneWt: number | string; // Allow string for empty state
+  meltingTouch: number | string; // Allow string for empty state
+  netWt: number; // Always calculated, so number
+  finalWt: number; // Always calculated, so number
+  stoneAmt?: number | string; // Allow string for empty state
+  date?: string; // Add date field for each item
   // Removed rate and amount as they weren't in the MongoDB document
 }
 
@@ -24,7 +34,8 @@ export interface Receipt {
   metalType: string;
   issueDate: string | Date; // Changed from date
   voucherId: string; // Added this field
-  items: ReceiptItem[];
+  givenItems: ReceiptItem[]; // Changed from items to givenItems
+  receivedItems?: ReceivedItem[]; // Add receivedItems
   totals: {
     // Changed from individual total fields
     grossWt: number;
@@ -32,10 +43,12 @@ export interface Receipt {
     netWt: number;
     finalWt: number;
     stoneAmt: number;
+    totalInvoiceAmount?: number; // Add total invoice amount
   };
   overallWeight?: number;
   paymentStatus: "Pending" | "Paid" | "Partial"; // Added this field
   isCompleted: boolean; // Added this field
+  status: "incomplete" | "complete" | "cancelled"; // Receipt status field
   createdAt: string | Date;
   updatedAt: string | Date;
   // Removed unit as it wasn't in the MongoDB document

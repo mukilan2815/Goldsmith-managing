@@ -164,6 +164,7 @@ interface GivenItem {
   melting: string;
   total: number;
   tag?: string;
+  date?: string; // Add date field
 }
 
 interface ReceivedItem {
@@ -174,6 +175,8 @@ interface ReceivedItem {
   makingChargePercent: string;
   subTotal: number;
   total: number;
+  date?: string; // Add date field
+  mc?: string; // Add mc field
 }
 
 export default function NewAdminReceiptPage() {
@@ -203,6 +206,7 @@ export default function NewAdminReceiptPage() {
       melting: "",
       total: 0,
       tag: "",
+      date: format(new Date(), "yyyy-MM-dd"), // Add default date
     },
   ]);
   const [receivedDate, setReceivedDate] = useState<Date>(new Date());
@@ -216,6 +220,7 @@ export default function NewAdminReceiptPage() {
       mc: "",
       subTotal: 0,
       total: 0,
+      date: format(new Date(), "yyyy-MM-dd"), // Add default date
     },
   ]);
   const [manualGivenTotal, setManualGivenTotal] = useState<number>(0);
@@ -267,7 +272,6 @@ export default function NewAdminReceiptPage() {
       } else {
         setClients(mockClients);
         toast({
-          variant: "warning",
           title: "Warning",
           description:
             "Using mock client data due to API response format issue.",
@@ -276,7 +280,6 @@ export default function NewAdminReceiptPage() {
     } catch (error) {
       setClients(mockClients);
       toast({
-        variant: "warning",
         title: "Warning",
         description: "Using mock client data due to API error.",
       });
@@ -328,6 +331,7 @@ export default function NewAdminReceiptPage() {
             receipt.given.items.map((item: any) => ({
               ...item,
               id: item.id || uuidv4(),
+              date: item.date || format(new Date(), "yyyy-MM-dd"), // Ensure date field exists
             }))
           );
         }
@@ -348,6 +352,7 @@ export default function NewAdminReceiptPage() {
             receipt.received.items.map((item: any) => ({
               ...item,
               id: item.id || uuidv4(),
+              date: item.date || format(new Date(), "yyyy-MM-dd"), // Ensure date field exists
               subTotal:
                 (parseFloat(item.finalOrnamentsWt) || 0) -
                 (parseFloat(item.stoneWeight) || 0),
@@ -413,6 +418,7 @@ export default function NewAdminReceiptPage() {
       purePercent: "",
       melting: "",
       total: 0,
+      date: format(new Date(), "yyyy-MM-dd"), // Add default date
     };
 
     setGivenItems([...givenItems, newItem]);
@@ -444,6 +450,7 @@ export default function NewAdminReceiptPage() {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
 
+          // Only recalculate for numeric fields
           if (["pureWeight", "purePercent", "melting"].includes(field)) {
             const pureWeight = parseFloat(updatedItem.pureWeight) || 0;
             const purePercent = parseFloat(updatedItem.purePercent) || 0;
@@ -468,6 +475,7 @@ export default function NewAdminReceiptPage() {
       makingChargePercent: "",
       subTotal: 0,
       total: 0,
+      date: format(new Date(), "yyyy-MM-dd"), // Add default date
     };
 
     setReceivedItems([...receivedItems, newItem]);
@@ -495,6 +503,7 @@ export default function NewAdminReceiptPage() {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
 
+          // Only recalculate for numeric fields
           if (
             ["finalOrnamentsWt", "stoneWeight", "makingChargePercent"].includes(
               field
@@ -642,7 +651,7 @@ export default function NewAdminReceiptPage() {
       const status = hasReceivedItems ? "complete" : "incomplete";
 
       // Prepare receipt data
-      const receiptData = {
+      const receiptData: any = {
         clientId: selectedClient.id,
         clientName: selectedClient.name,
         given: givenData,
@@ -1006,10 +1015,11 @@ export default function NewAdminReceiptPage() {
                     <div className="p-4">
                       <div className="space-y-4">
                         {/* Table Header */}
-                        <div className="hidden md:grid grid-cols-7 gap-4 p-3 bg-muted/50 rounded-md">
+                        <div className="hidden md:grid grid-cols-8 gap-4 p-3 bg-muted/50 rounded-md">
                           <div className="col-span-2 font-medium">
                             Product Name
                           </div>
+                          <div className="font-medium">Date</div>
                           <div className="font-medium">Pure Weight (g)</div>
                           <div className="font-medium">Pure %</div>
                           <div className="font-medium">Melting</div>
@@ -1020,7 +1030,7 @@ export default function NewAdminReceiptPage() {
                         {givenItems.map((item) => (
                           <div
                             key={item.id}
-                            className="grid grid-cols-1 md:grid-cols-7 gap-3 p-2 border rounded-md"
+                            className="grid grid-cols-1 md:grid-cols-8 gap-3 p-2 border rounded-md"
                           >
                             <div className="md:col-span-2">
                               <label className="text-sm font-medium mb-1 block md:hidden">
@@ -1033,6 +1043,24 @@ export default function NewAdminReceiptPage() {
                                   updateGivenItem(
                                     item.id,
                                     "productName",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium mb-1 block md:hidden">
+                                Date
+                              </label>
+                              <Input
+                                type="date"
+                                value={
+                                  item.date || format(new Date(), "yyyy-MM-dd")
+                                }
+                                onChange={(e) =>
+                                  updateGivenItem(
+                                    item.id,
+                                    "date",
                                     e.target.value
                                   )
                                 }
@@ -1115,8 +1143,8 @@ export default function NewAdminReceiptPage() {
                           </div>
                         ))}
                         {/* Totals Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-7 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
-                          <div className="md:col-span-2">Totals</div>
+                        <div className="grid grid-cols-1 md:grid-cols-8 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
+                          <div className="md:col-span-3">Totals</div>
                           <div>{givenTotals.totalPureWeight.toFixed(2)}</div>
                           <div>-</div>
                           <div>-</div>
@@ -1246,10 +1274,11 @@ export default function NewAdminReceiptPage() {
                     <div className="p-4">
                       <div className="space-y-4">
                         {/* Table Header */}
-                        <div className="hidden md:grid grid-cols-9 gap-4 p-3 bg-muted/50 rounded-md">
+                        <div className="hidden md:grid grid-cols-10 gap-4 p-3 bg-muted/50 rounded-md">
                           <div className="col-span-2 font-medium">
                             Product Name
                           </div>
+                          <div className="font-medium">Date</div>
                           <div className="font-medium">
                             Final Ornaments Wt (g)
                           </div>
@@ -1265,7 +1294,7 @@ export default function NewAdminReceiptPage() {
                         {receivedItems.map((item) => (
                           <div
                             key={item.id}
-                            className="grid grid-cols-1 md:grid-cols-9 gap-4 p-3 border rounded-md"
+                            className="grid grid-cols-1 md:grid-cols-10 gap-4 p-3 border rounded-md"
                           >
                             <div className="md:col-span-2">
                               <label className="text-sm font-medium mb-1 block md:hidden">
@@ -1278,6 +1307,24 @@ export default function NewAdminReceiptPage() {
                                   updateReceivedItem(
                                     item.id,
                                     "productName",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium mb-1 block md:hidden">
+                                Date
+                              </label>
+                              <Input
+                                type="date"
+                                value={
+                                  item.date || format(new Date(), "yyyy-MM-dd")
+                                }
+                                onChange={(e) =>
+                                  updateReceivedItem(
+                                    item.id,
+                                    "date",
                                     e.target.value
                                   )
                                 }
@@ -1377,8 +1424,8 @@ export default function NewAdminReceiptPage() {
                         ))}
 
                         {/* Totals Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-7 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
-                          <div className="md:col-span-2">Totals</div>
+                        <div className="grid grid-cols-1 md:grid-cols-8 gap-4 p-3 border rounded-md bg-muted/50 font-medium">
+                          <div className="md:col-span-3">Totals</div>
                           <div>
                             {receivedTotals.totalOrnamentsWt.toFixed(2)}
                           </div>

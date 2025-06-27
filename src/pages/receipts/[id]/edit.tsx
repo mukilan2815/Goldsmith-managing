@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Loader, Save } from "lucide-react";
+import { ArrowLeft, Loader, Save, Plus, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -30,6 +30,15 @@ interface ReceiptItem {
   finalWt: number;
   stoneAmt: number;
   totalInvoiceAmount: number;
+  date?: string; // Add date field
+}
+
+interface ReceivedItem {
+  _id?: string;
+  receivedGold: number;
+  melting: number;
+  finalWt: number;
+  date?: string; // Add date field
 }
 
 interface ClientInfo {
@@ -45,9 +54,11 @@ interface Receipt {
   metalType: string;
   issueDate: string | Date;
   items: ReceiptItem[];
+  receivedItems?: ReceivedItem[];
   clientInfo: ClientInfo;
   paymentStatus: "Pending" | "Partial" | "Paid";
   totalPaidAmount: number;
+  status?: "complete" | "incomplete";
   totals?: {
     grossWt: number;
     stoneWt: number;
@@ -55,6 +66,9 @@ interface Receipt {
     finalWt: number;
     stoneAmt: number;
     totalInvoiceAmount: number;
+  };
+  receivedTotals?: {
+    finalWt: number;
   };
 }
 
@@ -81,6 +95,64 @@ export default function EditReceiptPage() {
   useEffect(() => {
     if (receiptData?.data) {
       const receipt = receiptData.data;
+
+      // Process received items and calculate totals
+      const processedReceivedItems = (receipt.receivedItems || []).map(
+        (item) => ({
+          ...item,
+          receivedGold: item.receivedGold || 0,
+          melting: item.melting || 0,
+          finalWt: item.finalWt || 0,
+        })
+      );
+
+      // Calculate received totals
+      const receivedTotals = {
+        finalWt: processedReceivedItems.reduce(
+          (sum, item) => sum + (item.finalWt || 0),
+          0
+        ),
+      };
+
+      // Process given items and calculate totals
+      const processedItems = (receipt.givenItems || receipt.items || []).map(
+        (item) => ({
+          ...item,
+          grossWt: item.grossWt ?? 0,
+          stoneWt: item.stoneWt ?? 0,
+          netWt: item.netWt ?? 0,
+          meltingTouch: item.meltingTouch ?? 0,
+          finalWt: item.finalWt ?? 0,
+          stoneAmt: item.stoneAmt ?? 0,
+          totalInvoiceAmount: item.totalInvoiceAmount ?? 0,
+        })
+      );
+
+      // Calculate given totals
+      const totals = receipt.totals || {
+        grossWt: processedItems.reduce(
+          (sum, item) => sum + (item.grossWt || 0),
+          0
+        ),
+        stoneWt: processedItems.reduce(
+          (sum, item) => sum + (item.stoneWt || 0),
+          0
+        ),
+        netWt: processedItems.reduce((sum, item) => sum + (item.netWt || 0), 0),
+        finalWt: processedItems.reduce(
+          (sum, item) => sum + (item.finalWt || 0),
+          0
+        ),
+        stoneAmt: processedItems.reduce(
+          (sum, item) => sum + (item.stoneAmt || 0),
+          0
+        ),
+        totalInvoiceAmount: processedItems.reduce(
+          (sum, item) => sum + (item.totalInvoiceAmount || 0),
+          0
+        ),
+      };
+
       setEditableReceipt({
         ...receipt,
         issueDate: safeDateParse(receipt.issueDate),
@@ -90,16 +162,10 @@ export default function EditReceiptPage() {
           phoneNumber: "",
           address: "",
         },
-        items: receipt.items.map((item) => ({
-          ...item,
-          grossWt: item.grossWt || 0,
-          stoneWt: item.stoneWt || 0,
-          netWt: item.netWt || 0,
-          meltingTouch: item.meltingTouch || 0,
-          finalWt: item.finalWt || 0,
-          stoneAmt: item.stoneAmt || 0,
-          totalInvoiceAmount: item.totalInvoiceAmount || 0,
-        })),
+        items: processedItems,
+        receivedItems: processedReceivedItems,
+        totals,
+        receivedTotals,
       });
     }
   }, [receiptData]);
@@ -168,45 +234,153 @@ export default function EditReceiptPage() {
     });
   };
 
-  // Handle item changes
-  const handleItemChange = (
+  // Handle received item changes
+  const handleReceivedItemChange = (
     index: number,
-    field: keyof ReceiptItem,
+    field: keyof ReceivedItem,
     value: string | number
   ) => {
     setEditableReceipt((prev) => {
-      if (!prev) return null;
+      if (!prev || !prev.receivedItems || !prev.receivedItems[index])
+        return prev;
 
-      const updatedItems = [...prev.items];
+      const updatedReceivedItems = [...(prev.receivedItems || [])];
 
-      // Handle string fields differently from number fields
-      if (field === "itemName" || field === "tag") {
-        updatedItems[index] = {
-          ...updatedItems[index],
-          [field]: value.toString(), // Ensure it's a string
+      // Handle string fields (date) differently from number fields
+      if (field === "date") {
+        updatedReceivedItems[index] = {
+          ...updatedReceivedItems[index],
+          [field]: value.toString(),
         };
       } else {
-        // For numeric fields
         const numericValue =
           typeof value === "string" ? parseFloat(value) || 0 : value;
 
         // Create updated item
         const updatedItem = {
-          ...updatedItems[index],
+          ...updatedReceivedItems[index],
           [field]: numericValue,
         };
 
-        // Recalculate dependent fields
-        if (["grossWt", "stoneWt", "meltingTouch"].includes(field)) {
-          updatedItem.netWt = updatedItem.grossWt - updatedItem.stoneWt;
+        // Recalculate finalWt for received items
+        if (["receivedGold", "melting"].includes(field)) {
           updatedItem.finalWt =
-            updatedItem.netWt * (updatedItem.meltingTouch / 100);
+            (updatedItem.receivedGold * updatedItem.melting) / 100;
         }
 
-        updatedItems[index] = updatedItem;
+        updatedReceivedItems[index] = updatedItem;
       }
 
-      // Calculate totals (only for numeric fields)
+      // Calculate received totals
+      const receivedTotals = {
+        finalWt: updatedReceivedItems.reduce(
+          (sum, item) => sum + (item.finalWt || 0),
+          0
+        ),
+      };
+
+      // Auto-update status based on received items
+      const hasValidReceivedItems = updatedReceivedItems.some(
+        (item) => item.receivedGold > 0 && item.melting > 0
+      );
+      const newStatus = hasValidReceivedItems ? "complete" : "incomplete";
+
+      return {
+        ...prev,
+        receivedItems: updatedReceivedItems,
+        receivedTotals,
+        status: newStatus,
+      };
+    });
+  };
+
+  // Add received item
+  const addReceivedItem = () => {
+    setEditableReceipt((prev) => {
+      if (!prev) return prev;
+      const newItem: ReceivedItem = {
+        receivedGold: 0,
+        melting: 0,
+        finalWt: 0,
+        date: format(new Date(), "yyyy-MM-dd"), // Add default date
+      };
+      const updatedReceivedItems = [...(prev.receivedItems || []), newItem];
+
+      // Check if status should be updated
+      const hasValidReceivedItems = updatedReceivedItems.some(
+        (item) => item.receivedGold > 0 && item.melting > 0
+      );
+      const newStatus = hasValidReceivedItems ? "complete" : "incomplete";
+
+      return {
+        ...prev,
+        receivedItems: updatedReceivedItems,
+        status: newStatus,
+      };
+    });
+  };
+
+  // Remove received item
+  const removeReceivedItem = (index: number) => {
+    setEditableReceipt((prev) => {
+      if (!prev || !prev.receivedItems) return prev;
+      const updatedReceivedItems = prev.receivedItems.filter(
+        (_, i) => i !== index
+      );
+
+      // Recalculate totals
+      const receivedTotals = {
+        finalWt: updatedReceivedItems.reduce(
+          (sum, item) => sum + (item.finalWt || 0),
+          0
+        ),
+      };
+
+      // Auto-update status based on remaining received items
+      const hasValidReceivedItems = updatedReceivedItems.some(
+        (item) => item.receivedGold > 0 && item.melting > 0
+      );
+      const newStatus = hasValidReceivedItems ? "complete" : "incomplete";
+
+      return {
+        ...prev,
+        receivedItems: updatedReceivedItems,
+        receivedTotals,
+        status: newStatus,
+      };
+    });
+  };
+
+  // Add given item
+  const addGivenItem = () => {
+    setEditableReceipt((prev) => {
+      if (!prev) return prev;
+      const newItem: ReceiptItem = {
+        itemName: "",
+        tag: "",
+        grossWt: 0,
+        stoneWt: 0,
+        netWt: 0,
+        meltingTouch: 0,
+        finalWt: 0,
+        stoneAmt: 0,
+        totalInvoiceAmount: 0,
+        date: format(new Date(), "yyyy-MM-dd"), // Add default date
+      };
+      return {
+        ...prev,
+        items: [...(prev.items || []), newItem],
+      };
+    });
+  };
+
+  // Remove given item
+  const removeGivenItem = (index: number) => {
+    setEditableReceipt((prev) => {
+      if (!prev || !prev.items || prev.items.length <= 1) return prev;
+      const updatedItems = prev.items.filter((_, i) => i !== index);
+
+      // Recalculate totals
       const totals = {
         grossWt: updatedItems.reduce(
           (sum, item) => sum + (item.grossWt || 0),
@@ -239,6 +413,80 @@ export default function EditReceiptPage() {
     });
   };
 
+  // Handle item changes
+  const handleItemChange = (
+    index: number,
+    field: keyof ReceiptItem,
+    value: string | number
+  ) => {
+    setEditableReceipt((prev) => {
+      if (!prev || !prev.items || !prev.items[index]) return prev;
+
+      const updatedItems = [...prev.items];
+
+      // Handle string fields differently from number fields
+      if (field === "itemName" || field === "tag" || field === "date") {
+        updatedItems[index] = {
+          ...updatedItems[index],
+          [field]: value.toString(), // Ensure it's a string
+        };
+      } else {
+        // For numeric fields
+        const numericValue =
+          typeof value === "string" ? parseFloat(value) || 0 : value;
+
+        // Create updated item
+        const updatedItem = {
+          ...updatedItems[index],
+          [field]: numericValue,
+        };
+
+        // Recalculate dependent fields
+        if (["grossWt", "stoneWt", "meltingTouch"].includes(field)) {
+          updatedItem.netWt = updatedItem.grossWt - updatedItem.stoneWt;
+          updatedItem.finalWt =
+            updatedItem.netWt * (updatedItem.meltingTouch / 100);
+        }
+
+        updatedItems[index] = updatedItem;
+      }
+
+      // Calculate totals (only for numeric fields)
+      const totals = {
+        grossWt: (updatedItems || []).reduce(
+          (sum, item) => sum + (item.grossWt || 0),
+          0
+        ),
+        stoneWt: (updatedItems || []).reduce(
+          (sum, item) => sum + (item.stoneWt || 0),
+          0
+        ),
+        netWt: (updatedItems || []).reduce(
+          (sum, item) => sum + (item.netWt || 0),
+          0
+        ),
+        finalWt: (updatedItems || []).reduce(
+          (sum, item) => sum + (item.finalWt || 0),
+          0
+        ),
+        stoneAmt: (updatedItems || []).reduce(
+          (sum, item) => sum + (item.stoneAmt || 0),
+          0
+        ),
+        totalInvoiceAmount: (updatedItems || []).reduce(
+          (sum, item) => sum + (item.totalInvoiceAmount || 0),
+          0
+        ),
+      };
+
+      return {
+        ...prev,
+        items: updatedItems,
+        totals,
+      };
+    });
+  };
+
   // Handle save
   const handleSave = () => {
     if (!editableReceipt) {
@@ -257,7 +505,7 @@ export default function EditReceiptPage() {
         editableReceipt.issueDate instanceof Date
           ? editableReceipt.issueDate.toISOString()
           : editableReceipt.issueDate,
-      items: editableReceipt.items.map((item) => ({
+      givenItems: (editableReceipt.items || []).map((item) => ({
         ...item,
         grossWt: Number(item.grossWt) || 0,
         stoneWt: Number(item.stoneWt) || 0,
@@ -266,6 +514,14 @@ export default function EditReceiptPage() {
         finalWt: Number(item.finalWt) || 0,
         stoneAmt: Number(item.stoneAmt) || 0,
         totalInvoiceAmount: Number(item.totalInvoiceAmount) || 0,
+        date: item.date || format(new Date(), "yyyy-MM-dd"), // Include date
+      })),
+      receivedItems: (editableReceipt.receivedItems || []).map((item) => ({
+        ...item,
+        receivedGold: Number(item.receivedGold) || 0,
+        melting: Number(item.melting) || 0,
+        finalWt: Number(item.finalWt) || 0,
+        date: item.date || format(new Date(), "yyyy-MM-dd"), // Include date
       })),
     };
 
@@ -341,16 +597,34 @@ export default function EditReceiptPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="col-span-2">
+        <div className="col-span-2 space-y-6">
+          {/* Given Items Table */}
           <div className="bg-card rounded-lg p-6 print:p-0 print:bg-transparent">
-            <h2 className="text-xl font-medium mb-4">Receipt Items</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-medium">Given Items</h2>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addGivenItem}
+                className="flex items-center print:hidden"
+              >
+                <Plus className="mr-1 h-4 w-4" /> Add Item
+              </Button>
+            </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px]">
+              <table className="w-full min-w-[900px]">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2 px-1 text-sm font-medium">
                       Item Name
+                    </th>
+                    <th className="text-center py-2 px-1 text-sm font-medium">
+                      Date
+                    </th>
+                    <th className="text-left py-2 px-1 text-sm font-medium">
+                      Tag
                     </th>
                     <th className="text-right py-2 px-1 text-sm font-medium">
                       Gross Wt (g)
@@ -370,17 +644,264 @@ export default function EditReceiptPage() {
                     <th className="text-right py-2 px-1 text-sm font-medium">
                       Stone Amt
                     </th>
+                    <th className="text-center py-2 px-1 text-sm font-medium print:hidden">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {editableReceipt.items?.map((item, index) => (
-                    <tr key={item._id || index} className="border-b">
+                  {(editableReceipt.items || [])
+                    ?.filter((item) => item.itemName !== "Previous Balance")
+                    ?.map((item, index) => {
+                      // Find the actual index in the original array for proper handling
+                      const actualIndex = (
+                        editableReceipt.items || []
+                      ).findIndex((originalItem) => originalItem === item);
+                      return (
+                        <tr key={item._id || actualIndex} className="border-b">
+                          <td className="py-2 px-1">
+                            <input
+                              type="text"
+                              value={item.itemName}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  actualIndex,
+                                  "itemName",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-transparent border rounded px-2 py-1"
+                            />
+                          </td>
+                          <td className="py-2 px-1">
+                            <input
+                              type="date"
+                              value={
+                                item.date || format(new Date(), "yyyy-MM-dd")
+                              }
+                              onChange={(e) =>
+                                handleItemChange(
+                                  actualIndex,
+                                  "date",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-transparent border rounded px-2 py-1"
+                            />
+                          </td>
+                          <td className="py-2 px-1">
+                            <input
+                              type="text"
+                              value={item.tag}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  actualIndex,
+                                  "tag",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-transparent border rounded px-2 py-1"
+                              placeholder="Tag"
+                            />
+                          </td>
+                          <td className="py-2 px-1">
+                            <input
+                              type="number"
+                              value={item.grossWt === 0 ? "" : item.grossWt}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  actualIndex,
+                                  "grossWt",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-transparent border rounded px-2 py-1 text-right"
+                              step="0.01"
+                              min="0"
+                              placeholder="0.00"
+                            />
+                          </td>
+                          <td className="py-2 px-1">
+                            <input
+                              type="number"
+                              value={item.stoneWt === 0 ? "" : item.stoneWt}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  actualIndex,
+                                  "stoneWt",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-transparent border rounded px-2 py-1 text-right"
+                              step="0.01"
+                              min="0"
+                              placeholder="0.00"
+                            />
+                          </td>
+                          <td className="py-2 px-1">
+                            <input
+                              type="number"
+                              value={
+                                item.meltingTouch === 0 ? "" : item.meltingTouch
+                              }
+                              onChange={(e) =>
+                                handleItemChange(
+                                  actualIndex,
+                                  "meltingTouch",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-transparent border rounded px-2 py-1 text-right"
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              placeholder="0.0"
+                            />
+                          </td>
+                          <td className="py-2 px-1">
+                            <input
+                              type="number"
+                              value={item.netWt?.toFixed(3) || "0.000"}
+                              readOnly
+                              className="w-full bg-muted/50 border rounded px-2 py-1 text-right"
+                            />
+                          </td>
+                          <td className="py-2 px-1">
+                            <input
+                              type="number"
+                              value={item.finalWt?.toFixed(3) || "0.000"}
+                              readOnly
+                              className="w-full bg-muted/50 border rounded px-2 py-1 text-right"
+                            />
+                          </td>
+                          <td className="py-2 px-1">
+                            <input
+                              type="number"
+                              value={item.stoneAmt === 0 ? "" : item.stoneAmt}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  actualIndex,
+                                  "stoneAmt",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-transparent border rounded px-2 py-1 text-right"
+                              step="0.01"
+                              min="0"
+                              placeholder="0.00"
+                            />
+                          </td>
+                          <td className="py-2 px-1 text-center print:hidden">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeGivenItem(actualIndex)}
+                              className="h-6 w-6"
+                            >
+                              <Trash className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                  <tr className="font-medium bg-accent/20">
+                    <td colSpan={3} className="py-2 px-1">
+                      Totals
+                    </td>
+                    <td className="py-2 px-1 text-right">
+                      {/* Calculate totals excluding Previous Balance items */}
+                      {(editableReceipt.items || [])
+                        .filter((item) => item.itemName !== "Previous Balance")
+                        .reduce((sum, item) => sum + (item.grossWt || 0), 0)
+                        .toFixed(3)}
+                    </td>
+                    <td className="py-2 px-1 text-right">
+                      {(editableReceipt.items || [])
+                        .filter((item) => item.itemName !== "Previous Balance")
+                        .reduce((sum, item) => sum + (item.stoneWt || 0), 0)
+                        .toFixed(3)}
+                    </td>
+                    <td className="py-2 px-1">-</td>
+                    <td className="py-2 px-1 text-right">
+                      {(editableReceipt.items || [])
+                        .filter((item) => item.itemName !== "Previous Balance")
+                        .reduce((sum, item) => sum + (item.netWt || 0), 0)
+                        .toFixed(3)}
+                    </td>
+                    <td className="py-2 px-1 text-right">
+                      {(editableReceipt.items || [])
+                        .filter((item) => item.itemName !== "Previous Balance")
+                        .reduce((sum, item) => sum + (item.finalWt || 0), 0)
+                        .toFixed(3)}
+                    </td>
+                    <td className="py-2 px-1 text-right">
+                      {(editableReceipt.items || [])
+                        .filter((item) => item.itemName !== "Previous Balance")
+                        .reduce((sum, item) => sum + (item.stoneAmt || 0), 0)
+                        .toFixed(3)}
+                    </td>
+                    <td className="py-2 px-1 print:hidden"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Received Items Table */}
+          <div className="bg-card rounded-lg p-6 print:p-0 print:bg-transparent">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-medium">Received Items</h2>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addReceivedItem}
+                className="flex items-center print:hidden"
+              >
+                <Plus className="mr-1 h-4 w-4" /> Add Item
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[500px]">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-1 text-sm font-medium">
+                      S.No
+                    </th>
+                    <th className="text-center py-2 px-1 text-sm font-medium">
+                      Date
+                    </th>
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Received Gold (g)
+                    </th>
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Melting %
+                    </th>
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Final Wt (g)
+                    </th>
+                    <th className="text-center py-2 px-1 text-sm font-medium print:hidden">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(editableReceipt.receivedItems || [])?.map((item, index) => (
+                    <tr key={index} className="border-b">
+                      <td className="py-2 px-1">{index + 1}</td>
                       <td className="py-2 px-1">
                         <input
-                          type="text"
-                          value={item.itemName}
+                          type="date"
+                          value={item.date || format(new Date(), "yyyy-MM-dd")}
                           onChange={(e) =>
-                            handleItemChange(index, "itemName", e.target.value)
+                            handleReceivedItemChange(
+                              index,
+                              "date",
+                              e.target.value
+                            )
                           }
                           className="w-full bg-transparent border rounded px-2 py-1"
                         />
@@ -388,35 +909,30 @@ export default function EditReceiptPage() {
                       <td className="py-2 px-1">
                         <input
                           type="number"
-                          value={item.grossWt || 0}
-                          onChange={(e) =>
-                            handleItemChange(index, "grossWt", e.target.value)
+                          value={
+                            item.receivedGold === 0 ? "" : item.receivedGold
                           }
-                          className="w-full bg-transparent border rounded px-2 py-1 text-right"
-                          step="0.01"
-                          min="0"
-                        />
-                      </td>
-                      <td className="py-2 px-1">
-                        <input
-                          type="number"
-                          value={item.stoneWt || 0}
                           onChange={(e) =>
-                            handleItemChange(index, "stoneWt", e.target.value)
-                          }
-                          className="w-full bg-transparent border rounded px-2 py-1 text-right"
-                          step="0.01"
-                          min="0"
-                        />
-                      </td>
-                      <td className="py-2 px-1">
-                        <input
-                          type="number"
-                          value={item.meltingTouch || 0}
-                          onChange={(e) =>
-                            handleItemChange(
+                            handleReceivedItemChange(
                               index,
-                              "meltingTouch",
+                              "receivedGold",
+                              e.target.value
+                            )
+                          }
+                          className="w-full bg-transparent border rounded px-2 py-1 text-right"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                        />
+                      </td>
+                      <td className="py-2 px-1">
+                        <input
+                          type="number"
+                          value={item.melting === 0 ? "" : item.melting}
+                          onChange={(e) =>
+                            handleReceivedItemChange(
+                              index,
+                              "melting",
                               e.target.value
                             )
                           }
@@ -424,63 +940,78 @@ export default function EditReceiptPage() {
                           step="0.1"
                           min="0"
                           max="100"
+                          placeholder="0.0"
                         />
                       </td>
                       <td className="py-2 px-1">
                         <input
                           type="number"
-                          value={item.netWt || 0}
+                          value={item.finalWt?.toFixed(3) || "0.000"}
                           readOnly
                           className="w-full bg-muted/50 border rounded px-2 py-1 text-right"
                         />
                       </td>
-                      <td className="py-2 px-1">
-                        <input
-                          type="number"
-                          value={item.finalWt || 0}
-                          readOnly
-                          className="w-full bg-muted/50 border rounded px-2 py-1 text-right"
-                        />
-                      </td>
-                      <td className="py-2 px-1">
-                        <input
-                          type="number"
-                          value={item.stoneAmt || 0}
-                          onChange={(e) =>
-                            handleItemChange(index, "stoneAmt", e.target.value)
-                          }
-                          className="w-full bg-transparent border rounded px-2 py-1 text-right"
-                          step="0.01"
-                          min="0"
-                        />
+                      <td className="py-2 px-1 text-center print:hidden">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeReceivedItem(index)}
+                          className="h-6 w-6"
+                        >
+                          <Trash className="h-3 w-3 text-destructive" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
 
                   <tr className="font-medium bg-accent/20">
-                    <td className="py-2 px-1">Totals</td>
-                    <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.grossWt?.toFixed(3) || "0.000"}
+                    <td colSpan={4} className="py-2 px-1 text-right">
+                      Totals:
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.stoneWt?.toFixed(3) || "0.000"}
-                    </td>
-                    <td className="py-2 px-1">
-                      {editableReceipt.totals?.meltingTouch?.toFixed(3) ||
+                      {editableReceipt.receivedTotals?.finalWt?.toFixed(3) ||
                         "0.000"}
                     </td>
-                    <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.netWt?.toFixed(3) || "0.000"}
-                    </td>
-                    <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.finalWt?.toFixed(3) || "0.000"}
-                    </td>
-                    <td className="py-2 px-1 text-right">
-                      {editableReceipt.totals?.stoneAmt?.toFixed(3) || "0.000"}
-                    </td>
+                    <td className="py-2 px-1 print:hidden"></td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Balance Summary */}
+          <div className="bg-card rounded-lg p-6 print:p-0 print:bg-transparent">
+            <h2 className="text-xl font-medium mb-4">Balance Summary</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-muted/10 p-3 rounded-md">
+                <div className="text-sm text-muted-foreground">
+                  Given Final Wt.
+                </div>
+                <div className="text-lg font-semibold">
+                  {editableReceipt.totals?.finalWt?.toFixed(3) || "0.000"}g
+                </div>
+              </div>
+              <div className="bg-muted/10 p-3 rounded-md">
+                <div className="text-sm text-muted-foreground">
+                  Received Final Wt.
+                </div>
+                <div className="text-lg font-semibold">
+                  {editableReceipt.receivedTotals?.finalWt?.toFixed(3) ||
+                    "0.000"}
+                  g
+                </div>
+              </div>
+              <div className="bg-primary/10 p-3 rounded-md">
+                <div className="text-sm text-primary">Balance</div>
+                <div className="text-lg font-semibold text-primary">
+                  {(
+                    (editableReceipt.totals?.finalWt || 0) -
+                    (editableReceipt.receivedTotals?.finalWt || 0)
+                  ).toFixed(3)}
+                  g
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -622,6 +1153,34 @@ export default function EditReceiptPage() {
                   step="0.01"
                   min="0"
                 />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground block mb-1">
+                  Receipt Status
+                </label>
+                <select
+                  value={editableReceipt.status || "incomplete"}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "status",
+                      e.target.value as "complete" | "incomplete"
+                    )
+                  }
+                  className="w-full bg-transparent border rounded px-3 py-2"
+                >
+                  <option value="complete">Complete</option>
+                  <option value="incomplete">Incomplete</option>
+                </select>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {(() => {
+                    const hasValidReceivedItems = (
+                      editableReceipt.receivedItems || []
+                    ).some((item) => item.receivedGold > 0 && item.melting > 0);
+                    return hasValidReceivedItems
+                      ? "✅ Has received items - Status: Complete"
+                      : "⚠️ No received items - Status: Incomplete";
+                  })()}
+                </div>
               </div>
             </div>
           </div>

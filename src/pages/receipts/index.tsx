@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Plus,
   Search,
@@ -71,6 +72,24 @@ export default function ReceiptsPage() {
 
   const receipts = receiptsData?.data || [];
 
+  // Helper function to determine receipt status
+  const getReceiptStatus = (receipt: any) => {
+    if (receipt.status) {
+      return receipt.status; // Use backend status if available
+    }
+    // Fallback: derive status from isCompleted and givenItems
+    if (receipt.isCompleted === false) {
+      return "incomplete";
+    } else if (receipt.isCompleted === true) {
+      return "complete";
+    }
+    // If no isCompleted field, check givenItems
+    const hasValidItems = receipt.givenItems?.some(
+      (item: any) => item.finalWt && item.finalWt > 0
+    );
+    return hasValidItems ? "complete" : "incomplete";
+  };
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => receiptServices.deleteReceipt(id),
@@ -109,7 +128,14 @@ export default function ReceiptsPage() {
       if (!matches) return false;
     }
 
-    // Type filter (if implemented in the future)
+    // Status filter
+    if (filterBy !== "all") {
+      const receiptStatus = getReceiptStatus(receipt);
+      if (receiptStatus !== filterBy) {
+        return false;
+      }
+    }
+
     return matches;
   });
 
@@ -176,12 +202,13 @@ export default function ReceiptsPage() {
           </div>
           <Select value={filterBy} onValueChange={setFilterBy}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by type" />
+              <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Receipts</SelectItem>
-              <SelectItem value="regular">Regular Receipts</SelectItem>
-              <SelectItem value="admin">Work Receipts</SelectItem>
+              <SelectItem value="complete">Complete</SelectItem>
+              <SelectItem value="incomplete">Incomplete</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -205,6 +232,7 @@ export default function ReceiptsPage() {
                   <TableHead>Shop Name</TableHead>
                   <TableHead>Client Name</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Gross Wt (g)</TableHead>
                   <TableHead className="text-right">Final Wt (g)</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -221,6 +249,9 @@ export default function ReceiptsPage() {
                       <TableCell>{receipt.clientInfo.clientName}</TableCell>
                       <TableCell>
                         {new Date(receipt.issueDate).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={getReceiptStatus(receipt)} />
                       </TableCell>
                       <TableCell className="text-right">
                         {receipt.totals.grossWt.toFixed(2)}
@@ -254,7 +285,7 @@ export default function ReceiptsPage() {
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="text-center py-10 text-muted-foreground"
                     >
                       {searchTerm

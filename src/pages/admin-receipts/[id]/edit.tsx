@@ -46,7 +46,9 @@ interface ReceiptItem {
   stoneWeight?: number;
   subTotal?: number;
   makingChargePercent?: number;
+  date?: string;
   _id?: string;
+  id?: string; // Add the id field that backend expects
 }
 
 interface TransactionDetails {
@@ -120,10 +122,13 @@ const adminReceiptApi = {
     data: Partial<AdminReceipt>
   ): Promise<AdminReceipt> => {
     try {
+      console.log("Sending update data:", JSON.stringify(data, null, 2));
       const response = await api.put(`/admin-receipts/${id}`, data);
       return response.data as AdminReceipt;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error updating Work Receipt ${id}:`, error);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error response status:", error.response?.status);
       throw error;
     }
   },
@@ -160,10 +165,23 @@ export default function EditAdminReceiptPage() {
         initializedData.given.items = initializedData.given.items.map(
           (item: any) => ({
             ...item,
+            _id:
+              item._id ||
+              item.id ||
+              `existing-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`,
+            id:
+              item.id ||
+              item._id ||
+              `existing-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`,
             pureWeight: Number(item.pureWeight) || 0,
             purePercent: Number(item.purePercent) || 0,
             melting: Number(item.melting) || 0,
             total: Number(item.total) || 0,
+            date: item.date || new Date().toISOString().split("T")[0],
           })
         );
         initializedData.given.total = Number(initializedData.given.total) || 0;
@@ -174,11 +192,24 @@ export default function EditAdminReceiptPage() {
         initializedData.received.items = initializedData.received.items.map(
           (item: any) => ({
             ...item,
+            _id:
+              item._id ||
+              item.id ||
+              `existing-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`,
+            id:
+              item.id ||
+              item._id ||
+              `existing-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`,
             finalOrnamentsWt: Number(item.finalOrnamentsWt) || 0,
             stoneWeight: Number(item.stoneWeight) || 0,
             subTotal: Number(item.subTotal) || 0,
             makingChargePercent: Number(item.makingChargePercent) || 0,
             total: Number(item.total) || 0,
+            date: item.date || new Date().toISOString().split("T")[0],
           })
         );
         initializedData.received.total =
@@ -254,13 +285,16 @@ export default function EditAdminReceiptPage() {
       if (!prev) return null;
 
       const updatedItems = [...prev[transactionType].items];
-      const numericValue =
-        typeof value === "string" ? parseFloat(value) || 0 : value;
 
-      // Create updated item
+      // Create updated item - don't convert date or productName to numbers
       const updatedItem = {
         ...updatedItems[index],
-        [field]: field === "productName" ? value : numericValue,
+        [field]:
+          field === "productName" || field === "date"
+            ? value
+            : typeof value === "string"
+            ? parseFloat(value) || 0
+            : value,
       };
 
       // Recalculate totals for given items
@@ -340,8 +374,15 @@ export default function EditAdminReceiptPage() {
     setReceipt((prev) => {
       if (!prev) return null;
 
+      const tempId = `new-${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+
       const newItem: ReceiptItem = {
         productName: "",
+        date: new Date().toISOString().split("T")[0], // Set today's date as default
+        _id: tempId, // Generate a temporary ID
+        id: tempId, // Also set the id field that backend requires
       };
 
       if (transactionType === "given") {
@@ -493,7 +534,7 @@ export default function EditAdminReceiptPage() {
         }
       }
 
-      // Update client balance
+      // Update client balance first
       const newClientBalance = calculateNewClientBalance();
       await clientApi.updateClientBalance(receipt.clientId, newClientBalance);
 
@@ -504,21 +545,104 @@ export default function EditAdminReceiptPage() {
         receipt.given.total !== undefined &&
         receipt.received.total !== undefined;
 
-      // Update manual calculations
-      // Update manual calculations
+      // Prepare manual calculations
       const manualCalculations = {
-        givenTotal: Number(receipt.given.total) || 0,
-        receivedTotal: Number(receipt.received.total) || 0,
+        givenTotal: Math.round((Number(receipt.given.total) || 0) * 100) / 100,
+        receivedTotal:
+          Math.round((Number(receipt.received.total) || 0) * 100) / 100,
         operation:
           receipt.manualCalculations?.operation || "subtract-given-received",
-        result: calculateBalance(),
+        result: Math.round(calculateBalance() * 100) / 100,
       };
-      // Prepare update data
-      const updateData: Partial<AdminReceipt> = {
+
+      // Clean up the data to ensure all numeric fields are properly formatted
+      const cleanedReceipt = {
         ...receipt,
         status: shouldBeComplete ? "complete" : receipt.status,
         manualCalculations,
+        given: {
+          ...receipt.given,
+          items: receipt.given.items.map((item) => {
+            const cleanedItem: any = {
+              productName: item.productName,
+              pureWeight: Number(item.pureWeight) || 0,
+              purePercent: Number(item.purePercent) || 0,
+              melting: Number(item.melting) || 0,
+              total: Math.round((Number(item.total) || 0) * 100) / 100, // Fix floating point precision
+              date: item.date || new Date().toISOString().split("T")[0],
+            };
+
+            // Handle _id and id fields properly
+            if (
+              item._id &&
+              !item._id.startsWith("new-") &&
+              !item._id.startsWith("temp-")
+            ) {
+              // Existing item - use the existing _id for both fields
+              cleanedItem._id = item._id;
+              cleanedItem.id = item._id;
+            } else {
+              // New item - don't send _id, but generate a temporary id for backend requirement
+              const tempId = `temp-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`;
+              cleanedItem.id = tempId;
+            }
+
+            return cleanedItem;
+          }),
+          total: Math.round((Number(receipt.given.total) || 0) * 100) / 100,
+          totalPureWeight:
+            Math.round((Number(receipt.given.totalPureWeight) || 0) * 100) /
+            100,
+        },
+        received: {
+          ...receipt.received,
+          items: receipt.received.items.map((item) => {
+            const cleanedItem: any = {
+              productName: item.productName,
+              finalOrnamentsWt: Number(item.finalOrnamentsWt) || 0,
+              stoneWeight: Number(item.stoneWeight) || 0,
+              subTotal: Math.round((Number(item.subTotal) || 0) * 100) / 100,
+              makingChargePercent: Number(item.makingChargePercent) || 0,
+              total: Math.round((Number(item.total) || 0) * 100) / 100, // Fix floating point precision
+              date: item.date || new Date().toISOString().split("T")[0],
+            };
+
+            // Handle _id and id fields properly
+            if (
+              item._id &&
+              !item._id.startsWith("new-") &&
+              !item._id.startsWith("temp-")
+            ) {
+              // Existing item - use the existing _id for both fields
+              cleanedItem._id = item._id;
+              cleanedItem.id = item._id;
+            } else {
+              // New item - don't send _id, but generate a temporary id for backend requirement
+              const tempId = `temp-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`;
+              cleanedItem.id = tempId;
+            }
+
+            return cleanedItem;
+          }),
+          total: Math.round((Number(receipt.received.total) || 0) * 100) / 100,
+          totalOrnamentsWt:
+            Math.round((Number(receipt.received.totalOrnamentsWt) || 0) * 100) /
+            100,
+          totalStoneWeight:
+            Math.round((Number(receipt.received.totalStoneWeight) || 0) * 100) /
+            100,
+          totalSubTotal:
+            Math.round((Number(receipt.received.totalSubTotal) || 0) * 100) /
+            100,
+        },
       };
+
+      // Remove unnecessary fields that might cause issues
+      const { _id, __v, createdAt, updatedAt, ...updateData } = cleanedReceipt;
 
       await adminReceiptApi.updateAdminReceipt(id, updateData);
       setClientBalance(newClientBalance);
@@ -530,11 +654,15 @@ export default function EditAdminReceiptPage() {
         )}`,
       });
       navigate(`/admin-receipts/${id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating receipt:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update receipt or client balance";
       toast({
         title: "Error",
-        description: "Failed to update receipt or client balance",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -711,7 +839,7 @@ export default function EditAdminReceiptPage() {
               className="w-full border rounded px-3 py-2 bg-gray-100"
             />
           </div>
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Status
             </label>
@@ -724,7 +852,7 @@ export default function EditAdminReceiptPage() {
               <option value="incomplete">Incomplete</option>
               <option value="pending">Pending</option>
             </select>
-          </div>
+          </div> */}
         </div>
 
         {/* Given Details Section */}
@@ -776,6 +904,9 @@ export default function EditAdminReceiptPage() {
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Total (g)
+                  </th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold">
+                    Date
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Actions
@@ -866,6 +997,21 @@ export default function EditAdminReceiptPage() {
                       />
                     </td>
                     <td className="py-2 px-4">
+                      <input
+                        type="date"
+                        value={item.date || ""}
+                        onChange={(e) =>
+                          handleItemChange(
+                            "given",
+                            index,
+                            "date",
+                            e.target.value
+                          )
+                        }
+                        className="w-full border rounded px-2 py-1"
+                      />
+                    </td>
+                    <td className="py-2 px-4">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -879,7 +1025,7 @@ export default function EditAdminReceiptPage() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50">
-                  <td colSpan={4} className="py-2 px-4 text-right font-medium">
+                  <td colSpan={5} className="py-2 px-4 text-right font-medium">
                     Total:
                   </td>
                   <td className="py-2 px-4 font-medium">
@@ -944,6 +1090,9 @@ export default function EditAdminReceiptPage() {
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Total (g)
+                  </th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold">
+                    Date
                   </th>
                   <th className="py-2 px-4 text-left text-sm font-semibold">
                     Actions
@@ -1042,6 +1191,21 @@ export default function EditAdminReceiptPage() {
                       />
                     </td>
                     <td className="py-2 px-4">
+                      <input
+                        type="date"
+                        value={item.date || ""}
+                        onChange={(e) =>
+                          handleItemChange(
+                            "received",
+                            index,
+                            "date",
+                            e.target.value
+                          )
+                        }
+                        className="w-full border rounded px-2 py-1"
+                      />
+                    </td>
+                    <td className="py-2 px-4">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1055,7 +1219,7 @@ export default function EditAdminReceiptPage() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50">
-                  <td colSpan={5} className="py-2 px-4 text-right font-medium">
+                  <td colSpan={6} className="py-2 px-4 text-right font-medium">
                     Total:
                   </td>
                   <td className="py-2 px-4 font-medium">
