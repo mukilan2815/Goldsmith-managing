@@ -511,8 +511,10 @@ export function ReceiptForm({
       receivedItems.map((item) => {
         if (item.id === id) {
           const updated = { ...item, [field]: value };
-          updated.finalWt =
-            (Number(updated.receivedGold) * Number(updated.melting)) / 100;
+          // Calculate final weight: receivedGold - (receivedGold * melting / 100)
+          const receivedGold = Number(updated.receivedGold) || 0;
+          const melting = Number(updated.melting) || 0;
+          updated.finalWt = receivedGold - (receivedGold * melting) / 100;
 
           // Validate the updated item and update errors
           const itemValidation = validateReceivedItem(updated);
@@ -556,7 +558,9 @@ export function ReceiptForm({
   // Calculate received totals
   const receivedTotals = receivedItems.reduce(
     (acc, item) => {
-      const finalWt = (Number(item.receivedGold) * Number(item.melting)) / 100;
+      const receivedGold = Number(item.receivedGold) || 0;
+      const melting = Number(item.melting) || 0;
+      const finalWt = receivedGold - (receivedGold * melting) / 100;
       return {
         finalWt: acc.finalWt + finalWt,
       };

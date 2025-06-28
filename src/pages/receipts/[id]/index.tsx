@@ -266,15 +266,22 @@ export default function ReceiptDetailsPage() {
         autoTable(doc, {
           startY: receivedItemsY,
           head: [
-            ["S.No", "Description", "Date", "Type", "Weight (g)", "Amount (₹)"],
+            [
+              "S.No",
+              "Date",
+              "Received Gold (g)",
+              "Melting %",
+              "Final Weight (g)",
+            ],
           ],
           body: data.receivedItems.map((item, index) => [
             index + 1,
-            item.description || "-",
-            item.date ? new Date(item.date).toLocaleDateString("en-IN") : "-",
-            item.type || "-",
-            formatNumber(item.weight, 3),
-            "₹" + formatNumber(item.amount, 2),
+            item.date
+              ? new Date(item.date).toLocaleDateString("en-IN")
+              : new Date().toLocaleDateString("en-IN"),
+            formatNumber(item.receivedGold, 3),
+            formatNumber(item.melting, 2) + "%",
+            formatNumber(item.finalWt, 3),
           ]),
           theme: "grid",
           margin: { left: margin, right: margin },
@@ -298,12 +305,11 @@ export default function ReceiptDetailsPage() {
             fillColor: [249, 250, 251],
           },
           columnStyles: {
-            0: { halign: "center", cellWidth: 15 },
-            1: { halign: "left", cellWidth: 40 },
-            2: { halign: "center", cellWidth: 25 },
-            3: { halign: "left", cellWidth: 30 },
-            4: { halign: "right", cellWidth: 25 },
-            5: { halign: "right", cellWidth: 25 },
+            0: { halign: "center", cellWidth: 20 },
+            1: { halign: "center", cellWidth: 30 },
+            2: { halign: "right", cellWidth: 35 },
+            3: { halign: "right", cellWidth: 30 },
+            4: { halign: "right", cellWidth: 35 },
           },
         });
       }
@@ -708,23 +714,23 @@ export default function ReceiptDetailsPage() {
             {/* Received Items Table */}
             <h2 className="text-xl font-medium mb-4 mt-8">Received Items</h2>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[500px]">
+              <table className="w-full min-w-[600px]">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 px-1 text-sm font-medium">
-                      Description
+                    <th className="text-center py-2 px-1 text-sm font-medium">
+                      S.No
                     </th>
                     <th className="text-center py-2 px-1 text-sm font-medium">
                       Date
                     </th>
-                    <th className="text-left py-2 px-1 text-sm font-medium">
-                      Type
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Received Gold (g)
                     </th>
                     <th className="text-right py-2 px-1 text-sm font-medium">
-                      Weight (g)
+                      Melting %
                     </th>
                     <th className="text-right py-2 px-1 text-sm font-medium">
-                      Amount (₹)
+                      Final Weight (g)
                     </th>
                   </tr>
                 </thead>
@@ -737,43 +743,56 @@ export default function ReceiptDetailsPage() {
                           key={item.id || idx}
                           className="border-b last:border-b-0"
                         >
-                          <td className="py-2 px-1">
-                            {item.description || "-"}
-                          </td>
+                          <td className="py-2 px-1 text-center">{idx + 1}</td>
                           <td className="py-2 px-1 text-center text-sm">
                             {item.date
                               ? format(new Date(item.date), "dd/MM/yyyy")
-                              : "-"}
-                          </td>
-                          <td className="py-2 px-1">{item.type || "-"}</td>
-                          <td className="py-2 px-1 text-right">
-                            {formatNumber(item.weight, 3)}
+                              : format(new Date(), "dd/MM/yyyy")}
                           </td>
                           <td className="py-2 px-1 text-right">
-                            {formatNumber(item.amount, 2)}
+                            {formatNumber(item.receivedGold, 3)}
+                          </td>
+                          <td className="py-2 px-1 text-right">
+                            {formatNumber(item.melting, 2)}%
+                          </td>
+                          <td className="py-2 px-1 text-right">
+                            {formatNumber(item.finalWt, 3)}
                           </td>
                         </tr>
                       ))}
                       <tr className="font-medium bg-accent/20 print:bg-gray-100">
-                        <td className="py-2 px-1 text-left" colSpan={3}>
+                        <td className="py-2 px-1 text-left" colSpan={2}>
                           Totals
                         </td>
                         <td className="py-2 px-1 text-right">
                           {formatNumber(
                             receipt.data.receivedItems.reduce(
-                              (acc, item) => acc + Number(item.weight || 0),
+                              (acc, item) =>
+                                acc + Number(item.receivedGold || 0),
                               0
                             ),
                             3
                           )}
                         </td>
                         <td className="py-2 px-1 text-right">
+                          {receipt.data.receivedItems.length > 0
+                            ? formatNumber(
+                                receipt.data.receivedItems.reduce(
+                                  (acc, item) =>
+                                    acc + Number(item.melting || 0),
+                                  0
+                                ) / receipt.data.receivedItems.length,
+                                2
+                              ) + "%"
+                            : "0.00%"}
+                        </td>
+                        <td className="py-2 px-1 text-right">
                           {formatNumber(
                             receipt.data.receivedItems.reduce(
-                              (acc, item) => acc + Number(item.amount || 0),
+                              (acc, item) => acc + Number(item.finalWt || 0),
                               0
                             ),
-                            2
+                            3
                           )}
                         </td>
                       </tr>

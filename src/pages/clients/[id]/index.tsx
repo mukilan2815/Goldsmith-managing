@@ -714,10 +714,13 @@ export default function ClientDetailsPage() {
             variant="outline"
             onClick={() => handleCreateReceipt("client")}
           >
-            <Plus className="mr-2 h-4 w-4" /> New Client Receipt
+            <Plus className="mr-2 h-4 w-4" /> New Shop Receipt
           </Button>
-          <Button variant="outline" onClick={() => navigate("/clients/new")}>
-            <Plus className="mr-2 h-4 w-4" /> New Client
+          <Button
+            variant="outline"
+            onClick={() => navigate("/admin-receipts/new")}
+          >
+            <Plus className="mr-2 h-4 w-4" /> New Work Receipt
           </Button>
         </div>
       </div>

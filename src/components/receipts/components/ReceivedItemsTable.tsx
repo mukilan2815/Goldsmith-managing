@@ -131,11 +131,12 @@ export function ReceivedItemsTable({
                     <Input
                       readOnly
                       value={
-                        item.finalWt
+                        Number(item.receivedGold) && Number(item.melting) >= 0
                           ? (
+                              Number(item.receivedGold) -
                               (Number(item.receivedGold) *
                                 Number(item.melting)) /
-                              100
+                                100
                             ).toFixed(3)
                           : ""
                       }
