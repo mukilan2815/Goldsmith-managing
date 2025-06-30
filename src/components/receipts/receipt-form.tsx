@@ -111,7 +111,7 @@ export function ReceiptForm({
     },
   ]);
   const [clientBalance, setClientBalance] = useState(0);
-  const [manualClientBalance, setManualClientBalance] = useState(0);
+  const [manualClientBalance, setManualClientBalance] = useState();
   const [finalWtBalanceTag, setFinalWtBalanceTag] = useState("");
   const [itemErrors, setItemErrors] = useState<{
     [key: string]: { [field: string]: string };

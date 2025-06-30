@@ -49,7 +49,7 @@ export function BalanceSummary({
             type="number"
             value={manualClientBalance}
             onChange={(e) =>
-              setManualClientBalance(Number(e.target.value) || 0)
+              setManualClientBalance(Number(e.target.value))
             }
             placeholder="Enter new balance"
             className="text-lg font-semibold"

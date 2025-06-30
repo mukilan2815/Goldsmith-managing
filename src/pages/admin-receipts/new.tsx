@@ -227,7 +227,7 @@ export default function NewAdminReceiptPage() {
   const [manualReceivedTotal, setManualReceivedTotal] = useState<number>(0);
   const [operation, setOperation] = useState<string>("subtract-given-received");
   const [clientBalance, setClientBalance] = useState<number>(0);
-  const [manualClientBalance, setManualClientBalance] = useState<number>(0);
+  const [manualClientBalance, setManualClientBalance] = useState<number>(0); // Always start with 0
 
   useEffect(() => {
     const initPage = async () => {
@@ -304,7 +304,7 @@ export default function NewAdminReceiptPage() {
           if (client) {
             setSelectedClient(client);
             setClientBalance(client.balance || 0);
-            setManualClientBalance(client.balance || 0); // Initialize manual balance
+            // Don't set manualClientBalance - keep it at 0 for manual entry
           }
         }
       } catch (clientError) {
@@ -403,7 +403,7 @@ export default function NewAdminReceiptPage() {
       const clientData = await clientApi.getClientById(client.id);
       setSelectedClient(clientData);
       setClientBalance(clientData.balance || 0);
-      setManualClientBalance(clientData.balance || 0); // Initialize manual balance
+      // Don't set manualClientBalance - keep it at 0 for manual entry
     } catch (error) {
       toast({
         variant: "destructive",
@@ -702,7 +702,7 @@ export default function NewAdminReceiptPage() {
 
       // Update frontend state
       setClientBalance(newBalance);
-      setManualClientBalance(newBalance); // Update manual balance as well
+      // Don't update manualClientBalance - let user control it manually
 
       toast({
         title: "Success",
@@ -827,7 +827,7 @@ export default function NewAdminReceiptPage() {
 
       // Update frontend state
       setClientBalance(newBalance);
-      setManualClientBalance(newBalance); // Update manual balance as well
+      // Don't update manualClientBalance - let user control it manually
 
       toast({
         title: "Success",
@@ -875,11 +875,11 @@ export default function NewAdminReceiptPage() {
                 OD Balance:
                 <Input
                   type="number"
-                  value={manualClientBalance}
+                  value={manualClientBalance || ""}
                   onChange={(e) =>
                     setManualClientBalance(Number(e.target.value) || 0)
                   }
-                  placeholder="Enter balance"
+                  placeholder="0.000"
                   className="mt-1 w-32 inline-block ml-2"
                   step="0.001"
                 />
@@ -1173,7 +1173,7 @@ export default function NewAdminReceiptPage() {
                               <tr className="border-b">
                                 <th className="text-left pb-2">Totals</th>
                                 <th className="text-left pb-2">
-                                  Current Balance
+                                  OD Balance
                                 </th>
                                 <th>Tag</th>
                                 <th className="text-left pb-2">Calculation</th>
@@ -1191,13 +1191,13 @@ export default function NewAdminReceiptPage() {
                                   <td className="py-2">
                                     <Input
                                       type="number"
-                                      value={manualClientBalance}
+                                      value={manualClientBalance || ""}
                                       onChange={(e) =>
                                         setManualClientBalance(
                                           Number(e.target.value) || 0
                                         )
                                       }
-                                      placeholder="Enter balance"
+                                      placeholder="0.000"
                                       className="w-24"
                                       step="0.001"
                                     />
@@ -1525,13 +1525,13 @@ export default function NewAdminReceiptPage() {
                               <td className="py-2">
                                 <Input
                                   type="number"
-                                  value={manualClientBalance}
+                                  value={manualClientBalance || ""}
                                   onChange={(e) =>
                                     setManualClientBalance(
                                       Number(e.target.value) || 0
                                     )
                                   }
-                                  placeholder="Enter balance"
+                                  placeholder="0.000"
                                   className="w-24"
                                   step="0.001"
                                 />
