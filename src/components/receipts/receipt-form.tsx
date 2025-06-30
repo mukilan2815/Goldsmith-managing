@@ -111,6 +111,8 @@ export function ReceiptForm({
     },
   ]);
   const [clientBalance, setClientBalance] = useState(0);
+  const [manualClientBalance, setManualClientBalance] = useState(0);
+  const [finalWtBalanceTag, setFinalWtBalanceTag] = useState("");
   const [itemErrors, setItemErrors] = useState<{
     [key: string]: { [field: string]: string };
   }>({});
@@ -159,6 +161,7 @@ export function ReceiptForm({
           // Use balance from client object (extract value)
           const balanceValue = extractBalance(clientResponse.client.balance);
           setClientBalance(balanceValue);
+          setManualClientBalance(balanceValue); // Initialize manual balance with current balance
 
           // Always add Previous Balance row for any non-zero balance
           if (
@@ -219,6 +222,7 @@ export function ReceiptForm({
             // Use balance from client object (extract value)
             const balanceValue = extractBalance(response.client.balance);
             setClientBalance(balanceValue);
+            setManualClientBalance(balanceValue); // Initialize manual balance with current balance
             if (
               balanceValue !== 0 &&
               !items.some((item) => item.tag === "BALANCE")
@@ -570,7 +574,7 @@ export function ReceiptForm({
 
   // Calculate balance and new client balance
   const balance = totals.finalWeight - receivedTotals.finalWt;
-  const newClientBalance = clientBalance + balance;
+  const newClientBalance = manualClientBalance; // Use manual balance instead of calculated
 
   const balanceToAdd = clientBalance;
 
@@ -663,9 +667,7 @@ export function ReceiptForm({
       }
 
       const balanceChange = parseFloat((totalFinal - receivedFinal).toFixed(3));
-      const newClientBalance = parseFloat(
-        (clientBalance + balanceChange).toFixed(3)
-      );
+      const finalClientBalance = parseFloat(manualClientBalance.toFixed(3)); // Use manual balance
 
       // Determine receipt status
       const receiptStatus = hasReceivedItems ? "complete" : "incomplete";
@@ -703,11 +705,12 @@ export function ReceiptForm({
             }))
           : [],
         previousBalance: parseFloat(clientBalance.toFixed(3)),
+        finalWtBalanceTag: finalWtBalanceTag, // Include the tag field
       };
 
       // 7) Update client balance first
       await clientServices.updateClient(clientId, {
-        balance: newClientBalance,
+        balance: finalClientBalance,
         balanceDescription: `Receipt ${voucherId} adjustment`,
       });
 
@@ -802,6 +805,10 @@ export function ReceiptForm({
           receivedTotals={receivedTotals}
           newClientBalance={newClientBalance}
           balanceToAdd={balanceToAdd}
+          manualClientBalance={manualClientBalance}
+          setManualClientBalance={setManualClientBalance}
+          finalWtBalanceTag={finalWtBalanceTag}
+          setFinalWtBalanceTag={setFinalWtBalanceTag}
         />
 
         {/* Status Indicator */}

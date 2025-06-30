@@ -46,6 +46,7 @@ export interface Receipt {
     totalInvoiceAmount?: number; // Add total invoice amount
   };
   overallWeight?: number;
+  finalWtBalanceTag?: string; // Tag for Final Wt. + Balance
   paymentStatus: "Pending" | "Paid" | "Partial"; // Added this field
   isCompleted: boolean; // Added this field
   status: "incomplete" | "complete" | "cancelled"; // Receipt status field

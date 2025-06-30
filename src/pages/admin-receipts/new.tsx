@@ -227,6 +227,7 @@ export default function NewAdminReceiptPage() {
   const [manualReceivedTotal, setManualReceivedTotal] = useState<number>(0);
   const [operation, setOperation] = useState<string>("subtract-given-received");
   const [clientBalance, setClientBalance] = useState<number>(0);
+  const [manualClientBalance, setManualClientBalance] = useState<number>(0);
 
   useEffect(() => {
     const initPage = async () => {
@@ -303,6 +304,7 @@ export default function NewAdminReceiptPage() {
           if (client) {
             setSelectedClient(client);
             setClientBalance(client.balance || 0);
+            setManualClientBalance(client.balance || 0); // Initialize manual balance
           }
         }
       } catch (clientError) {
@@ -401,6 +403,7 @@ export default function NewAdminReceiptPage() {
       const clientData = await clientApi.getClientById(client.id);
       setSelectedClient(clientData);
       setClientBalance(clientData.balance || 0);
+      setManualClientBalance(clientData.balance || 0); // Initialize manual balance
     } catch (error) {
       toast({
         variant: "destructive",
@@ -590,7 +593,7 @@ export default function NewAdminReceiptPage() {
       balanceAdjustment = -receivedTotals.total;
     }
 
-    return clientBalance + balanceAdjustment;
+    return manualClientBalance + balanceAdjustment;
   };
 
   const saveGivenData = async () => {
@@ -633,7 +636,7 @@ export default function NewAdminReceiptPage() {
       const balanceAdjustment = hasReceivedItems
         ? calculateManualResult()
         : givenTotals.total;
-      const newBalance = clientBalance + balanceAdjustment;
+      const newBalance = manualClientBalance + balanceAdjustment;
 
       // Update client balance in the database
       await api.put(`/clients/${selectedClient.id}`, {
@@ -699,6 +702,7 @@ export default function NewAdminReceiptPage() {
 
       // Update frontend state
       setClientBalance(newBalance);
+      setManualClientBalance(newBalance); // Update manual balance as well
 
       toast({
         title: "Success",
@@ -756,7 +760,7 @@ export default function NewAdminReceiptPage() {
       const balanceAdjustment = hasGivenItems
         ? calculateManualResult()
         : -receivedTotals.total;
-      const newBalance = clientBalance + balanceAdjustment;
+      const newBalance = manualClientBalance + balanceAdjustment;
 
       // Update client balance in the database
       await api.put(`/clients/${selectedClient.id}`, {
@@ -823,6 +827,7 @@ export default function NewAdminReceiptPage() {
 
       // Update frontend state
       setClientBalance(newBalance);
+      setManualClientBalance(newBalance); // Update manual balance as well
 
       toast({
         title: "Success",
@@ -867,7 +872,17 @@ export default function NewAdminReceiptPage() {
           <div className="mt-4 p-4 border rounded-md bg-muted/50">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="font-medium text-lg">
-                OD Balance: {clientBalance.toFixed(2)}
+                OD Balance:
+                <Input
+                  type="number"
+                  value={manualClientBalance}
+                  onChange={(e) =>
+                    setManualClientBalance(Number(e.target.value) || 0)
+                  }
+                  placeholder="Enter balance"
+                  className="mt-1 w-32 inline-block ml-2"
+                  step="0.001"
+                />
               </div>
               <div className="font-medium text-lg">
                 Given Total: {givenTotals.total.toFixed(2)}
@@ -1174,7 +1189,18 @@ export default function NewAdminReceiptPage() {
                                     {item.total.toFixed(3)} g
                                   </td>
                                   <td className="py-2">
-                                    {clientBalance.toFixed(3)}
+                                    <Input
+                                      type="number"
+                                      value={manualClientBalance}
+                                      onChange={(e) =>
+                                        setManualClientBalance(
+                                          Number(e.target.value) || 0
+                                        )
+                                      }
+                                      placeholder="Enter balance"
+                                      className="w-24"
+                                      step="0.001"
+                                    />
                                   </td>
                                   <td className="py-2">
                                     <Input
@@ -1187,22 +1213,26 @@ export default function NewAdminReceiptPage() {
                                     />
                                   </td>
                                   <td className="py-2">
-                                    {clientBalance.toFixed(3)} +{" "}
+                                    {manualClientBalance.toFixed(3)} +{" "}
                                     {item.total.toFixed(3)}
                                   </td>
                                   <td className="py-2">
-                                    {(clientBalance + item.total).toFixed(3)}
+                                    {(manualClientBalance + item.total).toFixed(
+                                      3
+                                    )}
                                   </td>
                                 </tr>
                               ))}
                               <tr className="border-t">
                                 <td className="py-2"></td>
                                 <td className="py-2"></td>
+                                <td className="py-2"></td>
+                                <td className="py-2"></td>
                                 <td className="py-2">
                                   ={" "}
-                                  {(clientBalance + givenTotals.total).toFixed(
-                                    2
-                                  )}
+                                  {(
+                                    manualClientBalance + givenTotals.total
+                                  ).toFixed(2)}
                                 </td>
                               </tr>
                             </tbody>
@@ -1486,37 +1516,45 @@ export default function NewAdminReceiptPage() {
                                 Final Received Total
                               </th>
                             </tr>
-                          </thead>
+                          </thead>{" "}
                           <tbody>
                             <tr>
                               <td className="py-2">
                                 {receivedTotals.total.toFixed(3)}{" "}
                               </td>
                               <td className="py-2">
-                                {clientBalance.toFixed(3)}
+                                <Input
+                                  type="number"
+                                  value={manualClientBalance}
+                                  onChange={(e) =>
+                                    setManualClientBalance(
+                                      Number(e.target.value) || 0
+                                    )
+                                  }
+                                  placeholder="Enter balance"
+                                  className="w-24"
+                                  step="0.001"
+                                />
                               </td>
                               <td className="py-2">
-                                {clientBalance.toFixed(3)} -{" "}
+                                {manualClientBalance.toFixed(3)} -{" "}
                                 {receivedTotals.total.toFixed(3)}
                               </td>
                               <td className="py-2">
-                                {(clientBalance - receivedTotals.total).toFixed(
-                                  3
-                                )}
+                                {(
+                                  manualClientBalance - receivedTotals.total
+                                ).toFixed(3)}
                               </td>
                             </tr>
                             <tr className="border-t">
                               <td className="py-2"></td>
                               <td className="py-2"></td>
-                              {/* <td className="py-2">
-                                = {clientBalance.toFixed(2)} -{" "}
-                                {receivedTotals.total.toFixed(2)}
-                              </td> */}
+                              <td className="py-2"></td>
                               <td className="py-2">
                                 ={" "}
-                                {(clientBalance - receivedTotals.total).toFixed(
-                                  3
-                                )}
+                                {(
+                                  manualClientBalance - receivedTotals.total
+                                ).toFixed(3)}
                               </td>
                             </tr>
                           </tbody>
