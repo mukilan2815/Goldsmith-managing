@@ -672,67 +672,197 @@ export default function EditAdminReceiptPage() {
 
   const generatePDF = (receipt: AdminReceipt) => {
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+
+    // Helper functions
+    const formatNumber = (num: number) => num.toFixed(2);
+    const formatDate = (dateStr: string) => {
+      try {
+        return new Date(dateStr).toLocaleDateString();
+      } catch {
+        return "N/A";
+      }
+    };
+
+    // Draw golden border
+    doc.setDrawColor(204, 153, 0); // Golden color
+    doc.setLineWidth(3);
+    doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
+
+    // Add logo - centered at top
+    let currentY = 25;
+    try {
+      // If you have a logo file, you can add it here
+      // doc.addImage(logoBase64, "PNG", pageWidth/2 - 20, 15, 40, 20);
+      // currentY = 45;
+    } catch (error) {
+      console.warn("Logo not found, continuing without logo");
+    }
+
+    // Title
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text(`Work Receipt: ${receipt.voucherId}`, 14, 20);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Work Receipt", pageWidth / 2, currentY, { align: "center" });
+    currentY += 10;
+
+    // Receipt ID
     doc.setFontSize(12);
-    doc.text(`Client: ${receipt.clientName}`, 14, 30);
-    doc.text(`Status: ${receipt.status}`, 14, 36);
-    doc.text(
-      `Date: ${new Date(receipt.createdAt).toLocaleDateString()}`,
-      14,
-      42
-    );
+    doc.text(`Receipt ID: ${receipt.voucherId}`, pageWidth / 2, currentY, {
+      align: "center",
+    });
+    currentY += 15;
+
+    // Client and Shop Information
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Client:", margin, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(receipt.clientName, margin + 25, currentY);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Shop:", pageWidth / 2, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text("Goldsmith Workshop", pageWidth / 2 + 25, currentY);
+    currentY += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Date:", margin, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(formatDate(receipt.createdAt), margin + 25, currentY);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Status:", pageWidth / 2, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(receipt.status, pageWidth / 2 + 25, currentY);
+    currentY += 15;
 
     // Given Items Table
     if (receipt.given.items.length > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Given Items:", margin, currentY);
+      currentY += 8;
+
+      const givenTableData = receipt.given.items.map((item) => [
+        item.productName,
+        formatNumber(item.pureWeight),
+        formatNumber(item.purePercent) + "%",
+        formatNumber(item.melting),
+        formatNumber(item.total),
+      ]);
+
       autoTable(doc, {
-        startY: 50,
+        startY: currentY,
+        margin: { left: margin, right: margin },
         head: [["Product", "Pure Weight", "Pure %", "Melting", "Total"]],
-        body: receipt.given.items.map((item) => [
-          item.productName,
-          safeToFixed(item.pureWeight),
-          safeToFixed(item.purePercent),
-          safeToFixed(item.melting),
-          safeToFixed(item.total),
-        ]),
-        foot: [["Total", "", "", "", safeToFixed(receipt.given.total)]],
+        body: givenTableData,
+        theme: "grid",
+        headStyles: {
+          fillColor: [218, 165, 32], // Golden color
+          textColor: 255,
+          fontStyle: "bold",
+          fontSize: 10,
+          halign: "center",
+        },
+        bodyStyles: {
+          fontSize: 9,
+          halign: "center",
+          textColor: [0, 0, 0],
+        },
+        alternateRowStyles: { fillColor: [255, 255, 255] },
+        columnStyles: {
+          0: { halign: "left", cellWidth: 60 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 25 },
+          4: { halign: "right", cellWidth: 30 },
+        },
       });
+
+      currentY = (doc as any).lastAutoTable.finalY + 10;
     }
 
     // Received Items Table
     if (receipt.received.items.length > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Received Items:", margin, currentY);
+      currentY += 8;
+
+      const receivedTableData = receipt.received.items.map((item) => [
+        item.productName,
+        formatNumber(item.finalOrnamentsWt),
+        formatNumber(item.stoneWeight),
+        formatNumber(item.makingChargePercent) + "%",
+        formatNumber(item.total),
+      ]);
+
       autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 10,
-        head: [
-          [
-            "Product",
-            "Final Ornaments Wt",
-            "Stone Weight",
-            "Sub Total",
-            "Touch",
-            "Total",
-          ],
-        ],
-        body: receipt.received.items.map((item) => [
-          item.productName,
-          safeToFixed(item.finalOrnamentsWt),
-          safeToFixed(item.stoneWeight),
-          safeToFixed(item.subTotal),
-          safeToFixed(item.makingChargePercent),
-          safeToFixed(item.total),
-        ]),
-        foot: [["Total", "", "", "", "", safeToFixed(receipt.received.total)]],
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: [["Product", "Final Wt", "Stone Wt", "Making %", "Total"]],
+        body: receivedTableData,
+        theme: "grid",
+        headStyles: {
+          fillColor: [218, 165, 32], // Golden color
+          textColor: 255,
+          fontStyle: "bold",
+          fontSize: 10,
+          halign: "center",
+        },
+        bodyStyles: {
+          fontSize: 9,
+          halign: "center",
+          textColor: [0, 0, 0],
+        },
+        alternateRowStyles: { fillColor: [255, 255, 255] },
+        columnStyles: {
+          0: { halign: "left", cellWidth: 60 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 25 },
+          4: { halign: "right", cellWidth: 30 },
+        },
       });
+
+      currentY = (doc as any).lastAutoTable.finalY + 10;
     }
 
-    // Balance Summary
-    autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 10,
-      body: [
-        ["Given Total", safeToFixed(receipt.given.total)],
-        ["Received Total", safeToFixed(receipt.received.total)],
-        ["Balance (Given - Received)", safeToFixed(calculateBalance())],
-      ],
+    // Summary section
+    const balance = calculateBalance();
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Summary:", margin, currentY);
+    currentY += 10;
+
+    const summaryData = [
+      ["Given Total:", formatNumber(receipt.given.total)],
+      ["Received Total:", formatNumber(receipt.received.total)],
+      ["Balance (Given - Received):", formatNumber(balance)],
+    ];
+
+    summaryData.forEach(([label, value]) => {
+      doc.setFont("helvetica", "normal");
+      doc.text(label, margin + 10, currentY);
+      doc.setFont("helvetica", "bold");
+      doc.text(value, pageWidth - margin - 10, currentY, { align: "right" });
+      currentY += 7;
+    });
+
+    // Footer
+    const footerY = pageHeight - 30;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Thank you for your business!", pageWidth / 2, footerY + 10, {
+      align: "center",
     });
 
     doc.save(`receipt-${receipt.voucherId}.pdf`);

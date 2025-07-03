@@ -249,186 +249,325 @@ function ReceiptsTable({
   );
 }
 
+// Helper functions for PDF generation
+const formatNumber = (num: number | string, decimals: number = 2): string => {
+  const n = typeof num === "string" ? parseFloat(num) || 0 : num || 0;
+  return n.toFixed(decimals);
+};
+
+const formatDate = (dateString: string): string => {
+  if (!dateString) return "N/A";
+  try {
+    return new Date(dateString).toLocaleDateString("en-IN");
+  } catch {
+    return "N/A";
+  }
+};
+
 const generatePDF = (receipt: any) => {
-  const doc = new jsPDF();
+  const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  const contentWidth = pageWidth - margin * 2;
 
-  // Header Text
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Work Receipt: ${receipt.voucherId || "N/A"}`, margin, 20);
+  // Set golden border (approximating the color from the image)
+  doc.setDrawColor(204, 153, 0); // Golden border color (RGB)
+  doc.setLineWidth(1);
+  doc.rect(5, 5, 200, 287); // A4 page border (210x297 mm, with 5mm margin)
 
-  doc.setFont("helvetica", "normal");
+  // Add logo at the top center
+  const logoPath = "/logo.jpg"; // Using the provided logo path
+  try {
+    doc.addImage(logoPath, "JPEG", 85, 5, 40, 20); // Centered logo, adjusted size to fit design
+  } catch (logoError) {
+    console.warn("Logo not found, continuing without logo");
+  }
+
+  // Dynamic Fields (aligned with design)
   doc.setFontSize(11);
-  const infoYStart = 28;
-  const lineHeight = 7;
+  doc.setTextColor(0, 0, 0); // Black text
+  let y = 35;
+  const marginLeft = 25;
 
-  doc.text(`Client: ${receipt.clientName || "N/A"}`, margin, infoYStart);
-  doc.text(
-    `Status: ${receipt.status || "incomplete"}`,
-    margin,
-    infoYStart + lineHeight
-  );
-  doc.text(
-    `Date: ${
-      receipt.issueDate
-        ? new Date(receipt.issueDate).toLocaleDateString()
-        : "N/A"
-    }`,
-    margin,
-    infoYStart + lineHeight * 2
-  );
+  // Use client details for Name, Shop, and Phone Number with bold side titles
+  doc.setFont("helvetica", "bold");
+  doc.text("Name", marginLeft, y);
+  doc.setFont("helvetica", "normal");
+  const clientName =
+    receipt.type === "admin"
+      ? receipt.clientName
+      : receipt.clientInfo?.clientName || "-";
+  doc.text(`: ${clientName}`, marginLeft + 35, y);
+  y += 6;
 
-  // Given Items Table
-  const givenItems = receipt.given?.items || [];
-  const givenTotal = Number(receipt.given?.total || 0);
-  const receivedItems = receipt.received?.items || [];
-  const receivedTotal = Number(receipt.received?.total || 0);
-  const balance = givenTotal - receivedTotal;
+  doc.setFont("helvetica", "bold");
+  doc.text("Shop", marginLeft, y);
+  doc.setFont("helvetica", "normal");
+  const shopName =
+    receipt.type === "admin"
+      ? "Goldsmith Workshop"
+      : receipt.clientInfo?.shopName || "-";
+  doc.text(`: ${shopName}`, marginLeft + 35, y);
+  y += 6;
 
-  const tableY = infoYStart + lineHeight * 3 + 5;
+  doc.setFont("helvetica", "bold");
+  doc.text("Phone Number", marginLeft, y);
+  doc.setFont("helvetica", "normal");
+  const phoneNumber =
+    receipt.type === "admin" ? "-" : receipt.clientInfo?.phoneNumber || "-";
+  doc.text(`: ${phoneNumber}`, marginLeft + 35, y);
+  y += 6;
 
-  const givenTableData = givenItems.map((item: any) => [
-    item.productName || "—",
-    Number(item.pureWeight || 0).toFixed(2),
-    Number(item.purePercent || 0).toFixed(2),
-    Number(item.melting || 0).toFixed(2),
-    Number(item.total || 0).toFixed(2),
-  ]);
+  // Helper function to format dates like in the reference
+  const formatLongDate = (dateString: string) => {
+    if (!dateString) return "-";
+    try {
+      return new Date(dateString)
+        .toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+        .toUpperCase();
+    } catch {
+      return "-";
+    }
+  };
 
-  const givenTotalRow = [
-    "Total",
-    givenTotal.toFixed(2),
-    "",
-    "",
-    givenTotal.toFixed(2),
-  ];
+  // Given Date Section
+  y = 65;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  const givenDate =
+    receipt.type === "admin"
+      ? formatLongDate(receipt.given?.date)
+      : formatLongDate(receipt.issueDate);
+  doc.text("Given Date :", marginLeft, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(givenDate, marginLeft + doc.getTextWidth("Given Date : ") + 1, y);
 
-  givenTableData.push(givenTotalRow);
+  // First Table (Given Items)
+  const givenItems =
+    receipt.type === "admin" ? receipt.given?.items || [] : receipt.items || [];
 
-  autoTable(doc, {
-    startY: tableY,
-    margin: { left: margin, right: margin },
-    head: [["Product", "Pure Weight", "Pure %", "Melting", "Total"]],
-    body: givenTableData,
-    theme: "grid",
-    headStyles: {
-      fillColor: [31, 41, 55],
-      textColor: 255,
-      fontStyle: "bold",
-      fontSize: 10,
-      halign: "center",
-    },
-    bodyStyles: {
-      fontSize: 9,
-      halign: "center",
-      textColor: [0, 0, 0],
-    },
-    alternateRowStyles: { fillColor: [255, 255, 255] },
-    columnStyles: {
-      0: { halign: "left", cellWidth: 60 },
-      1: { cellWidth: 25 },
-      2: { cellWidth: 25 },
-      3: { cellWidth: 25 },
-      4: { halign: "right", cellWidth: 25 },
-    },
-    didDrawCell: (data) => {
-      if (data.row.index === givenTableData.length - 1) {
-        data.cell.styles.fontStyle = "bold";
-        data.cell.styles.fillColor = [191, 219, 254]; // Light Blue
-        data.cell.styles.textColor = [0, 0, 0]; // Optional: Use black text for contrast
-      }
-    },
-  });
-
-  // Received Items Table (if any)
-  if (receivedItems.length > 0) {
-    const receivedTableData = receivedItems.map((item: any) => [
-      item.productName || "—",
-      Number(item.pureWeight || 0).toFixed(2),
-      Number(item.purePercent || 0).toFixed(2),
-      Number(item.melting || 0).toFixed(2),
-      Number(item.total || 0).toFixed(2),
+  if (givenItems.length > 0) {
+    const givenTableData = givenItems.map((item: any, index: number) => [
+      index + 1,
+      receipt.type === "admin" ? item.productName || "-" : item.itemName || "-",
+      receipt.type === "admin"
+        ? formatNumber(item.pureWeight, 3)
+        : formatNumber(item.grossWt, 3),
+      receipt.type === "admin"
+        ? formatNumber(item.purePercent, 2)
+        : formatNumber(item.meltingTouch, 2),
+      receipt.type === "admin"
+        ? formatNumber(item.melting, 2)
+        : formatNumber(item.meltingTouch, 2),
+      receipt.type === "admin"
+        ? formatNumber(item.total, 3)
+        : formatNumber(item.finalWt, 3),
+      receipt.type === "admin"
+        ? item.date
+          ? formatDate(item.date)
+          : "—"
+        : item.date
+        ? formatDate(item.date)
+        : "—",
     ]);
 
-    const receivedTotalRow = [
-      "Total",
-      receivedTotal.toFixed(2),
-      "",
-      "",
-      receivedTotal.toFixed(2),
-    ];
-
-    receivedTableData.push(receivedTotalRow);
-
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 10,
-      margin: { left: margin, right: margin },
-      head: [["Product", "Pure Weight", "Pure %", "Melting", "Total"]],
-      body: receivedTableData,
+      startY: y + 3,
+      head: [
+        [
+          "S.NO",
+          "Product Name",
+          "Pure(wt)",
+          "Pure%",
+          "Melting",
+          "Total",
+          "Date",
+        ],
+      ],
+      body: givenTableData,
       theme: "grid",
+      styles: { fontSize: 10, cellPadding: 1, textColor: [0, 0, 0] },
       headStyles: {
-        fillColor: [31, 41, 55],
-        textColor: 255,
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
         fontStyle: "bold",
-        fontSize: 10,
-        halign: "center",
+        lineWidth: 0.1, // Thin border for head
+        lineColor: [0, 0, 0],
       },
       bodyStyles: {
-        fontSize: 9,
-        halign: "center",
-        textColor: [0, 0, 0],
+        lineWidth: 0.1, // Match border thickness with head
+        lineColor: [0, 0, 0],
       },
-      alternateRowStyles: { fillColor: [255, 255, 255] },
+      margin: { left: marginLeft, right: 15 },
       columnStyles: {
-        0: { halign: "left", cellWidth: 60 },
-        1: { cellWidth: 25 },
-        2: { cellWidth: 25 },
-        3: { cellWidth: 25 },
-        4: { halign: "right", cellWidth: 25 },
-      },
-      didDrawCell: (data) => {
-        if (data.row.index === receivedTableData.length - 1) {
-          data.cell.styles.fontStyle = "bold";
-          data.cell.styles.fillColor = [191, 219, 254]; // Light Blue
-          data.cell.styles.textColor = [0, 0, 0]; // Optional: Use black text for contrast
-        }
+        0: { cellWidth: 15 }, // S.NO
+        1: { cellWidth: 40 }, // Product Name
+        2: { cellWidth: 25 }, // Pure(wt)
+        3: { cellWidth: 25 }, // Pure%
+        4: { cellWidth: 25 }, // Melting
+        5: { cellWidth: 25 }, // Total
+        6: { cellWidth: 25 }, // Date
       },
     });
   }
 
-  // Summary Section
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
-  const rowHeight = 8;
-  const spacing = 2;
-  const lineGap = rowHeight + spacing;
-
-  const drawRow = (label: string, value: string, yPos: number) => {
-    doc.setFillColor(248, 250, 252); // #F8FAFC
-    doc.rect(margin, yPos, contentWidth, rowHeight, "F");
-
-    doc.setDrawColor(226, 232, 240); // border
-    doc.rect(margin, yPos, contentWidth, rowHeight);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(label, margin + 5, yPos + 5.5);
-
-    doc.setFont("helvetica", "bold");
-    doc.text(value, pageWidth - margin - 5, yPos + 5.5, { align: "right" });
-  };
-
-  drawRow("Given Total", givenTotal.toFixed(2), finalY);
-  drawRow("Received Total", receivedTotal.toFixed(2), finalY + lineGap);
-  drawRow(
-    "Balance (Given - Received)",
-    balance.toFixed(2),
-    finalY + lineGap * 2
+  // Received Date Section
+  let newY = (doc as any).lastAutoTable.finalY + 10;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  const receivedDate =
+    receipt.type === "admin"
+      ? formatLongDate(receipt.received?.date || receipt.given?.date)
+      : formatLongDate(receipt.issueDate);
+  doc.text("Received Date :", marginLeft, newY);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    receivedDate,
+    marginLeft + doc.getTextWidth("Received Date : ") + 1,
+    newY
   );
+
+  // Second Table (Received Items)
+  const receivedItems =
+    receipt.type === "admin"
+      ? receipt.received?.items || []
+      : receipt.items || []; // For client receipts, use same items but different structure
+
+  if (receivedItems.length > 0) {
+    const receivedTableData = receivedItems.map((item: any, index: number) => [
+      index + 1,
+      receipt.type === "admin"
+        ? item.productName || "-"
+        : "Received Item " + (index + 1),
+      receipt.type === "admin"
+        ? item.date
+          ? formatDate(item.date)
+          : "—"
+        : item.date
+        ? formatDate(item.date)
+        : "—",
+      receipt.type === "admin"
+        ? formatNumber(item.finalOrnamentsWt, 3)
+        : formatNumber(item.finalWt, 3),
+      receipt.type === "admin"
+        ? formatNumber(item.stoneWeight, 3)
+        : formatNumber(item.stoneWt, 3),
+      receipt.type === "admin"
+        ? formatNumber(item.makingChargePercent, 2)
+        : formatNumber(item.meltingTouch, 2),
+      receipt.type === "admin"
+        ? formatNumber(0, 2) // MC not available in admin structure
+        : formatNumber(0, 2), // MC not available in client structure
+      receipt.type === "admin"
+        ? formatNumber(item.subTotal, 3)
+        : formatNumber(item.finalWt, 3),
+      receipt.type === "admin"
+        ? formatNumber(item.total, 3)
+        : formatNumber(item.totalInvoiceAmount, 3),
+    ]);
+
+    autoTable(doc, {
+      startY: newY + 3,
+      head: [
+        [
+          "S.NO",
+          "Product Name",
+          "Date",
+          "Final Ornament(wt)",
+          "Stone Weight",
+          "Touch",
+          "MC",
+          "Subtotal",
+          "Total",
+        ],
+      ],
+      body: receivedTableData,
+      theme: "grid",
+      styles: { fontSize: 10, cellPadding: 2, textColor: [0, 0, 0] },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        fontStyle: "bold",
+        lineWidth: 0.1, // Thin border for head
+        lineColor: [0, 0, 0],
+      },
+      bodyStyles: {
+        lineWidth: 0.1, // Match border thickness with head
+        lineColor: [0, 0, 0],
+      },
+      margin: { left: marginLeft, right: 10 },
+      columnStyles: {
+        0: { cellWidth: 15 }, // S.NO
+        1: { cellWidth: 25 }, // Product Name
+        2: { cellWidth: 22 }, // Date
+        3: { cellWidth: 25 }, // Final Ornament(wt)
+        4: { cellWidth: 20 }, // Stone Weight
+        5: { cellWidth: 18 }, // Touch
+        6: { cellWidth: 18 }, // MC
+        7: { cellWidth: 18 }, // Subtotal
+        8: { cellWidth: 22 }, // Total
+      },
+    });
+  }
+
+  // Totals Section (Right-aligned as in the image)
+  let finalY = (doc as any).lastAutoTable.finalY + 15;
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  const totalsX = pageWidth - 80;
+
+  // Calculate totals from the data
+  const givenTotal =
+    receipt.type === "admin"
+      ? Number(receipt.given?.total || 0)
+      : (receipt.items || []).reduce(
+          (sum: number, item: any) => sum + Number(item.finalWt || 0),
+          0
+        );
+  const receivedTotal =
+    receipt.type === "admin"
+      ? Number(receipt.received?.total || 0)
+      : (receipt.items || []).reduce(
+          (sum: number, item: any) =>
+            sum + Number(item.totalInvoiceAmount || 0),
+          0
+        );
+  const result = givenTotal - receivedTotal;
+
+  doc.text(
+    `Given Total        : ${formatNumber(givenTotal, 3)}`,
+    totalsX,
+    finalY
+  );
+  finalY += 6;
+  doc.text(
+    `Received Total   : ${formatNumber(receivedTotal, 3)}`,
+    totalsX,
+    finalY
+  );
+  finalY += 6;
+  doc.text(
+    `Result                 : ${formatNumber(result, 3)}`,
+    totalsX,
+    finalY
+  );
+
+  // Footer (aligned with the design)
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  const footerGap = 15;
+  const footer1 = "";
+  const footer2 = "";
+  const textWidth1 = doc.getTextWidth(footer1);
+  const textWidth2 = doc.getTextWidth(footer2);
+  // Calculate X so that text is centered at the right corner (with footerGap from right edge)
+  const x1 = pageWidth - footerGap - textWidth1 / 2 - 13; // Move "Antiques" 10 units left
+  const x2 = pageWidth - footerGap - textWidth2 / 2;
+  // Centered at right corner
+  doc.text(footer1, x1, 265, { align: "center" });
+  doc.text(footer2, x2, 270, { align: "center" });
 
   return doc;
 };

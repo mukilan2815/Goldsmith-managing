@@ -335,8 +335,8 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   const footerGap = 15;
-  const footer1 = "Antiques";
-  const footer2 = "Jewellery Manufacturers";
+  const footer1 = "";
+  const footer2 = "";
   const textWidth1 = doc.getTextWidth(footer1);
   const textWidth2 = doc.getTextWidth(footer2);
   // Calculate X so that text is centered at the right corner (with footerGap from right edge)

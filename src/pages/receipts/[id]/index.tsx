@@ -105,332 +105,241 @@ export default function ReceiptDetailsPage() {
     try {
       const doc = new jsPDF("p", "mm", "a4");
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 20;
-      const contentWidth = pageWidth - margin * 2;
 
-      // === ENHANCED HEADER ===
-      // Main header background
-      doc.setFillColor(15, 23, 42); // Darker, more professional blue
-      doc.rect(0, 0, pageWidth, 35, "F");
+      // Set golden border (approximating the color from the image)
+      doc.setDrawColor(204, 153, 0); // Golden border color (RGB)
+      doc.setLineWidth(1);
+      doc.rect(5, 5, 200, 287); // A4 page border (210x297 mm, with 5mm margin)
 
-      // Header accent line
-      doc.setFillColor(59, 130, 246); // Bright blue accent
-      doc.rect(0, 32, pageWidth, 3, "F");
-
-      // Company/Receipt title
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(20);
-      doc.setTextColor(255, 255, 255);
-      doc.text("RECEIPT", margin, 22);
-
-      // Receipt number in header
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      const receiptNum = `#${receipt.data.voucherId || "N/A"}`;
-      doc.text(receiptNum, pageWidth - margin, 22, { align: "right" });
-
-      // Date in header
-      doc.setFontSize(10);
-      const issueDate = receipt.data.issueDate
-        ? new Date(receipt.data.issueDate).toLocaleDateString("en-IN", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })
-        : new Date().toLocaleDateString("en-IN");
-      doc.text(issueDate, pageWidth - margin, 28, { align: "right" });
-
-      // === CLIENT INFORMATION SECTION ===
-      let y = 50;
-
-      // Section header
-      doc.setFillColor(248, 250, 252); // Very light gray
-      doc.rect(margin, y - 5, contentWidth, 8, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(15, 23, 42);
-      doc.text("CLIENT INFORMATION", margin + 3, y);
-
-      y += 12;
-
-      // Client info with better layout
-      doc.setFontSize(10);
-      doc.setTextColor(55, 65, 81);
-
-      const data = receipt.data;
-      const leftColX = margin + 5;
-      const rightColX = margin + contentWidth / 2 + 10;
-
-      // Left column
-      doc.setFont("helvetica", "bold");
-      doc.text("Client Name:", leftColX, y);
-      doc.setFont("helvetica", "normal");
-      doc.text(data.clientInfo?.clientName || "-", leftColX + 25, y);
-
-      doc.setFont("helvetica", "bold");
-      doc.text("Shop Name:", leftColX, y + 8);
-      doc.setFont("helvetica", "normal");
-      doc.text(data.clientInfo?.shopName || "-", leftColX + 25, y + 8);
-
-      // Right column
-      doc.setFont("helvetica", "bold");
-      doc.text("Phone:", rightColX, y);
-      doc.setFont("helvetica", "normal");
-      doc.text(data.clientInfo?.phoneNumber || "-", rightColX + 15, y);
-
-      doc.setFont("helvetica", "bold");
-      doc.text("Status:", rightColX, y + 8);
-      doc.setFont("helvetica", "normal");
-      doc.text(data.status || "Active", rightColX + 15, y + 8);
-
-      y += 25;
-
-      // === ITEMS TABLE WITH ENHANCED STYLING ===
-      const items = (data.givenItems || []).filter(
-        (item) => item.itemName !== "Previous Balance"
-      );
-
-      autoTable(doc, {
-        startY: y,
-        head: [
-          [
-            "S.No",
-            "Item Name",
-            "Date",
-            "Gross Wt (g)",
-            "Stone Wt (g)",
-            "Melting %",
-            "Net Wt (g)",
-            "Final Wt (g)",
-            "Stone Amt (₹)",
-          ],
-        ],
-        body: items.map((item, index) => [
-          index + 1,
-          item.itemName || "-",
-          item.date ? new Date(item.date).toLocaleDateString("en-IN") : "-",
-          formatNumber(item.grossWt, 3),
-          formatNumber(item.stoneWt, 3),
-          formatNumber(item.meltingTouch, 2) + "%",
-          formatNumber(item.netWt, 3),
-          formatNumber(item.finalWt, 3),
-          "₹" + formatNumber(item.stoneAmt, 2),
-        ]),
-        theme: "grid",
-        margin: { left: margin, right: margin },
-        styles: {
-          fontSize: 9,
-          halign: "center",
-          cellPadding: 4,
-          lineColor: [209, 213, 219],
-          lineWidth: 0.5,
-          textColor: [31, 41, 55],
-          overflow: "linebreak",
-        },
-        headStyles: {
-          fillColor: [15, 23, 42],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 9,
-          halign: "center",
-        },
-        alternateRowStyles: {
-          fillColor: [249, 250, 251],
-        },
-        columnStyles: {
-          0: { halign: "center", cellWidth: 15 },
-          1: { halign: "left", cellWidth: 35 },
-          2: { halign: "right", cellWidth: 20 },
-          3: { halign: "right", cellWidth: 20 },
-          4: { halign: "center", cellWidth: 18 },
-          5: { halign: "right", cellWidth: 20 },
-          6: { halign: "right", cellWidth: 20 },
-          7: { halign: "right", cellWidth: 22 },
-        },
-      });
-
-      // === RECEIVED ITEMS TABLE ===
-      let receivedItemsY = (doc as any).lastAutoTable.finalY + 15;
-
-      if (data.receivedItems && data.receivedItems.length > 0) {
-        // Section header
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(15, 23, 42);
-        doc.text("Received Items", margin, receivedItemsY);
-
-        receivedItemsY += 10;
-
-        autoTable(doc, {
-          startY: receivedItemsY,
-          head: [
-            [
-              "S.No",
-              "Date",
-              "Received Gold (g)",
-              "Melting %",
-              "Final Weight (g)",
-            ],
-          ],
-          body: data.receivedItems.map((item, index) => [
-            index + 1,
-            item.date
-              ? new Date(item.date).toLocaleDateString("en-IN")
-              : new Date().toLocaleDateString("en-IN"),
-            formatNumber(item.receivedGold, 3),
-            formatNumber(item.melting, 2) + "%",
-            formatNumber(item.finalWt, 3),
-          ]),
-          theme: "grid",
-          margin: { left: margin, right: margin },
-          styles: {
-            fontSize: 9,
-            halign: "center",
-            cellPadding: 4,
-            lineColor: [209, 213, 219],
-            lineWidth: 0.5,
-            textColor: [31, 41, 55],
-            overflow: "linebreak",
-          },
-          headStyles: {
-            fillColor: [15, 23, 42],
-            textColor: [255, 255, 255],
-            fontStyle: "bold",
-            fontSize: 9,
-            halign: "center",
-          },
-          alternateRowStyles: {
-            fillColor: [249, 250, 251],
-          },
-          columnStyles: {
-            0: { halign: "center", cellWidth: 20 },
-            1: { halign: "center", cellWidth: 30 },
-            2: { halign: "right", cellWidth: 35 },
-            3: { halign: "right", cellWidth: 30 },
-            4: { halign: "right", cellWidth: 35 },
-          },
-        });
+      // Add logo at the top center
+      const logoPath = "/logo.jpg"; // Using the provided logo path
+      try {
+        doc.addImage(logoPath, "JPEG", 85, 5, 40, 20); // Centered logo, adjusted size to fit design
+      } catch (logoError) {
+        console.warn("Logo not found, continuing without logo");
       }
 
-      // === ENHANCED TOTALS SECTION ===
-      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      // Dynamic Fields (aligned with design)
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0); // Black text
+      let y = 35;
+      const marginLeft = 25;
 
-      // Subtotals section with clean design
-      const totalsStartY = finalY;
-      const labelX = margin + contentWidth * 0.6;
-      const valueX = pageWidth - margin;
-
-      // Subtotals background
-      doc.setFillColor(248, 250, 252);
-      doc.rect(labelX - 10, totalsStartY - 5, contentWidth * 0.4 + 10, 35, "F");
-
-      // Subtotals
+      // Use client details for Name, Shop, and Phone Number with bold side titles
+      doc.setFont("helvetica", "bold");
+      doc.text("Name", marginLeft, y);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(75, 85, 99);
-
-      let currentY = totalsStartY + 3;
-
-      doc.text("Gross Weight:", labelX, currentY);
-      doc.text(`${formatNumber(data.totals?.grossWt, 3)} g`, valueX, currentY, {
-        align: "right",
-      });
-
-      currentY += 6;
-      doc.text("Stone Weight:", labelX, currentY);
-      doc.text(`${formatNumber(data.totals?.stoneWt, 3)} g`, valueX, currentY, {
-        align: "right",
-      });
-
-      currentY += 6;
-      doc.text("Net Weight:", labelX, currentY);
-      doc.text(`${formatNumber(data.totals?.netWt, 3)} g`, valueX, currentY, {
-        align: "right",
-      });
-
-      // Separator line
-      currentY += 8;
-      doc.setDrawColor(209, 213, 219);
-      doc.setLineWidth(0.5);
-      doc.line(labelX, currentY, valueX, currentY);
-
-      // === GRAND TOTAL - PROMINENT DESIGN ===
-      currentY += 10;
-
-      // Total amount box
-      const totalBoxY = currentY - 3;
-      const totalBoxHeight = 16;
-
-      // Main total box with gradient effect (simulated with multiple rectangles)
-      doc.setFillColor(15, 23, 42);
-      doc.rect(
-        labelX - 10,
-        totalBoxY,
-        contentWidth * 0.4 + 10,
-        totalBoxHeight,
-        "F"
+      doc.text(
+        `: ${receipt.data.clientInfo?.clientName || "-"}`,
+        marginLeft + 35,
+        y
       );
+      y += 6;
 
-      // Accent border
-      doc.setDrawColor(59, 130, 246);
-      doc.setLineWidth(2);
-      doc.rect(labelX - 10, totalBoxY, contentWidth * 0.4 + 10, totalBoxHeight);
-
-      // Total amount text
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.setTextColor(255, 255, 255);
+      doc.text("Shop", marginLeft, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(`: ${receipt.data.clientInfo?.shopName || "-"}`, marginLeft + 35, y);
+      y += 6;
 
-      const totalAmount = data.totals?.totalInvoiceAmount || 0;
-      doc.text("TOTAL AMOUNT", labelX - 5, currentY + 5);
-      doc.text(`₹${formatNumber(totalAmount, 2)}`, valueX - 5, currentY + 5, {
-        align: "right",
-      });
-
-      // === ENHANCED FOOTER ===
-      const footerY = pageHeight - 30;
-
-      // Footer separator line
-      doc.setDrawColor(209, 213, 219);
-      doc.setLineWidth(0.5);
-      doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-
-      // Thank you message
       doc.setFont("helvetica", "bold");
+      doc.text("Phone Number", marginLeft, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(`: ${receipt.data.clientInfo?.phoneNumber || "-"}`, marginLeft + 35, y);
+      y += 6;
+
+      // Given Date Section
+      y = 65;
       doc.setFontSize(12);
-      doc.setTextColor(15, 23, 42);
-      doc.text("Thank you for your business!", margin, footerY + 5);
-
-      // Footer notes
+      doc.setFont("helvetica", "thin");
+      const givenDate = receipt.data.issueDate
+        ? new Date(receipt.data.issueDate)
+            .toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+            .toUpperCase()
+        : "-";
+      doc.setFont("helvetica", "bold");
+      doc.text("Given Date :", marginLeft, y);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(107, 114, 128);
+      doc.text(givenDate, marginLeft + doc.getTextWidth("Given Date : ") + 1, y);
+
+      // First Table (Given Items)
+      const givenItems = Array.isArray(receipt.data.givenItems)
+        ? receipt.data.givenItems.filter(item => item.itemName !== "Previous Balance")
+        : [];
+      
+      autoTable(doc, {
+        startY: y + 3,
+        head: [
+          ["S.NO", "Product Name", "Pure(wt)", "Pure%", "Melting", "Total", "Date"],
+        ],
+        body: givenItems.map((item, index) => [
+          index + 1,
+          item.itemName || "-",
+          formatNumber(item.grossWt, 3),
+          formatNumber(item.meltingTouch, 2),
+          formatNumber(item.meltingTouch, 2),
+          formatNumber(item.finalWt, 3),
+          item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
+        ]),
+        theme: "grid",
+        styles: { fontSize: 10, cellPadding: 1, textColor: [0, 0, 0] },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          lineWidth: 0.1, // Thin border for head
+          lineColor: [0, 0, 0],
+        },
+        bodyStyles: {
+          lineWidth: 0.1, // Match border thickness with head
+          lineColor: [0, 0, 0],
+        },
+        margin: { left: marginLeft, right: 15 },
+        columnStyles: {
+          0: { cellWidth: 15 }, // S.NO
+          1: { cellWidth: 40 }, // Product Name
+          2: { cellWidth: 25 }, // Pure(wt)
+          3: { cellWidth: 25 }, // Pure%
+          4: { cellWidth: 25 }, // Melting
+          5: { cellWidth: 25 }, // Total
+          6: { cellWidth: 25 }, // Date
+        },
+      });
+
+      // Received Date Section
+      let newY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "thin");
+      const receivedDate = receipt.data.issueDate
+        ? new Date(receipt.data.issueDate)
+            .toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+            .toUpperCase()
+        : "-";
+      doc.setFont("helvetica", "bold");
+      doc.text("Received Date :", marginLeft, newY);
+      doc.setFont("helvetica", "normal");
       doc.text(
-        "This is a computer generated receipt and does not require a signature.",
-        margin,
-        footerY + 12
-      );
-      doc.text(
-        `Generated on: ${new Date().toLocaleString("en-IN")}`,
-        margin,
-        footerY + 18
+        receivedDate,
+        marginLeft + doc.getTextWidth("Received Date : ") + 1,
+        newY
       );
 
-      // Contact info (if available)
+      // Second Table (Received Items)
+      const receivedItems = Array.isArray(receipt.data.receivedItems)
+        ? receipt.data.receivedItems
+        : [];
+      
+      autoTable(doc, {
+        startY: newY + 3,
+        head: [
+          [
+            "S.NO",
+            "Product Name",
+            "Date",
+            "Final Ornament(wt)",
+            "Stone Weight",
+            "Touch",
+            "MC",
+            "Subtotal",
+            "Total",
+          ],
+        ],
+        body: receivedItems.map((item, index) => [
+          index + 1,
+          "Received Item " + (index + 1), // Product name placeholder
+          item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
+          formatNumber(item.receivedGold, 3),
+          formatNumber(0, 3), // Stone weight not available in current structure
+          formatNumber(item.melting, 2),
+          formatNumber(0, 2), // MC not available in current structure
+          formatNumber(item.receivedGold, 3),
+          formatNumber(item.finalWt, 3),
+        ]),
+        theme: "grid",
+        styles: { fontSize: 10, cellPadding: 2, textColor: [0, 0, 0] },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          lineWidth: 0.1, // Thin border for head
+          lineColor: [0, 0, 0],
+        },
+        bodyStyles: {
+          lineWidth: 0.1, // Match border thickness with head
+          lineColor: [0, 0, 0],
+        },
+        margin: { left: marginLeft, right: 10 },
+        columnStyles: {
+          0: { cellWidth: 15 }, // S.NO
+          1: { cellWidth: 25 }, // Product Name
+          2: { cellWidth: 22 }, // Date
+          3: { cellWidth: 25 }, // Final Ornament(wt)
+          4: { cellWidth: 20 }, // Stone Weight
+          5: { cellWidth: 18 }, // Touch
+          6: { cellWidth: 18 }, // MC
+          7: { cellWidth: 18 }, // Subtotal
+          8: { cellWidth: 22 }, // Total
+        },
+      });
+
+      // Totals Section (Right-aligned as in the image)
+      let finalY = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      const totalsX = pageWidth - 80;
+      
+      // Calculate totals from the data
+      const givenTotal = givenItems.reduce((sum, item) => sum + Number(item.finalWt || 0), 0);
+      const receivedTotal = receivedItems.reduce((sum, item) => sum + Number(item.finalWt || 0), 0);
+      const result = givenTotal - receivedTotal;
+      
       doc.text(
-        "For queries, please contact support.",
-        pageWidth - margin,
-        footerY + 12,
-        { align: "right" }
+        `Given Total        : ${formatNumber(givenTotal, 3)}`,
+        totalsX,
+        finalY
+      );
+      finalY += 6;
+      doc.text(
+        `Received Total   : ${formatNumber(receivedTotal, 3)}`,
+        totalsX,
+        finalY
+      );
+      finalY += 6;
+      doc.text(
+        `Result                 : ${formatNumber(result, 3)}`,
+        totalsX,
+        finalY
       );
 
-      // === SAVE PDF ===
-      const fileName = `Receipt_${
-        data.clientInfo?.clientName?.replace(/[^a-zA-Z0-9]/g, "_") || "Client"
-      }_${data.voucherId || Date.now()}.pdf`;
+      // Footer (aligned with the design)
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      const footerGap = 15;
+      const footer1 = "";
+      const footer2 = "";
+      const textWidth1 = doc.getTextWidth(footer1);
+      const textWidth2 = doc.getTextWidth(footer2);
+      // Calculate X so that text is centered at the right corner (with footerGap from right edge)
+      const x1 = pageWidth - footerGap - textWidth1 / 2 - 13; // Move "Antiques" 10 units left
+      const x2 = pageWidth - footerGap - textWidth2 / 2;
+      // Centered at right corner
+      doc.text(footer1, x1, 265, { align: "center" });
+      doc.text(footer2, x2, 270, { align: "center" });
+
+      // Save the PDF
+      const fileName = `receipt_${
+        receipt.data.clientInfo?.clientName?.replace(/[^a-zA-Z0-9]/g, "_") || "unknown"
+      }.pdf`;
       doc.save(fileName);
+      
     } catch (err) {
       console.error("PDF Generation Error:", err);
       toast({
