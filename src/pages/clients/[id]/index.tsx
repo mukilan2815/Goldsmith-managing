@@ -388,7 +388,7 @@ const generatePDF = (receipt: any) => {
       ],
       body: givenTableData,
       theme: "grid",
-      styles: { fontSize: 10, cellPadding: 1, textColor: [0, 0, 0] },
+      styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
       headStyles: {
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
@@ -400,15 +400,15 @@ const generatePDF = (receipt: any) => {
         lineWidth: 0.1, // Match border thickness with head
         lineColor: [0, 0, 0],
       },
-      margin: { left: marginLeft, right: 15 },
+      margin: { left: 15, right: 25 }, // Increased margins to avoid border collision
       columnStyles: {
-        0: { cellWidth: 15 }, // S.NO
-        1: { cellWidth: 40 }, // Product Name
-        2: { cellWidth: 25 }, // Pure(wt)
-        3: { cellWidth: 25 }, // Pure%
-        4: { cellWidth: 25 }, // Melting
-        5: { cellWidth: 25 }, // Total
-        6: { cellWidth: 25 }, // Date
+        0: { cellWidth: 12 }, // S.NO - reduced
+        1: { cellWidth: 35 }, // Product Name - reduced
+        2: { cellWidth: 20 }, // Pure(wt) - reduced
+        3: { cellWidth: 18 }, // Pure% - reduced
+        4: { cellWidth: 20 }, // Melting - reduced
+        5: { cellWidth: 20 }, // Total - reduced
+        6: { cellWidth: 22 }, // Date - reduced
       },
     });
   }
@@ -485,7 +485,7 @@ const generatePDF = (receipt: any) => {
       ],
       body: receivedTableData,
       theme: "grid",
-      styles: { fontSize: 10, cellPadding: 2, textColor: [0, 0, 0] },
+      styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
       headStyles: {
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
@@ -497,17 +497,17 @@ const generatePDF = (receipt: any) => {
         lineWidth: 0.1, // Match border thickness with head
         lineColor: [0, 0, 0],
       },
-      margin: { left: marginLeft, right: 10 },
+      margin: { left: 15, right: 25 },
       columnStyles: {
-        0: { cellWidth: 15 }, // S.NO
-        1: { cellWidth: 25 }, // Product Name
-        2: { cellWidth: 22 }, // Date
-        3: { cellWidth: 25 }, // Final Ornament(wt)
-        4: { cellWidth: 20 }, // Stone Weight
-        5: { cellWidth: 18 }, // Touch
-        6: { cellWidth: 18 }, // MC
-        7: { cellWidth: 18 }, // Subtotal
-        8: { cellWidth: 22 }, // Total
+        0: { cellWidth: 12 }, // S.NO
+        1: { cellWidth: 20 }, // Product Name
+        2: { cellWidth: 18 }, // Date
+        3: { cellWidth: 20 }, // Final Ornament(wt)
+        4: { cellWidth: 17 }, // Stone Weight
+        5: { cellWidth: 15 }, // Touch
+        6: { cellWidth: 15 }, // MC
+        7: { cellWidth: 17 }, // Subtotal
+        8: { cellWidth: 19 }, // Total
       },
     });
   }
