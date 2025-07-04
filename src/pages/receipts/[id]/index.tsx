@@ -139,13 +139,21 @@ export default function ReceiptDetailsPage() {
       doc.setFont("helvetica", "bold");
       doc.text("Shop", marginLeft, y);
       doc.setFont("helvetica", "normal");
-      doc.text(`: ${receipt.data.clientInfo?.shopName || "-"}`, marginLeft + 35, y);
+      doc.text(
+        `: ${receipt.data.clientInfo?.shopName || "-"}`,
+        marginLeft + 35,
+        y
+      );
       y += 6;
 
       doc.setFont("helvetica", "bold");
       doc.text("Phone Number", marginLeft, y);
       doc.setFont("helvetica", "normal");
-      doc.text(`: ${receipt.data.clientInfo?.phoneNumber || "-"}`, marginLeft + 35, y);
+      doc.text(
+        `: ${receipt.data.clientInfo?.phoneNumber || "-"}`,
+        marginLeft + 35,
+        y
+      );
       y += 6;
 
       // Given Date Section
@@ -164,17 +172,31 @@ export default function ReceiptDetailsPage() {
       doc.setFont("helvetica", "bold");
       doc.text("Given Date :", marginLeft, y);
       doc.setFont("helvetica", "normal");
-      doc.text(givenDate, marginLeft + doc.getTextWidth("Given Date : ") + 1, y);
+      doc.text(
+        givenDate,
+        marginLeft + doc.getTextWidth("Given Date : ") + 1,
+        y
+      );
 
       // First Table (Given Items)
       const givenItems = Array.isArray(receipt.data.givenItems)
-        ? receipt.data.givenItems.filter(item => item.itemName !== "Previous Balance")
+        ? receipt.data.givenItems.filter(
+            (item) => item.itemName !== "Previous Balance"
+          )
         : [];
-      
+
       autoTable(doc, {
         startY: y + 3,
         head: [
-          ["S.NO", "Product Name", "Pure(wt)", "Pure%", "Melting", "Total", "Date"],
+          [
+            "S.NO",
+            "Product Name",
+            "Pure(wt)",
+            "Pure%",
+            "Melting",
+            "Total",
+            "Date",
+          ],
         ],
         body: givenItems.map((item, index) => [
           index + 1,
@@ -186,7 +208,7 @@ export default function ReceiptDetailsPage() {
           item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
         ]),
         theme: "grid",
-        styles: { fontSize: 10, cellPadding: 1, textColor: [0, 0, 0] },
+        styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
         headStyles: {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
@@ -198,15 +220,15 @@ export default function ReceiptDetailsPage() {
           lineWidth: 0.1, // Match border thickness with head
           lineColor: [0, 0, 0],
         },
-        margin: { left: marginLeft, right: 15 },
+        margin: { left: 15, right: 25 },
         columnStyles: {
-          0: { cellWidth: 15 }, // S.NO
-          1: { cellWidth: 40 }, // Product Name
-          2: { cellWidth: 25 }, // Pure(wt)
-          3: { cellWidth: 25 }, // Pure%
-          4: { cellWidth: 25 }, // Melting
-          5: { cellWidth: 25 }, // Total
-          6: { cellWidth: 25 }, // Date
+          0: { cellWidth: 12 }, // S.NO
+          1: { cellWidth: 35 }, // Product Name
+          2: { cellWidth: 22 }, // Pure(wt)
+          3: { cellWidth: 20 }, // Pure%
+          4: { cellWidth: 20 }, // Melting
+          5: { cellWidth: 22 }, // Total
+          6: { cellWidth: 22 }, // Date
         },
       });
 
@@ -236,7 +258,7 @@ export default function ReceiptDetailsPage() {
       const receivedItems = Array.isArray(receipt.data.receivedItems)
         ? receipt.data.receivedItems
         : [];
-      
+
       autoTable(doc, {
         startY: newY + 3,
         head: [
@@ -264,7 +286,7 @@ export default function ReceiptDetailsPage() {
           formatNumber(item.finalWt, 3),
         ]),
         theme: "grid",
-        styles: { fontSize: 10, cellPadding: 2, textColor: [0, 0, 0] },
+        styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
         headStyles: {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
@@ -276,17 +298,17 @@ export default function ReceiptDetailsPage() {
           lineWidth: 0.1, // Match border thickness with head
           lineColor: [0, 0, 0],
         },
-        margin: { left: marginLeft, right: 10 },
+        margin: { left: 15, right: 25 },
         columnStyles: {
-          0: { cellWidth: 15 }, // S.NO
-          1: { cellWidth: 25 }, // Product Name
-          2: { cellWidth: 22 }, // Date
-          3: { cellWidth: 25 }, // Final Ornament(wt)
-          4: { cellWidth: 20 }, // Stone Weight
-          5: { cellWidth: 18 }, // Touch
-          6: { cellWidth: 18 }, // MC
-          7: { cellWidth: 18 }, // Subtotal
-          8: { cellWidth: 22 }, // Total
+          0: { cellWidth: 12 }, // S.NO
+          1: { cellWidth: 20 }, // Product Name
+          2: { cellWidth: 18 }, // Date
+          3: { cellWidth: 20 }, // Final Ornament(wt)
+          4: { cellWidth: 17 }, // Stone Weight
+          5: { cellWidth: 15 }, // Touch
+          6: { cellWidth: 15 }, // MC
+          7: { cellWidth: 17 }, // Subtotal
+          8: { cellWidth: 19 }, // Total
         },
       });
 
@@ -295,12 +317,18 @@ export default function ReceiptDetailsPage() {
       doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
       const totalsX = pageWidth - 80;
-      
+
       // Calculate totals from the data
-      const givenTotal = givenItems.reduce((sum, item) => sum + Number(item.finalWt || 0), 0);
-      const receivedTotal = receivedItems.reduce((sum, item) => sum + Number(item.finalWt || 0), 0);
+      const givenTotal = givenItems.reduce(
+        (sum, item) => sum + Number(item.finalWt || 0),
+        0
+      );
+      const receivedTotal = receivedItems.reduce(
+        (sum, item) => sum + Number(item.finalWt || 0),
+        0
+      );
       const result = givenTotal - receivedTotal;
-      
+
       doc.text(
         `Given Total        : ${formatNumber(givenTotal, 3)}`,
         totalsX,
@@ -336,10 +364,10 @@ export default function ReceiptDetailsPage() {
 
       // Save the PDF
       const fileName = `receipt_${
-        receipt.data.clientInfo?.clientName?.replace(/[^a-zA-Z0-9]/g, "_") || "unknown"
+        receipt.data.clientInfo?.clientName?.replace(/[^a-zA-Z0-9]/g, "_") ||
+        "unknown"
       }.pdf`;
       doc.save(fileName);
-      
     } catch (err) {
       console.error("PDF Generation Error:", err);
       toast({
