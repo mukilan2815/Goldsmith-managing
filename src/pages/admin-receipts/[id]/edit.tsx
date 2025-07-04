@@ -1382,20 +1382,7 @@ export default function EditAdminReceiptPage() {
               </p>
               <p className="font-medium">{safeToFixed(clientBalance)}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Balance Adjustment (g)</p>
-              <p
-                className={`font-medium ${
-                  calculateBalance() > 0
-                    ? "text-green-600"
-                    : calculateBalance() < 0
-                    ? "text-red-600"
-                    : ""
-                }`}
-              >
-                {safeToFixed(calculateBalance())}
-              </p>
-            </div>
+            
             <div>
               <p className="text-sm text-gray-500">New Client Balance (g)</p>
               <p className="font-medium">
