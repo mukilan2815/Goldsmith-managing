@@ -318,49 +318,31 @@ export default function ReceiptDetailsPage() {
       doc.setFont("helvetica", "normal");
       const totalsX = pageWidth - 80;
 
-      // Calculate totals from the data
-      const givenTotal = givenItems.reduce(
-        (sum, item) => sum + Number(item.finalWt || 0),
-        0
-      );
-      const receivedTotal = receivedItems.reduce(
-        (sum, item) => sum + Number(item.finalWt || 0),
-        0
-      );
-      const result = givenTotal - receivedTotal;
+      // Use the actual balance data from the response
+      const actualBalance = receipt.data.balance || 0;
+      const previousBalance = receipt.data.previousBalance || 0;
+      const newBalance = receipt.data.newBalance || 0;
+      const totalGrossWt = receipt.data.totals?.grossWt || 0;
+      const totalNetWt = receipt.data.totals?.netWt || 0;
+      const totalFinalWt = receipt.data.totals?.finalWt || 0;
 
       doc.text(
-        `Given Total        : ${formatNumber(givenTotal, 3)}`,
+        `OD Balance   : ${formatNumber(previousBalance, 3)}`,
         totalsX,
         finalY
       );
       finalY += 6;
       doc.text(
-        `Received Total   : ${formatNumber(receivedTotal, 3)}`,
+        `Current Balance    : ${formatNumber(actualBalance, 3)}`,
         totalsX,
         finalY
       );
       finalY += 6;
       doc.text(
-        `Result                 : ${formatNumber(result, 3)}`,
+        `New Balance        : ${formatNumber(newBalance, 3)}`,
         totalsX,
         finalY
       );
-
-      // Footer (aligned with the design)
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      const footerGap = 15;
-      const footer1 = "";
-      const footer2 = "";
-      const textWidth1 = doc.getTextWidth(footer1);
-      const textWidth2 = doc.getTextWidth(footer2);
-      // Calculate X so that text is centered at the right corner (with footerGap from right edge)
-      const x1 = pageWidth - footerGap - textWidth1 / 2 - 13; // Move "Antiques" 10 units left
-      const x2 = pageWidth - footerGap - textWidth2 / 2;
-      // Centered at right corner
-      doc.text(footer1, x1, 265, { align: "center" });
-      doc.text(footer2, x2, 270, { align: "center" });
 
       // Save the PDF
       const fileName = `receipt_${

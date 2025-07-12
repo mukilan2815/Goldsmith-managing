@@ -518,38 +518,37 @@ const generatePDF = (receipt: any) => {
   doc.setFont("helvetica", "normal");
   const totalsX = pageWidth - 80;
 
-  // Calculate totals from the data
-  const givenTotal =
-    receipt.type === "admin"
-      ? Number(receipt.given?.total || 0)
-      : (receipt.items || []).reduce(
-          (sum: number, item: any) => sum + Number(item.finalWt || 0),
-          0
-        );
-  const receivedTotal =
-    receipt.type === "admin"
-      ? Number(receipt.received?.total || 0)
-      : (receipt.items || []).reduce(
-          (sum: number, item: any) =>
-            sum + Number(item.totalInvoiceAmount || 0),
-          0
-        );
-  const result = givenTotal - receivedTotal;
+  // Use balance data - for client details page we'll calculate based on receipt type
+  let actualBalance = 0;
+  let previousBalance = 0;
+  let newBalance = 0;
+
+  if (receipt.type === "client") {
+    // For client receipts, use totals data
+    actualBalance = Number(receipt.totals?.balanceDue || 0);
+    previousBalance = 0; // Client receipts don't have previous balance in this structure
+    newBalance = actualBalance;
+  } else if (receipt.type === "admin") {
+    // For admin receipts, use manual calculations
+    actualBalance = Number(receipt.manualCalculations?.result || 0);
+    previousBalance = 0; // Admin receipts don't have previous balance in this structure
+    newBalance = actualBalance;
+  }
 
   doc.text(
-    `Given Total        : ${formatNumber(givenTotal, 3)}`,
+    `OD Balance         : ${formatNumber(previousBalance, 3)}`,
     totalsX,
     finalY
   );
   finalY += 6;
   doc.text(
-    `Received Total   : ${formatNumber(receivedTotal, 3)}`,
+    `Current Balance    : ${formatNumber(actualBalance, 3)}`,
     totalsX,
     finalY
   );
   finalY += 6;
   doc.text(
-    `Result                 : ${formatNumber(result, 3)}`,
+    `New Balance        : ${formatNumber(newBalance, 3)}`,
     totalsX,
     finalY
   );

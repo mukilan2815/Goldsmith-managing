@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { format } from "date-fns";
 
 // Attach autoTable to jsPDF
 (jsPDF as any).autoTable = autoTable;
@@ -121,7 +122,10 @@ const formatDate = (dateString: string | undefined) => {
 };
 
 // Updated generatePDF function to use client details
-const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
+const generatePDF = async (
+  receipt: AdminReceipt,
+  client: ClientDetails | null
+) => {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -132,7 +136,11 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
 
   // Add logo at the top center
   const logoPath = "/logo.jpg"; // Using the provided logo path
-  doc.addImage(logoPath, "JPEG", 85, 5, 40, 20); // Centered logo, adjusted size to fit design
+  try {
+    doc.addImage(logoPath, "JPEG", 85, 5, 40, 20); // Centered logo, adjusted size to fit design
+  } catch (logoError) {
+    console.warn("Logo not found, continuing without logo");
+  }
 
   // Dynamic Fields (aligned with design)
   doc.setFontSize(11);
@@ -185,6 +193,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
   const givenItems = Array.isArray(receipt.given?.items)
     ? receipt.given.items
     : [];
+
   autoTable(doc, {
     startY: y + 3,
     head: [
@@ -197,7 +206,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       formatNumber(item.purePercent),
       formatNumber(item.melting),
       formatNumber(item.total),
-      item.date ? formatDate(item.date) : "—",
+      item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
     ]),
     theme: "grid",
     styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
@@ -223,12 +232,13 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
       6: { cellWidth: 22 }, // Date
     },
   });
+
   // Received Date Section
   let newY = (doc as any).lastAutoTable.finalY + 10;
   doc.setFontSize(12);
   doc.setFont("helvetica", "thin");
-  const receivedDate = receipt.given?.date
-    ? new Date(receipt.given.date)
+  const receivedDate = receipt.received?.date
+    ? new Date(receipt.received.date)
         .toLocaleDateString("en-US", {
           month: "long",
           day: "numeric",
@@ -249,6 +259,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
   const receivedItems = Array.isArray(receipt.received?.items)
     ? receipt.received.items
     : [];
+
   autoTable(doc, {
     startY: newY + 3,
     head: [
@@ -267,7 +278,7 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
     body: receivedItems.map((item, index) => [
       index + 1,
       item.productName || "-",
-      item.date ? formatDate(item.date) : "—",
+      item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
       formatNumber(item.finalOrnamentsWt),
       formatNumber(item.stoneWeight),
       formatNumber(item.makingChargePercent, 2),
@@ -307,49 +318,37 @@ const generatePDF = (receipt: AdminReceipt, client: ClientDetails | null) => {
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   const totalsX = pageWidth - 80;
-  doc.text(
-    `Given Total        : ${formatNumber(
-      receipt.manualCalculations?.givenTotal
-    )}`,
-    totalsX,
-    finalY
-  );
-  finalY += 6;
-  doc.text(
-    `Received Total   : ${formatNumber(
-      receipt.manualCalculations?.receivedTotal
-    )}`,
-    totalsX,
-    finalY
-  );
-  finalY += 6;
-  doc.text(
-    `Result                 : ${formatNumber(
-      receipt.manualCalculations?.result
-    )}`,
-    totalsX,
-    finalY
-  );
 
-  // Footer (aligned with the design)
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  const footerGap = 15;
-  const footer1 = "";
-  const footer2 = "";
-  const textWidth1 = doc.getTextWidth(footer1);
-  const textWidth2 = doc.getTextWidth(footer2);
-  // Calculate X so that text is centered at the right corner (with footerGap from right edge)
-  const x1 = pageWidth - footerGap - textWidth1 / 2 - 13; // Move "Antiques" 10 units left
-  const x2 = pageWidth - footerGap - textWidth2 / 2;
-  // Centered at right corner
-  doc.text(footer1, x1, 265, { align: "center" });
-  doc.text(footer2, x2, 270, { align: "center" });
+  // Use the actual balance data from the response
+  const actualBalance = receipt.manualCalculations?.result || 0;
+  const previousBalance = client?.balance || 0;
+  const newBalance = Number(previousBalance) + Number(actualBalance);
+
+  doc.text(
+    `OD Balance         : ${formatNumber(previousBalance, 3)}`,
+    totalsX,
+    finalY
+  );
+  finalY += 6;
+  doc.text(
+    `Current Balance    : ${formatNumber(actualBalance, 3)}`,
+    totalsX,
+    finalY
+  );
+  finalY += 6;
+  doc.text(
+    `New Balance        : ${formatNumber(newBalance, 3)}`,
+    totalsX,
+    finalY
+  );
 
   // Save the PDF
-  doc.save(
-    `receipt_${client?.clientName || receipt.clientName || "unknown"}.pdf`
-  );
+  const fileName = `receipt_${
+    client?.clientName?.replace(/[^a-zA-Z0-9]/g, "_") ||
+    receipt.clientName?.replace(/[^a-zA-Z0-9]/g, "_") ||
+    "unknown"
+  }.pdf`;
+  doc.save(fileName);
 };
 
 export default function AdminReceiptDetailPage() {
@@ -398,10 +397,10 @@ export default function AdminReceiptDetailPage() {
     fetchData();
   }, [id, toast]);
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (!receipt) return;
     try {
-      generatePDF(receipt, client);
+      await generatePDF(receipt, client);
       toast({
         title: "Success",
         description: "PDF download started",
