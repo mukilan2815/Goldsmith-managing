@@ -156,34 +156,52 @@ export default function ReceiptDetailsPage() {
       );
       y += 6;
 
-      // Given Date Section
+      // Given Details Section
       y = 65;
       doc.setFontSize(12);
-      doc.setFont("helvetica", "thin");
-      const givenDate = receipt.data.issueDate
-        ? new Date(receipt.data.issueDate)
-            .toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })
-            .toUpperCase()
-        : "-";
       doc.setFont("helvetica", "bold");
-      doc.text("Given Date :", marginLeft, y);
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        givenDate,
-        marginLeft + doc.getTextWidth("Given Date : ") + 1,
-        y
-      );
+      doc.text("Given Details", marginLeft, y);
+      y += 5;
 
-      // First Table (Given Items)
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      const givenDate = receipt.data.issueDate
+        ? new Date(receipt.data.issueDate).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "-";
+      doc.text(`Date: ${givenDate}`, marginLeft, y);
+      y += 2;
+
+      // First Table (Given Items) - Filter out Previous Balance
       const givenItems = Array.isArray(receipt.data.givenItems)
         ? receipt.data.givenItems.filter(
             (item) => item.itemName !== "Previous Balance"
           )
         : [];
+
+      const givenTableBody = givenItems.map((item, index) => [
+        index + 1,
+        item.itemName || "-",
+        formatNumber(item.grossWt, 3),
+        formatNumber(item.meltingTouch, 2),
+        formatNumber(item.meltingTouch, 2),
+        formatNumber(item.finalWt, 3),
+        item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
+      ]);
+
+      // Add totals row
+      givenTableBody.push([
+        "",
+        "Total:",
+        "",
+        "",
+        "",
+        formatNumber(receipt.data.totals?.finalWt),
+        "",
+      ]);
 
       autoTable(doc, {
         startY: y + 3,
@@ -198,66 +216,102 @@ export default function ReceiptDetailsPage() {
             "Date",
           ],
         ],
-        body: givenItems.map((item, index) => [
-          index + 1,
-          item.itemName || "-",
-          formatNumber(item.grossWt, 3),
-          formatNumber(item.meltingTouch, 2),
-          formatNumber(item.meltingTouch, 2),
-          formatNumber(item.finalWt, 3),
-          item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
-        ]),
+        body: givenTableBody,
         theme: "grid",
         styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
         headStyles: {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
           fontStyle: "bold",
-          lineWidth: 0.1, // Thin border for head
+          lineWidth: 0.1,
           lineColor: [0, 0, 0],
         },
         bodyStyles: {
-          lineWidth: 0.1, // Match border thickness with head
+          lineWidth: 0.1,
           lineColor: [0, 0, 0],
+        },
+        didParseCell: function (data) {
+          // Make the totals row bold
+          if (data.row.index === givenTableBody.length - 1) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fillColor = [240, 240, 240];
+          }
         },
         margin: { left: 15, right: 25 },
         columnStyles: {
-          0: { cellWidth: 12 }, // S.NO
-          1: { cellWidth: 35 }, // Product Name
-          2: { cellWidth: 22 }, // Pure(wt)
-          3: { cellWidth: 20 }, // Pure%
-          4: { cellWidth: 20 }, // Melting
-          5: { cellWidth: 22 }, // Total
-          6: { cellWidth: 22 }, // Date
+          0: { cellWidth: 12 },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 22 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 22 },
+          6: { cellWidth: 22 },
         },
       });
 
-      // Received Date Section
+      // Received Details Section
       let newY = (doc as any).lastAutoTable.finalY + 10;
       doc.setFontSize(12);
-      doc.setFont("helvetica", "thin");
-      const receivedDate = receipt.data.issueDate
-        ? new Date(receipt.data.issueDate)
-            .toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })
-            .toUpperCase()
-        : "-";
       doc.setFont("helvetica", "bold");
-      doc.text("Received Date :", marginLeft, newY);
+      doc.text("Received Details", marginLeft, newY);
+      newY += 5;
+
+      doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(
-        receivedDate,
-        marginLeft + doc.getTextWidth("Received Date : ") + 1,
-        newY
-      );
+      const receivedDate = receipt.data.issueDate
+        ? new Date(receipt.data.issueDate).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "-";
+      doc.text(`Date: ${receivedDate}`, marginLeft, newY);
+      newY += 2;
 
       // Second Table (Received Items)
       const receivedItems = Array.isArray(receipt.data.receivedItems)
         ? receipt.data.receivedItems
         : [];
+
+      const receivedTableBody = receivedItems.map((item, index) => [
+        index + 1,
+        "Received Item " + (index + 1), // Product name placeholder
+        item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
+        formatNumber(item.receivedGold, 3),
+        formatNumber(0, 3), // Stone weight not available in current structure
+        formatNumber(item.melting, 2),
+        formatNumber(0, 2), // MC not available in current structure
+        formatNumber(item.receivedGold, 3),
+        formatNumber(item.finalWt, 3),
+      ]);
+
+      // Add totals row for received items
+      receivedTableBody.push([
+        "",
+        "Total:",
+        "",
+        formatNumber(
+          receivedItems.reduce(
+            (acc, item) => acc + Number(item.receivedGold || 0),
+            0
+          )
+        ),
+        formatNumber(0),
+        "",
+        "",
+        formatNumber(
+          receivedItems.reduce(
+            (acc, item) => acc + Number(item.receivedGold || 0),
+            0
+          )
+        ),
+        formatNumber(
+          receivedItems.reduce(
+            (acc, item) => acc + Number(item.finalWt || 0),
+            0
+          )
+        ),
+      ]);
 
       autoTable(doc, {
         startY: newY + 3,
@@ -274,75 +328,162 @@ export default function ReceiptDetailsPage() {
             "Total",
           ],
         ],
-        body: receivedItems.map((item, index) => [
-          index + 1,
-          "Received Item " + (index + 1), // Product name placeholder
-          item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
-          formatNumber(item.receivedGold, 3),
-          formatNumber(0, 3), // Stone weight not available in current structure
-          formatNumber(item.melting, 2),
-          formatNumber(0, 2), // MC not available in current structure
-          formatNumber(item.receivedGold, 3),
-          formatNumber(item.finalWt, 3),
-        ]),
+        body: receivedTableBody,
         theme: "grid",
         styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
         headStyles: {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
           fontStyle: "bold",
-          lineWidth: 0.1, // Thin border for head
+          lineWidth: 0.1,
           lineColor: [0, 0, 0],
         },
         bodyStyles: {
-          lineWidth: 0.1, // Match border thickness with head
+          lineWidth: 0.1,
           lineColor: [0, 0, 0],
+        },
+        didParseCell: function (data) {
+          // Make the totals row bold
+          if (data.row.index === receivedTableBody.length - 1) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fillColor = [240, 240, 240];
+          }
         },
         margin: { left: 15, right: 25 },
         columnStyles: {
-          0: { cellWidth: 12 }, // S.NO
-          1: { cellWidth: 20 }, // Product Name
-          2: { cellWidth: 18 }, // Date
-          3: { cellWidth: 20 }, // Final Ornament(wt)
-          4: { cellWidth: 17 }, // Stone Weight
-          5: { cellWidth: 15 }, // Touch
-          6: { cellWidth: 15 }, // MC
-          7: { cellWidth: 17 }, // Subtotal
-          8: { cellWidth: 19 }, // Total
+          0: { cellWidth: 12 },
+          1: { cellWidth: 20 },
+          2: { cellWidth: 18 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 17 },
+          5: { cellWidth: 15 },
+          6: { cellWidth: 15 },
+          7: { cellWidth: 17 },
+          8: { cellWidth: 19 },
         },
       });
 
-      // Totals Section (Right-aligned as in the image)
-      let finalY = (doc as any).lastAutoTable.finalY + 15;
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      const totalsX = pageWidth - 80;
+      // Balance Summary Section with professional table styling
+      let finalY = (doc as any).lastAutoTable.finalY + 10;
 
-      // Use the actual balance data from the response
-      const actualBalance = receipt.data.balance || 0;
-      const previousBalance = receipt.data.previousBalance || 0;
-      const newBalance = receipt.data.newBalance || 0;
-      const totalGrossWt = receipt.data.totals?.grossWt || 0;
-      const totalNetWt = receipt.data.totals?.netWt || 0;
-      const totalFinalWt = receipt.data.totals?.finalWt || 0;
+      // Balance Summary Table
+      const balanceData = [
+        ["OD Balance", formatNumber(receipt.data.previousBalance || 0, 2)],
+        ["Given Total", formatNumber(receipt.data.totals?.finalWt)],
+        [
+          "Received Total",
+          formatNumber(
+            receivedItems.reduce(
+              (acc, item) => acc + Number(item.finalWt || 0),
+              0
+            )
+          ),
+        ],
+        [
+          "Balance (Given - Received)",
+          formatNumber(
+            Number(receipt.data.totals?.finalWt || 0) -
+              Number(
+                receivedItems.reduce(
+                  (acc, item) => acc + Number(item.finalWt || 0),
+                  0
+                )
+              ),
+            3
+          ),
+        ],
+      ];
 
-      doc.text(
-        `OD Balance   : ${formatNumber(previousBalance, 3)}`,
-        totalsX,
-        finalY
-      );
-      finalY += 6;
-      doc.text(
-        `Current Balance    : ${formatNumber(actualBalance, 3)}`,
-        totalsX,
-        finalY
-      );
-      finalY += 6;
-      doc.text(
-        `New Balance        : ${formatNumber(newBalance, 3)}`,
-        totalsX,
-        finalY
-      );
+      autoTable(doc, {
+        startY: finalY,
+        head: [["Balance Summary", "Amount"]],
+        body: balanceData,
+        theme: "grid",
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+          textColor: [0, 0, 0],
+          halign: "left",
+        },
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          lineWidth: 0.1,
+          lineColor: [0, 0, 0],
+          halign: "center",
+        },
+        bodyStyles: {
+          lineWidth: 0.1,
+          lineColor: [0, 0, 0],
+        },
+        columnStyles: {
+          0: { cellWidth: 60, fontStyle: "bold" },
+          1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+        },
+        didParseCell: function (data) {
+          // Highlight the final balance row
+          if (data.row.index === 3 && data.section === "body") {
+            data.cell.styles.fillColor = [255, 248, 220]; // Light golden background
+            data.cell.styles.fontStyle = "bold";
+          }
+        },
+        margin: { left: marginLeft, right: 25 },
+      });
+
+      // Current Balance Information Section with professional table styling
+      finalY = (doc as any).lastAutoTable.finalY + 8;
+
+      const currentBalanceData = [
+        ["Current Balance", formatNumber(receipt.data.balance, 3)],
+        ["New Balance", formatNumber(receipt.data.newBalance, 3)],
+        ["Balance Tag", receipt.data.finalWtBalanceTag || "-"],
+      ];
+
+      autoTable(doc, {
+        startY: finalY,
+        head: [["Current Status", "Value"]],
+        body: currentBalanceData,
+        theme: "grid",
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+          textColor: [0, 0, 0],
+          halign: "left",
+        },
+        headStyles: {
+          fillColor: [240, 248, 255],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          lineWidth: 0.1,
+          lineColor: [0, 0, 0],
+          halign: "center",
+        },
+        bodyStyles: {
+          lineWidth: 0.1,
+          lineColor: [0, 0, 0],
+        },
+        columnStyles: {
+          0: { cellWidth: 60, fontStyle: "bold" },
+          1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+        },
+        didParseCell: function (data) {
+          // Highlight the new balance row
+          if (data.row.index === 1 && data.section === "body") {
+            data.cell.styles.fillColor = [240, 255, 240]; // Light green background
+            data.cell.styles.fontStyle = "bold";
+          }
+          // Center align the balance tag text
+          if (
+            data.row.index === 2 &&
+            data.column.index === 1 &&
+            data.section === "body"
+          ) {
+            data.cell.styles.halign = "center";
+          }
+        },
+        margin: { left: marginLeft, right: 25 },
+      });
 
       // Save the PDF
       const fileName = `receipt_${
@@ -471,11 +612,14 @@ export default function ReceiptDetailsPage() {
           <div className="bg-card card-premium rounded-lg p-6 print:p-0 print:bg-transparent print:shadow-none">
             <h2 className="text-xl font-medium mb-4">Given Items</h2>
             <div className="overflow-x-auto mb-8">
-              <table className="w-full min-w-[700px]">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2 px-1 text-sm font-medium">
                       Description
+                    </th>
+                    <th className="text-center py-2 px-1 text-sm font-medium">
+                      Tag
                     </th>
                     <th className="text-center py-2 px-1 text-sm font-medium">
                       Date
@@ -501,127 +645,81 @@ export default function ReceiptDetailsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {receipt.data.givenItems
-                    ?.filter((item) => item.itemName !== "Previous Balance")
-                    .map((item, index) => (
-                      <tr
-                        key={item._id || index}
-                        className="border-b last:border-b-0"
-                      >
-                        <td className="py-2 px-1">{item.itemName}</td>
-                        <td className="py-2 px-1 text-center text-sm">
-                          {item.date
-                            ? format(new Date(item.date), "dd/MM/yyyy")
-                            : "-"}
-                        </td>
-                        <td className="py-2 px-1 text-right">
-                          {formatNumber(item.grossWt, 3)}
-                        </td>
-                        <td className="py-2 px-1 text-right">
-                          {formatNumber(item.stoneWt, 3)}
-                        </td>
-                        <td className="py-2 px-1 text-right">
-                          {formatNumber(item.netWt, 3)}
-                        </td>
-                        <td className="py-2 px-1 text-right">
-                          {formatNumber(item.finalWt, 3)}
-                        </td>
-                        <td className="py-2 px-1 text-right">
-                          {formatNumber(item.stoneAmt, 2)}
-                        </td>
-                        <td className="py-2 px-1 text-right">
-                          {formatNumber(item.meltingTouch, 2)}%
-                        </td>
-                      </tr>
-                    ))}
+                  {receipt.data.givenItems?.map((item, index) => (
+                    <tr
+                      key={item._id || index}
+                      className={`border-b last:border-b-0 ${
+                        item.itemName === "Previous Balance"
+                          ? "bg-blue-50 font-medium"
+                          : ""
+                      }`}
+                    >
+                      <td className="py-2 px-1">{item.itemName}</td>
+                      <td className="py-2 px-1 text-center text-sm">
+                        <span
+                          className={`px-2 py-1 rounded text-xs ${
+                            item.tag === "BALANCE"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {item.tag || "-"}
+                        </span>
+                      </td>
+                      <td className="py-2 px-1 text-center text-sm">
+                        {item.date
+                          ? format(new Date(item.date), "dd/MM/yyyy")
+                          : "-"}
+                      </td>
+                      <td className="py-2 px-1 text-right">
+                        {formatNumber(item.grossWt, 3)}
+                      </td>
+                      <td className="py-2 px-1 text-right">
+                        {formatNumber(item.stoneWt, 3)}
+                      </td>
+                      <td className="py-2 px-1 text-right">
+                        {formatNumber(item.netWt, 3)}
+                      </td>
+                      <td className="py-2 px-1 text-right">
+                        {formatNumber(item.finalWt, 3)}
+                      </td>
+                      <td className="py-2 px-1 text-right">
+                        {formatNumber(item.stoneAmt, 2)}
+                      </td>
+                      <td className="py-2 px-1 text-right">
+                        {formatNumber(item.meltingTouch, 2)}%
+                      </td>
+                    </tr>
+                  ))}
 
                   <tr className="font-medium bg-accent/20 print:bg-gray-100">
-                    <td className="py-2 px-1 text-left" colSpan={2}>
+                    <td className="py-2 px-1 text-left" colSpan={3}>
                       Totals
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(
-                        receipt.data.givenItems
-                          ?.filter(
-                            (item) => item.itemName !== "Previous Balance"
-                          )
-                          .reduce(
-                            (acc, item) => acc + Number(item.grossWt || 0),
-                            0
-                          ) || 0,
-                        3
-                      )}
+                      {formatNumber(receipt.data.totals?.grossWt, 3)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(
-                        receipt.data.givenItems
-                          ?.filter(
-                            (item) => item.itemName !== "Previous Balance"
-                          )
-                          .reduce(
-                            (acc, item) => acc + Number(item.stoneWt || 0),
-                            0
-                          ) || 0,
-                        3
-                      )}
+                      {formatNumber(receipt.data.totals?.stoneWt, 3)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(
-                        receipt.data.givenItems
-                          ?.filter(
-                            (item) => item.itemName !== "Previous Balance"
-                          )
-                          .reduce(
-                            (acc, item) => acc + Number(item.netWt || 0),
-                            0
-                          ) || 0,
-                        3
-                      )}
+                      {formatNumber(receipt.data.totals?.netWt, 3)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(
-                        receipt.data.givenItems
-                          ?.filter(
-                            (item) => item.itemName !== "Previous Balance"
-                          )
-                          .reduce(
-                            (acc, item) => acc + Number(item.finalWt || 0),
-                            0
-                          ) || 0,
-                        3
-                      )}
+                      {formatNumber(receipt.data.totals?.finalWt, 3)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(
-                        receipt.data.givenItems
-                          ?.filter(
-                            (item) => item.itemName !== "Previous Balance"
-                          )
-                          .reduce(
-                            (acc, item) => acc + Number(item.stoneAmt || 0),
-                            0
-                          ) || 0,
-                        2
-                      )}
+                      {formatNumber(receipt.data.totals?.stoneAmt, 2)}
                     </td>
                     <td className="py-2 px-1 text-right">
                       {receipt.data.givenItems &&
-                      receipt.data.givenItems.filter(
-                        (item) => item.itemName !== "Previous Balance"
-                      ).length > 0
+                      receipt.data.givenItems.length > 0
                         ? formatNumber(
-                            receipt.data.givenItems
-                              .filter(
-                                (item) => item.itemName !== "Previous Balance"
-                              )
-                              .reduce(
-                                (acc, item) =>
-                                  acc + Number(item.meltingTouch || 0),
-                                0
-                              ) /
-                              receipt.data.givenItems.filter(
-                                (item) => item.itemName !== "Previous Balance"
-                              ).length,
+                            receipt.data.givenItems.reduce(
+                              (acc, item) =>
+                                acc + Number(item.meltingTouch || 0),
+                              0
+                            ) / receipt.data.givenItems.length,
                             2
                           ) + "%"
                         : "0.00%"}
@@ -651,6 +749,9 @@ export default function ReceiptDetailsPage() {
                     <th className="text-right py-2 px-1 text-sm font-medium">
                       Final Weight (g)
                     </th>
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Item ID
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -659,7 +760,7 @@ export default function ReceiptDetailsPage() {
                     <>
                       {receipt.data.receivedItems.map((item, idx) => (
                         <tr
-                          key={item.id || idx}
+                          key={item.id || item._id || idx}
                           className="border-b last:border-b-0"
                         >
                           <td className="py-2 px-1 text-center">{idx + 1}</td>
@@ -676,6 +777,9 @@ export default function ReceiptDetailsPage() {
                           </td>
                           <td className="py-2 px-1 text-right">
                             {formatNumber(item.finalWt, 3)}
+                          </td>
+                          <td className="py-2 px-1 text-right text-xs">
+                            {item.id || item._id || "-"}
                           </td>
                         </tr>
                       ))}
@@ -714,12 +818,13 @@ export default function ReceiptDetailsPage() {
                             3
                           )}
                         </td>
+                        <td className="py-2 px-1 text-right">-</td>
                       </tr>
                     </>
                   ) : (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="text-center py-4 text-muted-foreground"
                       >
                         No received items
@@ -754,8 +859,101 @@ export default function ReceiptDetailsPage() {
                   {receipt.data.clientInfo?.phoneNumber || "-"}
                 </p>
               </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Address</p>
+                <p className="font-medium">
+                  {receipt.data.clientInfo?.address || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Client ID</p>
+                <p className="font-medium text-xs">
+                  {receipt.data.clientId || "-"}
+                </p>
+              </div>
             </div>
           </div>
+
+          <div className="bg-card card-premium rounded-lg p-6 mb-6 print:p-0 print:bg-transparent print:shadow-none">
+            <h2 className="text-xl font-medium mb-4">Balance Information</h2>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Previous Balance
+                </p>
+                <p className="font-medium text-lg">
+                  {formatNumber(receipt.data.previousBalance, 3)} g
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Current Balance</p>
+                <p className="font-medium text-lg">
+                  {formatNumber(receipt.data.balance, 3)} g
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">New Balance</p>
+                <p className="font-medium text-lg text-primary">
+                  {formatNumber(receipt.data.newBalance, 3)} g
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Final Wt Balance Tag
+                </p>
+                <p className="font-medium">
+                  {receipt.data.finalWtBalanceTag || "-"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card card-premium rounded-lg p-6 mb-6 print:p-0 print:bg-transparent print:shadow-none">
+            <h2 className="text-xl font-medium mb-4">Summary Totals</h2>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Total Gross Weight
+                </p>
+                <p className="font-medium">
+                  {formatNumber(receipt.data.totals?.grossWt, 3)} g
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Total Net Weight
+                </p>
+                <p className="font-medium">
+                  {formatNumber(receipt.data.totals?.netWt, 3)} g
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Total Final Weight
+                </p>
+                <p className="font-medium">
+                  {formatNumber(receipt.data.totals?.finalWt, 3)} g
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Total Stone Weight
+                </p>
+                <p className="font-medium">
+                  {formatNumber(receipt.data.totals?.stoneWt, 3)} g
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Total Stone Amount
+                </p>
+                <p className="font-medium">
+                  ₹{formatNumber(receipt.data.totals?.stoneAmt, 2)}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-card card-premium rounded-lg p-6 print:p-0 print:bg-transparent print:shadow-none">
             <h2 className="text-xl font-medium mb-4">Receipt Information</h2>
             <div className="space-y-3">
@@ -764,6 +962,14 @@ export default function ReceiptDetailsPage() {
                 <div className="mt-1">
                   <StatusBadge status={receipt.data.status || "incomplete"} />
                 </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Completion Status
+                </p>
+                <p className="font-medium">
+                  {receipt.data.isCompleted ? "Completed" : "Pending"}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Metal Type</p>
@@ -792,6 +998,14 @@ export default function ReceiptDetailsPage() {
                     ? format(new Date(receipt.data.updatedAt), "PPP p")
                     : "-"}
                 </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Version</p>
+                <p className="font-medium">v{receipt.data.__v || "0"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Receipt ID</p>
+                <p className="font-medium text-xs">{receipt.data._id || "-"}</p>
               </div>
             </div>
           </div>

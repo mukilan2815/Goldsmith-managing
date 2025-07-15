@@ -171,94 +171,137 @@ const generatePDF = async (
   doc.text(`: ${client?.phoneNumber || "-"}`, marginLeft + 35, y);
   y += 6;
 
-  // Given Date Section
+  // Given Details Section
   y = 65;
   doc.setFontSize(12);
-  doc.setFont("helvetica", "thin");
-  const givenDate = receipt.given?.date
-    ? new Date(receipt.given.date)
-        .toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-        .toUpperCase()
-    : "-";
   doc.setFont("helvetica", "bold");
-  doc.text("Given Date :", marginLeft, y);
+  doc.text("Given Details", marginLeft, y);
+  y += 5;
+
+  doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(givenDate, marginLeft + doc.getTextWidth("Given Date : ") + 1, y);
+  const givenDate = receipt.given?.date
+    ? new Date(receipt.given.date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "-";
+  doc.text(`Date: ${givenDate}`, marginLeft, y);
+  y += 2;
 
   // First Table (Given Items)
   const givenItems = Array.isArray(receipt.given?.items)
     ? receipt.given.items
     : [];
 
+  const givenTableBody = givenItems.map((item, index) => [
+    index + 1,
+    item.productName || "-",
+    formatNumber(item.pureWeight),
+    formatNumber(item.purePercent),
+    formatNumber(item.melting),
+    formatNumber(item.total),
+    item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
+  ]);
+
+  // Add totals row
+  givenTableBody.push([
+    "",
+    "Total:",
+    "",
+    "",
+    "",
+    formatNumber(receipt.given?.total),
+    "",
+  ]);
+
   autoTable(doc, {
     startY: y + 3,
     head: [
       ["S.NO", "Product Name", "Pure(wt)", "Pure%", "Melting", "Total", "Date"],
     ],
-    body: givenItems.map((item, index) => [
-      index + 1,
-      item.productName || "-",
-      formatNumber(item.pureWeight),
-      formatNumber(item.purePercent),
-      formatNumber(item.melting),
-      formatNumber(item.total),
-      item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
-    ]),
+    body: givenTableBody,
     theme: "grid",
     styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       fontStyle: "bold",
-      lineWidth: 0.1, // Thin border for head
+      lineWidth: 0.1,
       lineColor: [0, 0, 0],
     },
     bodyStyles: {
-      lineWidth: 0.1, // Match border thickness with head
+      lineWidth: 0.1,
       lineColor: [0, 0, 0],
+    },
+    didParseCell: function (data) {
+      // Make the totals row bold
+      if (data.row.index === givenTableBody.length - 1) {
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.fillColor = [240, 240, 240];
+      }
     },
     margin: { left: 15, right: 25 },
     columnStyles: {
-      0: { cellWidth: 12 }, // S.NO
-      1: { cellWidth: 35 }, // Product Name
-      2: { cellWidth: 22 }, // Pure(wt)
-      3: { cellWidth: 20 }, // Pure%
-      4: { cellWidth: 20 }, // Melting
-      5: { cellWidth: 22 }, // Total
-      6: { cellWidth: 22 }, // Date
+      0: { cellWidth: 12 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 20 },
+      5: { cellWidth: 22 },
+      6: { cellWidth: 22 },
     },
   });
 
-  // Received Date Section
+  // Received Details Section
   let newY = (doc as any).lastAutoTable.finalY + 10;
   doc.setFontSize(12);
-  doc.setFont("helvetica", "thin");
-  const receivedDate = receipt.received?.date
-    ? new Date(receipt.received.date)
-        .toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-        .toUpperCase()
-    : "-";
   doc.setFont("helvetica", "bold");
-  doc.text("Received Date :", marginLeft, newY);
+  doc.text("Received Details", marginLeft, newY);
+  newY += 5;
+
+  doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(
-    receivedDate,
-    marginLeft + doc.getTextWidth("Received Date : ") + 1,
-    newY
-  );
+  const receivedDate = receipt.received?.date
+    ? new Date(receipt.received.date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "-";
+  doc.text(`Date: ${receivedDate}`, marginLeft, newY);
+  newY += 2;
 
   // Second Table (Received Items)
   const receivedItems = Array.isArray(receipt.received?.items)
     ? receipt.received.items
     : [];
+
+  const receivedTableBody = receivedItems.map((item, index) => [
+    index + 1,
+    item.productName || "-",
+    item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
+    formatNumber(item.finalOrnamentsWt),
+    formatNumber(item.stoneWeight),
+    formatNumber(item.makingChargePercent, 2),
+    formatNumber(Number(item.total) - Number(item.subTotal)),
+    formatNumber(item.subTotal),
+    formatNumber(item.total),
+  ]);
+
+  // Add totals row for received items
+  receivedTableBody.push([
+    "",
+    "Total:",
+    "",
+    formatNumber(receipt.received?.totalOrnamentsWt),
+    formatNumber(receipt.received?.totalStoneWeight),
+    "",
+    "",
+    formatNumber(receipt.received?.totalSubTotal),
+    formatNumber(receipt.received?.total),
+  ]);
 
   autoTable(doc, {
     startY: newY + 3,
@@ -275,72 +318,157 @@ const generatePDF = async (
         "Total",
       ],
     ],
-    body: receivedItems.map((item, index) => [
-      index + 1,
-      item.productName || "-",
-      item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
-      formatNumber(item.finalOrnamentsWt),
-      formatNumber(item.stoneWeight),
-      formatNumber(item.makingChargePercent, 2),
-      formatNumber(Number(item.total) - Number(item.subTotal)),
-      formatNumber(item.subTotal),
-      formatNumber(item.total),
-    ]),
+    body: receivedTableBody,
     theme: "grid",
     styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       fontStyle: "bold",
-      lineWidth: 0.1, // Thin border for head
+      lineWidth: 0.1,
       lineColor: [0, 0, 0],
     },
     bodyStyles: {
-      lineWidth: 0.1, // Match border thickness with head
+      lineWidth: 0.1,
       lineColor: [0, 0, 0],
+    },
+    didParseCell: function (data) {
+      // Make the totals row bold
+      if (data.row.index === receivedTableBody.length - 1) {
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.fillColor = [240, 240, 240];
+      }
     },
     margin: { left: 15, right: 25 },
     columnStyles: {
-      0: { cellWidth: 12 }, // S.NO
-      1: { cellWidth: 20 }, // Product Name
-      2: { cellWidth: 18 }, // Date
-      3: { cellWidth: 20 }, // Final Ornament(wt)
-      4: { cellWidth: 17 }, // Stone Weight
-      5: { cellWidth: 15 }, // Touch
-      6: { cellWidth: 15 }, // MC
-      7: { cellWidth: 17 }, // Subtotal
-      8: { cellWidth: 19 }, // Total
+      0: { cellWidth: 12 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 17 },
+      5: { cellWidth: 15 },
+      6: { cellWidth: 15 },
+      7: { cellWidth: 17 },
+      8: { cellWidth: 19 },
     },
   });
 
-  // Totals Section (Right-aligned as in the image)
-  let finalY = (doc as any).lastAutoTable.finalY + 15;
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  const totalsX = pageWidth - 80;
+  // Balance Summary Section with professional table styling
+  let finalY = (doc as any).lastAutoTable.finalY + 10;
 
-  // Use the actual balance data from the response
-  const actualBalance = receipt.manualCalculations?.result || 0;
-  const previousBalance = client?.balance || 0;
-  const newBalance = Number(previousBalance) + Number(actualBalance);
+  // Balance Summary Table
+  const balanceData = [
+    ["OD Balance", formatNumber(client?.balance || 0, 2)],
+    ["Given Total", formatNumber(receipt.given?.total)],
+    ["Received Total", formatNumber(receipt.received?.total)],
+    [
+      "Balance (Given - Received)",
+      formatNumber(
+        Number(receipt.given?.total || 0) -
+          Number(receipt.received?.total || 0),
+        3
+      ),
+    ],
+  ];
 
-  doc.text(
-    `OD Balance         : ${formatNumber(previousBalance, 3)}`,
-    totalsX,
-    finalY
-  );
-  finalY += 6;
-  doc.text(
-    `Current Balance    : ${formatNumber(actualBalance, 3)}`,
-    totalsX,
-    finalY
-  );
-  finalY += 6;
-  doc.text(
-    `New Balance        : ${formatNumber(newBalance, 3)}`,
-    totalsX,
-    finalY
-  );
+  autoTable(doc, {
+    startY: finalY,
+    head: [["Balance Summary", "Amount"]],
+    body: balanceData,
+    theme: "grid",
+    styles: {
+      fontSize: 10,
+      cellPadding: 3,
+      textColor: [0, 0, 0],
+      halign: "left",
+    },
+    headStyles: {
+      fillColor: [240, 240, 240],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
+      halign: "center",
+    },
+    bodyStyles: {
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
+    },
+    columnStyles: {
+      0: { cellWidth: 60, fontStyle: "bold" },
+      1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+    },
+    didParseCell: function (data) {
+      // Highlight the final balance row
+      if (data.row.index === 3 && data.section === "body") {
+        data.cell.styles.fillColor = [255, 248, 220]; // Light golden background
+        data.cell.styles.fontStyle = "bold";
+      }
+    },
+    margin: { left: marginLeft, right: 25 },
+  });
+
+  // Manual Calculations Section with professional table styling
+  finalY = (doc as any).lastAutoTable.finalY + 8;
+
+  const manualCalcData = [
+    ["Manual Given", formatNumber(receipt.manualCalculations?.givenTotal)],
+    [
+      "Operation",
+      receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
+        "subtract given received",
+    ],
+    [
+      "Manual Received",
+      formatNumber(receipt.manualCalculations?.receivedTotal),
+    ],
+    ["Manual Result", formatNumber(receipt.manualCalculations?.result)],
+  ];
+
+  autoTable(doc, {
+    startY: finalY,
+    head: [["Manual Calculations", "Value"]],
+    body: manualCalcData,
+    theme: "grid",
+    styles: {
+      fontSize: 10,
+      cellPadding: 3,
+      textColor: [0, 0, 0],
+      halign: "left",
+    },
+    headStyles: {
+      fillColor: [240, 248, 255],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
+      halign: "center",
+    },
+    bodyStyles: {
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
+    },
+    columnStyles: {
+      0: { cellWidth: 60, fontStyle: "bold" },
+      1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+    },
+    didParseCell: function (data) {
+      // Highlight the manual result row
+      if (data.row.index === 3 && data.section === "body") {
+        data.cell.styles.fillColor = [240, 255, 240]; // Light green background
+        data.cell.styles.fontStyle = "bold";
+      }
+      // Center align the operation text
+      if (
+        data.row.index === 1 &&
+        data.column.index === 1 &&
+        data.section === "body"
+      ) {
+        data.cell.styles.halign = "center";
+      }
+    },
+    margin: { left: marginLeft, right: 25 },
+  });
 
   // Save the PDF
   const fileName = `receipt_${

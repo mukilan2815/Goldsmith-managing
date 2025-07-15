@@ -317,39 +317,41 @@ const generatePDF = (receipt: any) => {
   y += 6;
 
   // Helper function to format dates like in the reference
-  const formatLongDate = (dateString: string) => {
+  const formatShortDate = (dateString: string) => {
     if (!dateString) return "-";
     try {
-      return new Date(dateString)
-        .toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-        .toUpperCase();
+      return new Date(dateString).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
     } catch {
       return "-";
     }
   };
 
-  // Given Date Section
+  // Given Details Section
   y = 65;
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
+  doc.text("Given Details", marginLeft, y);
+  y += 5;
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
   const givenDate =
     receipt.type === "admin"
-      ? formatLongDate(receipt.given?.date)
-      : formatLongDate(receipt.issueDate);
-  doc.text("Given Date :", marginLeft, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(givenDate, marginLeft + doc.getTextWidth("Given Date : ") + 1, y);
+      ? formatShortDate(receipt.given?.date)
+      : formatShortDate(receipt.issueDate);
+  doc.text(`Date: ${givenDate}`, marginLeft, y);
+  y += 2;
 
   // First Table (Given Items)
   const givenItems =
     receipt.type === "admin" ? receipt.given?.items || [] : receipt.items || [];
 
   if (givenItems.length > 0) {
-    const givenTableData = givenItems.map((item: any, index: number) => [
+    const givenTableBody = givenItems.map((item: any, index: number) => [
       index + 1,
       receipt.type === "admin" ? item.productName || "-" : item.itemName || "-",
       receipt.type === "admin"
@@ -373,6 +375,19 @@ const generatePDF = (receipt: any) => {
         : "—",
     ]);
 
+    // Add totals row
+    givenTableBody.push([
+      "",
+      "Total:",
+      "",
+      "",
+      "",
+      receipt.type === "admin"
+        ? formatNumber(receipt.given?.total)
+        : formatNumber(receipt.totals?.finalWt),
+      "",
+    ]);
+
     autoTable(doc, {
       startY: y + 3,
       head: [
@@ -386,57 +401,64 @@ const generatePDF = (receipt: any) => {
           "Date",
         ],
       ],
-      body: givenTableData,
+      body: givenTableBody,
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
       headStyles: {
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
         fontStyle: "bold",
-        lineWidth: 0.1, // Thin border for head
+        lineWidth: 0.1,
         lineColor: [0, 0, 0],
       },
       bodyStyles: {
-        lineWidth: 0.1, // Match border thickness with head
+        lineWidth: 0.1,
         lineColor: [0, 0, 0],
       },
-      margin: { left: 15, right: 25 }, // Increased margins to avoid border collision
+      didParseCell: function (data) {
+        // Make the totals row bold
+        if (data.row.index === givenTableBody.length - 1) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [240, 240, 240];
+        }
+      },
+      margin: { left: 15, right: 25 },
       columnStyles: {
-        0: { cellWidth: 12 }, // S.NO - reduced
-        1: { cellWidth: 35 }, // Product Name - reduced
-        2: { cellWidth: 20 }, // Pure(wt) - reduced
-        3: { cellWidth: 18 }, // Pure% - reduced
-        4: { cellWidth: 20 }, // Melting - reduced
-        5: { cellWidth: 20 }, // Total - reduced
-        6: { cellWidth: 22 }, // Date - reduced
+        0: { cellWidth: 12 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 20 },
+        5: { cellWidth: 22 },
+        6: { cellWidth: 22 },
       },
     });
   }
 
-  // Received Date Section
+  // Received Details Section
   let newY = (doc as any).lastAutoTable.finalY + 10;
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
+  doc.text("Received Details", marginLeft, newY);
+  newY += 5;
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
   const receivedDate =
     receipt.type === "admin"
-      ? formatLongDate(receipt.received?.date || receipt.given?.date)
-      : formatLongDate(receipt.issueDate);
-  doc.text("Received Date :", marginLeft, newY);
-  doc.setFont("helvetica", "normal");
-  doc.text(
-    receivedDate,
-    marginLeft + doc.getTextWidth("Received Date : ") + 1,
-    newY
-  );
+      ? formatShortDate(receipt.received?.date || receipt.given?.date)
+      : formatShortDate(receipt.issueDate);
+  doc.text(`Date: ${receivedDate}`, marginLeft, newY);
+  newY += 2;
 
   // Second Table (Received Items)
   const receivedItems =
     receipt.type === "admin"
       ? receipt.received?.items || []
-      : receipt.items || []; // For client receipts, use same items but different structure
+      : receipt.items || [];
 
   if (receivedItems.length > 0) {
-    const receivedTableData = receivedItems.map((item: any, index: number) => [
+    const receivedTableBody = receivedItems.map((item: any, index: number) => [
       index + 1,
       receipt.type === "admin"
         ? item.productName || "-"
@@ -458,14 +480,50 @@ const generatePDF = (receipt: any) => {
         ? formatNumber(item.makingChargePercent, 2)
         : formatNumber(item.meltingTouch, 2),
       receipt.type === "admin"
-        ? formatNumber(0, 2) // MC not available in admin structure
-        : formatNumber(0, 2), // MC not available in client structure
+        ? formatNumber(Number(item.total) - Number(item.subTotal), 2)
+        : formatNumber(0, 2),
       receipt.type === "admin"
         ? formatNumber(item.subTotal, 3)
         : formatNumber(item.finalWt, 3),
       receipt.type === "admin"
         ? formatNumber(item.total, 3)
         : formatNumber(item.totalInvoiceAmount, 3),
+    ]);
+
+    // Add totals row for received items
+    receivedTableBody.push([
+      "",
+      "Total:",
+      "",
+      receipt.type === "admin"
+        ? formatNumber(receipt.received?.totalOrnamentsWt)
+        : formatNumber(
+            receivedItems.reduce(
+              (acc: number, item: any) => acc + Number(item.finalWt || 0),
+              0
+            )
+          ),
+      receipt.type === "admin"
+        ? formatNumber(receipt.received?.totalStoneWeight)
+        : formatNumber(
+            receivedItems.reduce(
+              (acc: number, item: any) => acc + Number(item.stoneWt || 0),
+              0
+            )
+          ),
+      "",
+      "",
+      receipt.type === "admin"
+        ? formatNumber(receipt.received?.totalSubTotal)
+        : formatNumber(
+            receivedItems.reduce(
+              (acc: number, item: any) => acc + Number(item.finalWt || 0),
+              0
+            )
+          ),
+      receipt.type === "admin"
+        ? formatNumber(receipt.received?.total)
+        : formatNumber(receipt.totals?.totalInvoiceAmount),
     ]);
 
     autoTable(doc, {
@@ -483,90 +541,199 @@ const generatePDF = (receipt: any) => {
           "Total",
         ],
       ],
-      body: receivedTableData,
+      body: receivedTableBody,
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
       headStyles: {
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
         fontStyle: "bold",
-        lineWidth: 0.1, // Thin border for head
+        lineWidth: 0.1,
         lineColor: [0, 0, 0],
       },
       bodyStyles: {
-        lineWidth: 0.1, // Match border thickness with head
+        lineWidth: 0.1,
         lineColor: [0, 0, 0],
+      },
+      didParseCell: function (data) {
+        // Make the totals row bold
+        if (data.row.index === receivedTableBody.length - 1) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [240, 240, 240];
+        }
       },
       margin: { left: 15, right: 25 },
       columnStyles: {
-        0: { cellWidth: 12 }, // S.NO
-        1: { cellWidth: 20 }, // Product Name
-        2: { cellWidth: 18 }, // Date
-        3: { cellWidth: 20 }, // Final Ornament(wt)
-        4: { cellWidth: 17 }, // Stone Weight
-        5: { cellWidth: 15 }, // Touch
-        6: { cellWidth: 15 }, // MC
-        7: { cellWidth: 17 }, // Subtotal
-        8: { cellWidth: 19 }, // Total
+        0: { cellWidth: 12 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 18 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 17 },
+        5: { cellWidth: 15 },
+        6: { cellWidth: 15 },
+        7: { cellWidth: 17 },
+        8: { cellWidth: 19 },
       },
     });
   }
 
-  // Totals Section (Right-aligned as in the image)
-  let finalY = (doc as any).lastAutoTable.finalY + 15;
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  const totalsX = pageWidth - 80;
+  // Balance Summary Section with professional table styling
+  let finalY = (doc as any).lastAutoTable.finalY + 10;
 
-  // Use balance data - for client details page we'll calculate based on receipt type
-  let actualBalance = 0;
-  let previousBalance = 0;
-  let newBalance = 0;
-
-  if (receipt.type === "client") {
-    // For client receipts, use totals data
-    actualBalance = Number(receipt.totals?.balanceDue || 0);
-    previousBalance = 0; // Client receipts don't have previous balance in this structure
-    newBalance = actualBalance;
-  } else if (receipt.type === "admin") {
-    // For admin receipts, use manual calculations
-    actualBalance = Number(receipt.manualCalculations?.result || 0);
-    previousBalance = 0; // Admin receipts don't have previous balance in this structure
-    newBalance = actualBalance;
+  // Calculate balance data based on receipt type
+  let balanceData: string[][];
+  if (receipt.type === "admin") {
+    balanceData = [
+      ["OD Balance", formatNumber(0, 2)], // Admin receipts don't have client balance
+      ["Given Total", formatNumber(receipt.given?.total)],
+      ["Received Total", formatNumber(receipt.received?.total)],
+      [
+        "Balance (Given - Received)",
+        formatNumber(
+          Number(receipt.given?.total || 0) -
+            Number(receipt.received?.total || 0),
+          3
+        ),
+      ],
+    ];
+  } else {
+    balanceData = [
+      ["Total Gross Weight", formatNumber(receipt.totals?.grossWt, 3) + "g"],
+      ["Total Final Weight", formatNumber(receipt.totals?.finalWt, 3) + "g"],
+      [
+        "Total Invoice Amount",
+        "₹" + formatNumber(receipt.totals?.totalInvoiceAmount, 2),
+      ],
+      ["Balance Due", "₹" + formatNumber(receipt.totals?.balanceDue, 2)],
+    ];
   }
 
-  doc.text(
-    `OD Balance         : ${formatNumber(previousBalance, 3)}`,
-    totalsX,
-    finalY
-  );
-  finalY += 6;
-  doc.text(
-    `Current Balance    : ${formatNumber(actualBalance, 3)}`,
-    totalsX,
-    finalY
-  );
-  finalY += 6;
-  doc.text(
-    `New Balance        : ${formatNumber(newBalance, 3)}`,
-    totalsX,
-    finalY
-  );
+  autoTable(doc, {
+    startY: finalY,
+    head: [["Balance Summary", "Amount"]],
+    body: balanceData,
+    theme: "grid",
+    styles: {
+      fontSize: 10,
+      cellPadding: 3,
+      textColor: [0, 0, 0],
+      halign: "left",
+    },
+    headStyles: {
+      fillColor: [240, 240, 240],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
+      halign: "center",
+    },
+    bodyStyles: {
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
+    },
+    columnStyles: {
+      0: { cellWidth: 60, fontStyle: "bold" },
+      1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+    },
+    didParseCell: function (data) {
+      // Highlight the final balance row (last row)
+      if (data.row.index === 3 && data.section === "body") {
+        data.cell.styles.fillColor = [255, 248, 220]; // Light golden background
+        data.cell.styles.fontStyle = "bold";
+      }
+    },
+    margin: { left: marginLeft, right: 25 },
+  });
 
-  // Footer (aligned with the design)
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  const footerGap = 15;
-  const footer1 = "";
-  const footer2 = "";
-  const textWidth1 = doc.getTextWidth(footer1);
-  const textWidth2 = doc.getTextWidth(footer2);
-  // Calculate X so that text is centered at the right corner (with footerGap from right edge)
-  const x1 = pageWidth - footerGap - textWidth1 / 2 - 13; // Move "Antiques" 10 units left
-  const x2 = pageWidth - footerGap - textWidth2 / 2;
-  // Centered at right corner
-  doc.text(footer1, x1, 265, { align: "center" });
-  doc.text(footer2, x2, 270, { align: "center" });
+  // Additional Information Section with professional table styling
+  finalY = (doc as any).lastAutoTable.finalY + 8;
+
+  let additionalData: string[][];
+  if (receipt.type === "admin") {
+    // For admin receipts, show manual calculations if available
+    additionalData = [
+      [
+        "Manual Given",
+        formatNumber(receipt.manualCalculations?.givenTotal || 0),
+      ],
+      [
+        "Operation",
+        receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
+          "subtract given received",
+      ],
+      [
+        "Manual Received",
+        formatNumber(receipt.manualCalculations?.receivedTotal || 0),
+      ],
+      ["Manual Result", formatNumber(receipt.manualCalculations?.result || 0)],
+    ];
+  } else {
+    // For client receipts, show payment information
+    additionalData = [
+      ["Payment Status", receipt.totals?.paymentStatus || "Pending"],
+      [
+        "Total Paid",
+        "₹" + formatNumber(receipt.totals?.totalPaidAmount || 0, 2),
+      ],
+      ["Stone Amount", "₹" + formatNumber(receipt.totals?.stoneAmt || 0, 2)],
+      [
+        "Completion Status",
+        receipt.totals?.isCompleted ? "Completed" : "Pending",
+      ],
+    ];
+  }
+
+  autoTable(doc, {
+    startY: finalY,
+    head: [
+      [
+        receipt.type === "admin"
+          ? "Manual Calculations"
+          : "Payment Information",
+        "Value",
+      ],
+    ],
+    body: additionalData,
+    theme: "grid",
+    styles: {
+      fontSize: 10,
+      cellPadding: 3,
+      textColor: [0, 0, 0],
+      halign: "left",
+    },
+    headStyles: {
+      fillColor: [240, 248, 255],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
+      halign: "center",
+    },
+    bodyStyles: {
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
+    },
+    columnStyles: {
+      0: { cellWidth: 60, fontStyle: "bold" },
+      1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+    },
+    didParseCell: function (data) {
+      // Highlight the result/completion row (last row)
+      if (data.row.index === 3 && data.section === "body") {
+        data.cell.styles.fillColor = [240, 255, 240]; // Light green background
+        data.cell.styles.fontStyle = "bold";
+      }
+      // Center align operation/status text
+      if (
+        data.row.index === (receipt.type === "admin" ? 1 : 0) &&
+        data.column.index === 1 &&
+        data.section === "body"
+      ) {
+        data.cell.styles.halign = "center";
+      }
+    },
+    margin: { left: marginLeft, right: 25 },
+  });
 
   return doc;
 };
