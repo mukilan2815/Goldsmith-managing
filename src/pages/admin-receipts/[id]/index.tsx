@@ -353,37 +353,40 @@ const generatePDF = async (
     },
   });
 
-  // Balance Summary Section with professional table styling
+  // Balance Summary Section with horizontal table layout
   let finalY = (doc as any).lastAutoTable.finalY + 10;
 
-  // Balance Summary Table
-  const balanceData = [
-    ["OD Balance", formatNumber(client?.balance || 0, 2)],
-    ["Given Total", formatNumber(receipt.given?.total)],
-    ["Received Total", formatNumber(receipt.received?.total)],
-    [
-      "Balance (Given - Received)",
-      formatNumber(
-        Number(receipt.given?.total || 0) -
-          Number(receipt.received?.total || 0),
-        3
-      ),
-    ],
+  // Balance Summary Table - Horizontal Layout
+  const balanceHeaders = [
+    "OD Balance",
+    "Given Total",
+    "Received Total",
+    "Balance (Given - Received)",
+  ];
+
+  const balanceValues = [
+    formatNumber(client?.balance || 0, 2),
+    formatNumber(receipt.given?.total),
+    formatNumber(receipt.received?.total),
+    formatNumber(
+      Number(receipt.given?.total || 0) - Number(receipt.received?.total || 0),
+      3
+    ),
   ];
 
   autoTable(doc, {
     startY: finalY,
-    head: [["Balance Summary", "Amount"]],
-    body: balanceData,
+    head: [balanceHeaders],
+    body: [balanceValues],
     theme: "grid",
     styles: {
-      fontSize: 10,
-      cellPadding: 3,
+      fontSize: 9,
+      cellPadding: 2,
       textColor: [0, 0, 0],
-      halign: "left",
+      halign: "center",
     },
     headStyles: {
-      fillColor: [240, 240, 240],
+      fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       fontStyle: "bold",
       lineWidth: 0.1,
@@ -393,51 +396,48 @@ const generatePDF = async (
     bodyStyles: {
       lineWidth: 0.1,
       lineColor: [0, 0, 0],
+      halign: "center",
     },
     columnStyles: {
-      0: { cellWidth: 60, fontStyle: "bold" },
-      1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+      0: { cellWidth: 35 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 45, fontStyle: "bold", fillColor: [240, 240, 240] },
     },
-    didParseCell: function (data) {
-      // Highlight the final balance row
-      if (data.row.index === 3 && data.section === "body") {
-        data.cell.styles.fillColor = [255, 248, 220]; // Light golden background
-        data.cell.styles.fontStyle = "bold";
-      }
-    },
-    margin: { left: marginLeft, right: 25 },
+    margin: { left: 15, right: 25 },
   });
 
-  // Manual Calculations Section with professional table styling
+  // Manual Calculations Section with horizontal table layout
   finalY = (doc as any).lastAutoTable.finalY + 8;
 
-  const manualCalcData = [
-    ["Manual Given", formatNumber(receipt.manualCalculations?.givenTotal)],
-    [
-      "Operation",
-      receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
-        "subtract given received",
-    ],
-    [
-      "Manual Received",
-      formatNumber(receipt.manualCalculations?.receivedTotal),
-    ],
-    ["Manual Result", formatNumber(receipt.manualCalculations?.result)],
+  const manualHeaders = [
+    "Manual Given",
+    "Operation",
+    "Manual Received",
+    "Manual Result",
+  ];
+
+  const manualValues = [
+    formatNumber(receipt.manualCalculations?.givenTotal),
+    receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
+      "subtract given received",
+    formatNumber(receipt.manualCalculations?.receivedTotal),
+    formatNumber(receipt.manualCalculations?.result),
   ];
 
   autoTable(doc, {
     startY: finalY,
-    head: [["Manual Calculations", "Value"]],
-    body: manualCalcData,
+    head: [manualHeaders],
+    body: [manualValues],
     theme: "grid",
     styles: {
-      fontSize: 10,
-      cellPadding: 3,
+      fontSize: 9,
+      cellPadding: 2,
       textColor: [0, 0, 0],
-      halign: "left",
+      halign: "center",
     },
     headStyles: {
-      fillColor: [240, 248, 255],
+      fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       fontStyle: "bold",
       lineWidth: 0.1,
@@ -447,27 +447,15 @@ const generatePDF = async (
     bodyStyles: {
       lineWidth: 0.1,
       lineColor: [0, 0, 0],
+      halign: "center",
     },
     columnStyles: {
-      0: { cellWidth: 60, fontStyle: "bold" },
-      1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+      0: { cellWidth: 35 },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
     },
-    didParseCell: function (data) {
-      // Highlight the manual result row
-      if (data.row.index === 3 && data.section === "body") {
-        data.cell.styles.fillColor = [240, 255, 240]; // Light green background
-        data.cell.styles.fontStyle = "bold";
-      }
-      // Center align the operation text
-      if (
-        data.row.index === 1 &&
-        data.column.index === 1 &&
-        data.section === "body"
-      ) {
-        data.cell.styles.halign = "center";
-      }
-    },
-    margin: { left: marginLeft, right: 25 },
+    margin: { left: 15, right: 25 },
   });
 
   // Save the PDF

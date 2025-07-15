@@ -577,50 +577,60 @@ const generatePDF = (receipt: any) => {
     });
   }
 
-  // Balance Summary Section with professional table styling
+  // Balance Summary Section with horizontal table layout
   let finalY = (doc as any).lastAutoTable.finalY + 10;
 
   // Calculate balance data based on receipt type
-  let balanceData: string[][];
+  let balanceHeaders: string[];
+  let balanceValues: string[];
+
   if (receipt.type === "admin") {
-    balanceData = [
-      ["OD Balance", formatNumber(0, 2)], // Admin receipts don't have client balance
-      ["Given Total", formatNumber(receipt.given?.total)],
-      ["Received Total", formatNumber(receipt.received?.total)],
-      [
-        "Balance (Given - Received)",
-        formatNumber(
-          Number(receipt.given?.total || 0) -
-            Number(receipt.received?.total || 0),
-          3
-        ),
-      ],
+    balanceHeaders = [
+      "OD Balance",
+      "Given Total",
+      "Received Total",
+      "Balance (Given - Received)",
+    ];
+
+    balanceValues = [
+      formatNumber(0, 2), // Admin receipts don't have client balance
+      formatNumber(receipt.given?.total),
+      formatNumber(receipt.received?.total),
+      formatNumber(
+        Number(receipt.given?.total || 0) -
+          Number(receipt.received?.total || 0),
+        3
+      ),
     ];
   } else {
-    balanceData = [
-      ["Total Gross Weight", formatNumber(receipt.totals?.grossWt, 3) + "g"],
-      ["Total Final Weight", formatNumber(receipt.totals?.finalWt, 3) + "g"],
-      [
-        "Total Invoice Amount",
-        "₹" + formatNumber(receipt.totals?.totalInvoiceAmount, 2),
-      ],
-      ["Balance Due", "₹" + formatNumber(receipt.totals?.balanceDue, 2)],
+    balanceHeaders = [
+      "Total Gross Weight",
+      "Total Final Weight",
+      "Total Invoice Amount",
+      "Balance Due",
+    ];
+
+    balanceValues = [
+      formatNumber(receipt.totals?.grossWt, 3) + "g",
+      formatNumber(receipt.totals?.finalWt, 3) + "g",
+      "₹" + formatNumber(receipt.totals?.totalInvoiceAmount, 2),
+      "₹" + formatNumber(receipt.totals?.balanceDue, 2),
     ];
   }
 
   autoTable(doc, {
     startY: finalY,
-    head: [["Balance Summary", "Amount"]],
-    body: balanceData,
+    head: [balanceHeaders],
+    body: [balanceValues],
     theme: "grid",
     styles: {
-      fontSize: 10,
-      cellPadding: 3,
+      fontSize: 9,
+      cellPadding: 2,
       textColor: [0, 0, 0],
-      halign: "left",
+      halign: "center",
     },
     headStyles: {
-      fillColor: [240, 240, 240],
+      fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       fontStyle: "bold",
       lineWidth: 0.1,
@@ -630,79 +640,69 @@ const generatePDF = (receipt: any) => {
     bodyStyles: {
       lineWidth: 0.1,
       lineColor: [0, 0, 0],
+      halign: "center",
     },
     columnStyles: {
-      0: { cellWidth: 60, fontStyle: "bold" },
-      1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+      0: { cellWidth: 35 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 45, fontStyle: "bold", fillColor: [240, 240, 240] },
     },
-    didParseCell: function (data) {
-      // Highlight the final balance row (last row)
-      if (data.row.index === 3 && data.section === "body") {
-        data.cell.styles.fillColor = [255, 248, 220]; // Light golden background
-        data.cell.styles.fontStyle = "bold";
-      }
-    },
-    margin: { left: marginLeft, right: 25 },
+    margin: { left: 15, right: 25 },
   });
 
-  // Additional Information Section with professional table styling
+  // Additional Information Section with horizontal table layout
   finalY = (doc as any).lastAutoTable.finalY + 8;
 
-  let additionalData: string[][];
+  let additionalHeaders: string[];
+  let additionalValues: string[];
+
   if (receipt.type === "admin") {
     // For admin receipts, show manual calculations if available
-    additionalData = [
-      [
-        "Manual Given",
-        formatNumber(receipt.manualCalculations?.givenTotal || 0),
-      ],
-      [
-        "Operation",
-        receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
-          "subtract given received",
-      ],
-      [
-        "Manual Received",
-        formatNumber(receipt.manualCalculations?.receivedTotal || 0),
-      ],
-      ["Manual Result", formatNumber(receipt.manualCalculations?.result || 0)],
+    additionalHeaders = [
+      "Manual Given",
+      "Operation",
+      "Manual Received",
+      "Manual Result",
+    ];
+
+    additionalValues = [
+      formatNumber(receipt.manualCalculations?.givenTotal || 0),
+      receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
+        "subtract given received",
+      formatNumber(receipt.manualCalculations?.receivedTotal || 0),
+      formatNumber(receipt.manualCalculations?.result || 0),
     ];
   } else {
     // For client receipts, show payment information
-    additionalData = [
-      ["Payment Status", receipt.totals?.paymentStatus || "Pending"],
-      [
-        "Total Paid",
-        "₹" + formatNumber(receipt.totals?.totalPaidAmount || 0, 2),
-      ],
-      ["Stone Amount", "₹" + formatNumber(receipt.totals?.stoneAmt || 0, 2)],
-      [
-        "Completion Status",
-        receipt.totals?.isCompleted ? "Completed" : "Pending",
-      ],
+    additionalHeaders = [
+      "Payment Status",
+      "Total Paid",
+      "Stone Amount",
+      "Completion Status",
+    ];
+
+    additionalValues = [
+      receipt.totals?.paymentStatus || "Pending",
+      "₹" + formatNumber(receipt.totals?.totalPaidAmount || 0, 2),
+      "₹" + formatNumber(receipt.totals?.stoneAmt || 0, 2),
+      receipt.totals?.isCompleted ? "Completed" : "Pending",
     ];
   }
 
   autoTable(doc, {
     startY: finalY,
-    head: [
-      [
-        receipt.type === "admin"
-          ? "Manual Calculations"
-          : "Payment Information",
-        "Value",
-      ],
-    ],
-    body: additionalData,
+    head: [additionalHeaders],
+    body: [additionalValues],
     theme: "grid",
     styles: {
-      fontSize: 10,
-      cellPadding: 3,
+      fontSize: 9,
+      cellPadding: 2,
       textColor: [0, 0, 0],
-      halign: "left",
+      halign: "center",
     },
     headStyles: {
-      fillColor: [240, 248, 255],
+      fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       fontStyle: "bold",
       lineWidth: 0.1,
@@ -712,27 +712,15 @@ const generatePDF = (receipt: any) => {
     bodyStyles: {
       lineWidth: 0.1,
       lineColor: [0, 0, 0],
+      halign: "center",
     },
     columnStyles: {
-      0: { cellWidth: 60, fontStyle: "bold" },
-      1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+      0: { cellWidth: 35 },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
     },
-    didParseCell: function (data) {
-      // Highlight the result/completion row (last row)
-      if (data.row.index === 3 && data.section === "body") {
-        data.cell.styles.fillColor = [240, 255, 240]; // Light green background
-        data.cell.styles.fontStyle = "bold";
-      }
-      // Center align operation/status text
-      if (
-        data.row.index === (receipt.type === "admin" ? 1 : 0) &&
-        data.column.index === 1 &&
-        data.section === "body"
-      ) {
-        data.cell.styles.halign = "center";
-      }
-    },
-    margin: { left: marginLeft, right: 25 },
+    margin: { left: 15, right: 25 },
   });
 
   return doc;

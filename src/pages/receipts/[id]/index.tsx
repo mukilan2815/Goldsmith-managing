@@ -363,50 +363,52 @@ export default function ReceiptDetailsPage() {
         },
       });
 
-      // Balance Summary Section with professional table styling
+      // Balance Summary Section with horizontal table layout
       let finalY = (doc as any).lastAutoTable.finalY + 10;
 
-      // Balance Summary Table
-      const balanceData = [
-        ["OD Balance", formatNumber(receipt.data.previousBalance || 0, 2)],
-        ["Given Total", formatNumber(receipt.data.totals?.finalWt)],
-        [
-          "Received Total",
-          formatNumber(
-            receivedItems.reduce(
-              (acc, item) => acc + Number(item.finalWt || 0),
-              0
-            )
+      // Balance Summary Table - Horizontal Layout
+      const balanceHeaders = [
+        "OD Balance",
+        "Given Total",
+        "Received Total",
+        "Balance (Given - Received)",
+      ];
+
+      const balanceValues = [
+        formatNumber(receipt.data.previousBalance || 0, 2),
+        formatNumber(receipt.data.totals?.finalWt, 3),
+        formatNumber(
+          receivedItems.reduce(
+            (acc, item) => acc + Number(item.finalWt || 0),
+            0
           ),
-        ],
-        [
-          "Balance (Given - Received)",
-          formatNumber(
-            Number(receipt.data.totals?.finalWt || 0) -
-              Number(
-                receivedItems.reduce(
-                  (acc, item) => acc + Number(item.finalWt || 0),
-                  0
-                )
-              ),
-            3
-          ),
-        ],
+          3
+        ),
+        formatNumber(
+          Number(receipt.data.totals?.finalWt || 0) -
+            Number(
+              receivedItems.reduce(
+                (acc, item) => acc + Number(item.finalWt || 0),
+                0
+              )
+            ),
+          3
+        ),
       ];
 
       autoTable(doc, {
         startY: finalY,
-        head: [["Balance Summary", "Amount"]],
-        body: balanceData,
+        head: [balanceHeaders],
+        body: [balanceValues],
         theme: "grid",
         styles: {
-          fontSize: 10,
-          cellPadding: 3,
+          fontSize: 9,
+          cellPadding: 2,
           textColor: [0, 0, 0],
-          halign: "left",
+          halign: "center",
         },
         headStyles: {
-          fillColor: [240, 240, 240],
+          fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
           fontStyle: "bold",
           lineWidth: 0.1,
@@ -416,43 +418,47 @@ export default function ReceiptDetailsPage() {
         bodyStyles: {
           lineWidth: 0.1,
           lineColor: [0, 0, 0],
+          halign: "center",
         },
         columnStyles: {
-          0: { cellWidth: 60, fontStyle: "bold" },
-          1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+          0: { cellWidth: 35 },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 45, fontStyle: "bold", fillColor: [240, 240, 240] },
         },
-        didParseCell: function (data) {
-          // Highlight the final balance row
-          if (data.row.index === 3 && data.section === "body") {
-            data.cell.styles.fillColor = [255, 248, 220]; // Light golden background
-            data.cell.styles.fontStyle = "bold";
-          }
-        },
-        margin: { left: marginLeft, right: 25 },
+        margin: { left: 15, right: 25 },
       });
 
-      // Current Balance Information Section with professional table styling
+      // Current Status Section with horizontal table layout
       finalY = (doc as any).lastAutoTable.finalY + 8;
 
-      const currentBalanceData = [
-        ["Current Balance", formatNumber(receipt.data.balance, 3)],
-        ["New Balance", formatNumber(receipt.data.newBalance, 3)],
-        ["Balance Tag", receipt.data.finalWtBalanceTag || "-"],
+      const statusHeaders = [
+        "Current Balance",
+        "New Balance",
+        "Balance Tag",
+        "Status",
+      ];
+
+      const statusValues = [
+        formatNumber(receipt.data.balance, 3),
+        formatNumber(receipt.data.newBalance, 3),
+        receipt.data.finalWtBalanceTag || "-",
+        receipt.data.isCompleted ? "Completed" : "Pending",
       ];
 
       autoTable(doc, {
         startY: finalY,
-        head: [["Current Status", "Value"]],
-        body: currentBalanceData,
+        head: [statusHeaders],
+        body: [statusValues],
         theme: "grid",
         styles: {
-          fontSize: 10,
-          cellPadding: 3,
+          fontSize: 9,
+          cellPadding: 2,
           textColor: [0, 0, 0],
-          halign: "left",
+          halign: "center",
         },
         headStyles: {
-          fillColor: [240, 248, 255],
+          fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
           fontStyle: "bold",
           lineWidth: 0.1,
@@ -462,27 +468,15 @@ export default function ReceiptDetailsPage() {
         bodyStyles: {
           lineWidth: 0.1,
           lineColor: [0, 0, 0],
+          halign: "center",
         },
         columnStyles: {
-          0: { cellWidth: 60, fontStyle: "bold" },
-          1: { cellWidth: 40, halign: "right", fontStyle: "normal" },
+          0: { cellWidth: 35 },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
         },
-        didParseCell: function (data) {
-          // Highlight the new balance row
-          if (data.row.index === 1 && data.section === "body") {
-            data.cell.styles.fillColor = [240, 255, 240]; // Light green background
-            data.cell.styles.fontStyle = "bold";
-          }
-          // Center align the balance tag text
-          if (
-            data.row.index === 2 &&
-            data.column.index === 1 &&
-            data.section === "body"
-          ) {
-            data.cell.styles.halign = "center";
-          }
-        },
-        margin: { left: marginLeft, right: 25 },
+        margin: { left: 15, right: 25 },
       });
 
       // Save the PDF
