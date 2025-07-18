@@ -430,54 +430,54 @@ export default function ReceiptDetailsPage() {
       });
 
       // Current Status Section with horizontal table layout
-      finalY = (doc as any).lastAutoTable.finalY + 8;
+      // finalY = (doc as any).lastAutoTable.finalY + 8;
 
-      const statusHeaders = [
-        "Current Balance",
-        "New Balance",
-        "Balance Tag",
-        "Status",
-      ];
+      // const statusHeaders = [
+      //   "Current Balance",
+      //   "New Balance",
+      //   "Balance Tag",
+      //   "Status",
+      // ];
 
-      const statusValues = [
-        formatNumber(receipt.data.balance, 3),
-        formatNumber(receipt.data.newBalance, 3),
-        receipt.data.finalWtBalanceTag || "-",
-        receipt.data.isCompleted ? "Completed" : "Pending",
-      ];
+      // const statusValues = [
+      //   formatNumber(receipt.data.balance, 3),
+      //   formatNumber(receipt.data.newBalance, 3),
+      //   receipt.data.finalWtBalanceTag || "-",
+      //   receipt.data.isCompleted ? "Completed" : "Pending",
+      // ];
 
-      autoTable(doc, {
-        startY: finalY,
-        head: [statusHeaders],
-        body: [statusValues],
-        theme: "grid",
-        styles: {
-          fontSize: 9,
-          cellPadding: 2,
-          textColor: [0, 0, 0],
-          halign: "center",
-        },
-        headStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0],
-          fontStyle: "bold",
-          lineWidth: 0.1,
-          lineColor: [0, 0, 0],
-          halign: "center",
-        },
-        bodyStyles: {
-          lineWidth: 0.1,
-          lineColor: [0, 0, 0],
-          halign: "center",
-        },
-        columnStyles: {
-          0: { cellWidth: 35 },
-          1: { cellWidth: 40 },
-          2: { cellWidth: 35 },
-          3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
-        },
-        margin: { left: 15, right: 25 },
-      });
+      // autoTable(doc, {
+      //   startY: finalY,
+      //   head: [statusHeaders],
+      //   body: [statusValues],
+      //   theme: "grid",
+      //   styles: {
+      //     fontSize: 9,
+      //     cellPadding: 2,
+      //     textColor: [0, 0, 0],
+      //     halign: "center",
+      //   },
+      //   headStyles: {
+      //     fillColor: [255, 255, 255],
+      //     textColor: [0, 0, 0],
+      //     fontStyle: "bold",
+      //     lineWidth: 0.1,
+      //     lineColor: [0, 0, 0],
+      //     halign: "center",
+      //   },
+      //   bodyStyles: {
+      //     lineWidth: 0.1,
+      //     lineColor: [0, 0, 0],
+      //     halign: "center",
+      //   },
+      //   columnStyles: {
+      //     0: { cellWidth: 35 },
+      //     1: { cellWidth: 40 },
+      //     2: { cellWidth: 35 },
+      //     3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
+      //   },
+      //   margin: { left: 15, right: 25 },
+      // });
 
       // Save the PDF
       const fileName = `receipt_${
