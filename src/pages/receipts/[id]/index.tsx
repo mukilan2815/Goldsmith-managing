@@ -639,48 +639,44 @@ export default function ReceiptDetailsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {receipt.data.givenItems?.map((item, index) => (
-                    <tr
-                      key={item._id || index}
-                      className={`border-b last:border-b-0 ${
-                        item.itemName === "OD Balance"
-                          ? "bg-blue-50 font-medium"
-                          : ""
-                      }`}
-                    >
-                      <td className="py-2 px-1 text-center text-sm">
-                        {item.date
-                          ? format(new Date(item.date), "dd-MM-yyyy")
-                          : format(new Date(), "dd-MM-yyyy")}
-                      </td>
-                      <td className="py-2 px-1">
-                        {item.itemName === "Previous Balance"
-                          ? "OD Balance"
-                          : item.itemName || "Item name"}
-                      </td>
-                      <td className="py-2 px-1 text-center text-sm">
-                        {item.tag || "Tag"}
-                      </td>
-                      <td className="py-2 px-1 text-right">
-                        {formatNumber(item.grossWt || 0, 3)}
-                      </td>
-                      <td className="py-2 px-1 text-right">
-                        {formatNumber(item.stoneWt || 0, 3)}
-                      </td>
-                      <td className="py-2 px-1 text-right">
-                        {formatNumber(item.meltingTouch || 0, 3)}
-                      </td>
-                      <td className="py-2 px-1 text-right">
-                        {formatNumber(item.netWt || 0, 3)}
-                      </td>
-                      <td className="py-2 px-1 text-right">
-                        {formatNumber(item.finalWt || 0, 3)}
-                      </td>
-                      <td className="py-2 px-1 text-right">
-                        {formatNumber(item.stoneAmt || 0, 3)}
-                      </td>
-                    </tr>
-                  ))}
+                  {receipt.data.givenItems
+                    ?.filter((item) => item.itemName !== "Previous Balance")
+                    .map((item, index) => (
+                      <tr
+                        key={item._id || index}
+                        className="border-b last:border-b-0"
+                      >
+                        <td className="py-2 px-1 text-center text-sm">
+                          {item.date
+                            ? format(new Date(item.date), "dd-MM-yyyy")
+                            : format(new Date(), "dd-MM-yyyy")}
+                        </td>
+                        <td className="py-2 px-1">
+                          {item.itemName || "Item name"}
+                        </td>
+                        <td className="py-2 px-1 text-center text-sm">
+                          {item.tag || "Tag"}
+                        </td>
+                        <td className="py-2 px-1 text-right">
+                          {formatNumber(item.grossWt || 0, 3)}
+                        </td>
+                        <td className="py-2 px-1 text-right">
+                          {formatNumber(item.stoneWt || 0, 3)}
+                        </td>
+                        <td className="py-2 px-1 text-right">
+                          {formatNumber(item.meltingTouch || 0, 3)}
+                        </td>
+                        <td className="py-2 px-1 text-right">
+                          {formatNumber(item.netWt || 0, 3)}
+                        </td>
+                        <td className="py-2 px-1 text-right">
+                          {formatNumber(item.finalWt || 0, 3)}
+                        </td>
+                        <td className="py-2 px-1 text-right">
+                          {formatNumber(item.stoneAmt || 0, 3)}
+                        </td>
+                      </tr>
+                    ))}
 
                   <tr className="font-medium bg-accent/20 print:bg-gray-100">
                     <td className="py-2 px-1 text-left" colSpan={3}>
@@ -803,11 +799,23 @@ export default function ReceiptDetailsPage() {
             </div>
 
             {/* Summary Section - Moved below Received Items */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
               <div className="bg-gray-50 p-3 rounded">
                 <p className="text-sm text-muted-foreground">Given Final Wt.</p>
                 <p className="font-medium">
                   {formatNumber(receipt.data.totals?.finalWt || 0, 3)}g
+                </p>
+              </div>
+              <div className="bg-blue-50 p-3 rounded">
+                <p className="text-sm text-muted-foreground">OD Balance</p>
+                <p className="font-medium">
+                  {formatNumber(
+                    receipt.data.givenItems?.find(
+                      (item) => item.itemName === "Previous Balance"
+                    )?.finalWt || 0,
+                    3
+                  )}
+                  g
                 </p>
               </div>
               <div className="bg-gray-50 p-3 rounded">
