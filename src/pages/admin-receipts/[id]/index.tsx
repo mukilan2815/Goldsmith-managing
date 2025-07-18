@@ -568,14 +568,15 @@ export default function AdminReceiptDetailPage() {
   return (
     <div className="container py-6">
       <div className="bg-white p-6 rounded-lg shadow-sm">
+        {/* Header Section */}
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold">Work Receipt View</h1>
             <p className="text-gray-500">Voucher ID: {receipt.voucherId}</p>
             <p className="text-gray-500">
-              Client: {client?.clientName || receipt.clientName} (ID:{" "}
-              {receipt.clientId})
+              Work Receipt for: {client?.clientName || receipt.clientName}
             </p>
+            
             <p className="text-gray-500">
               Status:
               <span
@@ -604,277 +605,402 @@ export default function AdminReceiptDetailPage() {
           </div>
         </div>
 
+        {/* Balance Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gray-50 p-3 rounded">
+            <p className="text-sm text-gray-500">OD Balance</p>
+            <p className="font-medium">
+              {client && typeof client.balance === "number"
+                ? client.balance.toFixed(3)
+                : "0.000"}
+            </p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded">
+            <p className="text-sm text-gray-500">Given Total</p>
+            <p className="font-medium">
+              {formatNumber(receipt.given?.total, 2)}
+            </p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded">
+            <p className="text-sm text-gray-500">Received Total</p>
+            <p className="font-medium">
+              {formatNumber(receipt.received?.total, 2)}
+            </p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded">
+            <p className="text-sm text-gray-500">Final Balance</p>
+            <p className="font-medium">{calculateBalance()}</p>
+          </div>
+        </div>
+
         <Separator className="my-6" />
 
-        {/* Given Details Section */}
+        {/* Given Items Section */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Given Details</h2>
-          <p className="text-gray-600 mb-4">
-            Date: {formatDate(receipt.given?.date)}
-          </p>
+          <h2 className="text-xl font-semibold mb-2">Given Items</h2>
+
+          <div className="mb-4">
+            <h3 className="text-lg font-medium mb-2">
+              Given Details (Client: {client?.clientName || receipt.clientName})
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {receipt.given?.date
+                ? format(new Date(receipt.given.date), "MMMM do, yyyy")
+                : format(new Date(), "MMMM do, yyyy")}
+            </p>
+          </div>
 
           {receipt.given?.items?.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full border-collapse border">
                 <thead>
                   <tr className="bg-gray-50 border-b">
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      S.No.
-                    </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-left border">
                       Product Name
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Pure Weight
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Date
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Pure Weight (g)
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
                       Pure %
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
                       Melting
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Total
-                    </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Date
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Total (g)
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {receipt.given.items.map((item, index) => (
                     <tr key={index} className="border-b">
-                      <td className="py-2 px-4 text-center">{index + 1}</td>
-                      <td className="py-2 px-4 text-center">
-                        {item.productName || "N/A"}
+                      <td className="py-2 px-4 border">
+                        {item.productName || "Product Name"}
                       </td>
-                      <td className="py-2 px-4 text-center">
+                      <td className="py-2 px-4 text-center border">
+                        {item.date
+                          ? format(new Date(item.date), "dd-MM-yyyy")
+                          : format(new Date(), "dd-MM-yyyy")}
+                      </td>
+                      <td className="py-2 px-4 text-center border">
                         {formatNumber(item.pureWeight)}
                       </td>
-                      <td className="py-2 px-4 text-center">
+                      <td className="py-2 px-4 text-center border">
                         {formatNumber(item.purePercent)}
                       </td>
-                      <td className="py-2 px-4 text-center">
+                      <td className="py-2 px-4 text-center border">
                         {formatNumber(item.melting)}
                       </td>
-                      <td className="py-2 px-4 text-center">
-                        {formatNumber(item.total)}
-                      </td>
-                      <td className="py-2 px-4 text-center">
-                        {item.date ? formatDate(item.date) : "—"}
+                      <td className="py-2 px-4 text-center border">
+                        {formatNumber(item.total, 2)}
                       </td>
                     </tr>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50">
-                    <td
-                      colSpan={6}
-                      className="py-2 px-4 text-right font-medium"
-                    >
-                      Total:
+                  <tr className="bg-gray-50 font-medium">
+                    <td className="py-2 px-4 border">Totals</td>
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">
+                      {formatNumber(receipt.given?.totalPureWeight, 2)}
                     </td>
-                    <td className="py-2 px-4 text-center font-medium">
-                      {formatNumber(receipt.given?.total)}
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">
+                      {formatNumber(receipt.given?.total, 2)}
                     </td>
                   </tr>
-                </tfoot>
+                </tbody>
               </table>
             </div>
           ) : (
-            <p className="text-gray-500 italic">No given items recorded</p>
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full border-collapse border">
+                <thead>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="py-2 px-4 text-sm font-semibold text-left border">
+                      Product Name
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Date
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Pure Weight (g)
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Pure %
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Melting
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Total (g)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="py-2 px-4 border">Product Name</td>
+                    <td className="py-2 px-4 text-center border">
+                      {format(new Date(), "dd-MM-yyyy")}
+                    </td>
+                    <td className="py-2 px-4 text-center border">
+                      Pure Weight
+                    </td>
+                    <td className="py-2 px-4 text-center border">Pure %</td>
+                    <td className="py-2 px-4 text-center border">Melting</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                  </tr>
+                  <tr className="bg-gray-50 font-medium">
+                    <td className="py-2 px-4 border">Totals</td>
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           )}
+
+          {/* Given Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
+            <div>
+              <p className="text-sm text-gray-500">Totals</p>
+              <p className="font-medium">
+                {formatNumber(receipt.given?.total)} g
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">OD Balance</p>
+              <p className="font-medium">
+                {client && typeof client.balance === "number"
+                  ? client.balance.toFixed(3)
+                  : "0.000"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Calculation</p>
+              <p className="font-medium">
+                {formatNumber(receipt.given?.total)} +{" "}
+                {client && typeof client.balance === "number"
+                  ? client.balance.toFixed(3)
+                  : "0.000"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Final Given Total</p>
+              <p className="font-medium">
+                {formatNumber(
+                  Number(receipt.given?.total || 0) +
+                    Number(client?.balance || 0)
+                )}
+              </p>
+            </div>
+          </div>
         </div>
 
         <Separator className="my-6" />
 
-        {/* Received Details Section */}
+        {/* Received Items Section */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Received Details</h2>
-          <p className="text-gray-600 mb-4">
-            Date: {formatDate(receipt.received?.date)}
-          </p>
+          <h2 className="text-xl font-semibold mb-2">Received Items</h2>
+
+          <div className="mb-4">
+            <h3 className="text-lg font-medium mb-2">
+              Received Details (Client:{" "}
+              {client?.clientName || receipt.clientName})
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {receipt.received?.date
+                ? format(new Date(receipt.received.date), "MMMM do, yyyy")
+                : format(new Date(), "MMMM do, yyyy")}
+            </p>
+          </div>
 
           {receipt.received?.items?.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full border-collapse border">
                 <thead>
                   <tr className="bg-gray-50 border-b">
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      S.No.
-                    </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-left border">
                       Product Name
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
                       Date
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Final Ornaments (wt)
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Final Ornaments Wt (g)
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Stone Weight
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Stone Weight (g)
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
                       Touch
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
                       MC
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Subtotal
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Subtotal (g)
                     </th>
-                    <th className="py-2 px-4 text-sm font-semibold text-center">
-                      Total
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Total (g)
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {receipt.received.items.map((item, index) => (
                     <tr key={index} className="border-b">
-                      <td className="py-2 px-4 text-center">{index + 1}</td>
-                      <td className="py-2 px-4 text-center">
-                        {item.productName || "N/A"}
+                      <td className="py-2 px-4 border">
+                        {item.productName || "Product Name"}
                       </td>
-                      <td className="py-2 px-4 text-center">
-                        {item.date ? formatDate(item.date) : "—"}
+                      <td className="py-2 px-4 text-center border">
+                        {item.date
+                          ? format(new Date(item.date), "dd-MM-yyyy")
+                          : format(new Date(), "dd-MM-yyyy")}
                       </td>
-                      <td className="py-2 px-4 text-center">
+                      <td className="py-2 px-4 text-center border">
                         {formatNumber(item.finalOrnamentsWt)}
                       </td>
-                      <td className="py-2 px-4 text-center">
+                      <td className="py-2 px-4 text-center border">
                         {formatNumber(item.stoneWeight)}
                       </td>
-                      <td className="py-2 px-4 text-center">
+                      <td className="py-2 px-4 text-center border">
                         {formatNumber(item.makingChargePercent, 2)}
                       </td>
-                      <td className="py-2 px-4 text-center">
+                      <td className="py-2 px-4 text-center border">
                         {formatNumber(
-                          Number(item.total) - Number(item.subTotal)
+                          Number(item.total) - Number(item.subTotal),
+                          2
                         )}
                       </td>
-                      <td className="py-2 px-4 text-center">
-                        {formatNumber(item.subTotal)}
+                      <td className="py-2 px-4 text-center border">
+                        {formatNumber(item.subTotal, 2)}
                       </td>
-                      <td className="py-2 px-4 text-center">
-                        {formatNumber(item.total)}
+                      <td className="py-2 px-4 text-center border">
+                        {formatNumber(item.total, 2)}
                       </td>
                     </tr>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50">
-                    <td
-                      colSpan={3}
-                      className="py-2 px-4 text-right font-medium"
-                    >
-                      Total:
+                  <tr className="bg-gray-50 font-medium">
+                    <td className="py-2 px-4 border">Totals</td>
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">
+                      {formatNumber(receipt.received?.totalOrnamentsWt, 2)}
                     </td>
-                    <td className="py-2 px-4 text-center font-medium">
-                      {formatNumber(receipt.received?.totalOrnamentsWt)}
+                    <td className="py-2 px-4 text-center border">
+                      {formatNumber(receipt.received?.totalStoneWeight, 2)}
                     </td>
-                    <td className="py-2 px-4 text-center font-medium">
-                      {formatNumber(receipt.received?.totalStoneWeight)}
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                    <td className="py-2 px-4 text-center border">
+                      {formatNumber(receipt.received?.totalSubTotal, 2)}
                     </td>
-                    <td className="py-2 px-4"></td>
-                    <td className="py-2 px-4"></td>
-                    <td className="py-2 px-4 text-center font-medium">
-                      {formatNumber(receipt.received?.totalSubTotal)}
-                    </td>
-                    <td className="py-2 px-4 text-center font-medium">
-                      {formatNumber(receipt.received?.total)}
+                    <td className="py-2 px-4 text-center border">
+                      {formatNumber(receipt.received?.total, 2)}
                     </td>
                   </tr>
-                </tfoot>
+                </tbody>
               </table>
             </div>
           ) : (
-            <p className="text-gray-500 italic">No received items recorded</p>
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full border-collapse border">
+                <thead>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="py-2 px-4 text-sm font-semibold text-left border">
+                      Product Name
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Date
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Final Ornaments Wt (g)
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Stone Weight (g)
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Touch
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      MC
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Subtotal (g)
+                    </th>
+                    <th className="py-2 px-4 text-sm font-semibold text-center border">
+                      Total (g)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="py-2 px-4 border">Product Name</td>
+                    <td className="py-2 px-4 text-center border">
+                      {format(new Date(), "dd-MM-yyyy")}
+                    </td>
+                    <td className="py-2 px-4 text-center border">
+                      Final Ornaments Wt
+                    </td>
+                    <td className="py-2 px-4 text-center border">0</td>
+                    <td className="py-2 px-4 text-center border">Touch</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                  </tr>
+                  <tr className="bg-gray-50 font-medium">
+                    <td className="py-2 px-4 border">Totals</td>
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                    <td className="py-2 px-4 text-center border">-</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                    <td className="py-2 px-4 text-center border">0.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
 
-        <Separator className="my-6" />
+          {/* Grand Total */}
+          <div className="mb-4">
+            <p className="text-lg font-medium">
+              Grand Total: {formatNumber(receipt.received?.total, 2)}
+            </p>
+          </div>
 
-        {/* Balance Summary Section */}
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold mb-2">Balance Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
+          {/* Received Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded-lg">
             <div>
-              <p className="text-sm text-gray-500">OD Balance</p>
-              <p className="font-medium">
-                {client && typeof client.balance === "number"
-                  ? client.balance.toFixed(2)
-                  : "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Given Total</p>
-              <p className="font-medium">
-                {formatNumber(receipt.given?.total)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Received Total</p>
+              <p className="text-sm text-gray-500">Totals</p>
               <p className="font-medium">
                 {formatNumber(receipt.received?.total)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">
-                Balance (Given - Received)
-              </p>
-              <p
-                className={`font-medium ${
-                  parseFloat(calculateBalance()) > 0
-                    ? "text-green-600"
-                    : parseFloat(calculateBalance()) < 0
-                    ? "text-red-600"
-                    : ""
-                }`}
-              >
-                {calculateBalance()}
+              <p className="text-sm text-gray-500">Current Balance</p>
+              <p className="font-medium">
+                {client && typeof client.balance === "number"
+                  ? client.balance.toFixed(3)
+                  : "0.000"}
               </p>
             </div>
-          </div>
-
-          {/* Manual Calculations Section */}
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-2">Manual Calculations</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded-lg">
-              <div>
-                <p className="text-sm text-gray-500">Manual Given</p>
-                <p className="font-medium">
-                  {formatNumber(receipt.manualCalculations?.givenTotal)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Operation</p>
-                <p className="font-medium capitalize">
-                  {receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
-                    "subtract given received"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Manual Received</p>
-                <p className="font-medium">
-                  {formatNumber(receipt.manualCalculations?.receivedTotal)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Manual Result</p>
-                <p
-                  className={`font-medium ${
-                    parseFloat(String(receipt.manualCalculations?.result)) > 0
-                      ? "text-green-600"
-                      : parseFloat(String(receipt.manualCalculations?.result)) <
-                        0
-                      ? "text-red-600"
-                      : ""
-                  }`}
-                >
-                  {formatNumber(receipt.manualCalculations?.result)}
-                </p>
-              </div>
+            <div>
+              <p className="text-sm text-gray-500">Calculation</p>
+              <p className="font-medium">
+                {formatNumber(receipt.given?.total)} -{" "}
+                {formatNumber(receipt.received?.total)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Final Received Total</p>
+              <p className="font-medium">{calculateBalance()}</p>
             </div>
           </div>
         </div>

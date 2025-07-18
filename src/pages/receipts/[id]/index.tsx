@@ -604,37 +604,37 @@ export default function ReceiptDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="col-span-2">
           <div className="bg-card card-premium rounded-lg p-6 print:p-0 print:bg-transparent print:shadow-none">
-            <h2 className="text-xl font-medium mb-4">Given Items</h2>
+            <h2 className="text-xl font-medium mb-4">Items</h2>
             <div className="overflow-x-auto mb-8">
-              <table className="w-full min-w-[800px]">
+              <table className="w-full min-w-[900px]">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-center py-2 px-1 text-sm font-medium">
+                      Date
+                    </th>
                     <th className="text-left py-2 px-1 text-sm font-medium">
                       Description
                     </th>
                     <th className="text-center py-2 px-1 text-sm font-medium">
                       Tag
                     </th>
-                    <th className="text-center py-2 px-1 text-sm font-medium">
-                      Date
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Gross Wt.
                     </th>
                     <th className="text-right py-2 px-1 text-sm font-medium">
-                      Gross Wt (g)
-                    </th>
-                    <th className="text-right py-2 px-1 text-sm font-medium">
-                      Stone Wt (g)
-                    </th>
-                    <th className="text-right py-2 px-1 text-sm font-medium">
-                      Net Wt (g)
-                    </th>
-                    <th className="text-right py-2 px-1 text-sm font-medium">
-                      Final Wt (g)
-                    </th>
-                    <th className="text-right py-2 px-1 text-sm font-medium">
-                      Stone Amt
+                      Stone Wt.
                     </th>
                     <th className="text-right py-2 px-1 text-sm font-medium">
                       Melting %
+                    </th>
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Net Wt.
+                    </th>
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Final Wt.
+                    </th>
+                    <th className="text-right py-2 px-1 text-sm font-medium">
+                      Stone Amt.
                     </th>
                   </tr>
                 </thead>
@@ -643,85 +643,69 @@ export default function ReceiptDetailsPage() {
                     <tr
                       key={item._id || index}
                       className={`border-b last:border-b-0 ${
-                        item.itemName === "Previous Balance"
+                        item.itemName === "OD Balance"
                           ? "bg-blue-50 font-medium"
                           : ""
                       }`}
                     >
-                      <td className="py-2 px-1">{item.itemName}</td>
-                      <td className="py-2 px-1 text-center text-sm">
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            item.tag === "BALANCE"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {item.tag || "-"}
-                        </span>
-                      </td>
                       <td className="py-2 px-1 text-center text-sm">
                         {item.date
-                          ? format(new Date(item.date), "dd/MM/yyyy")
-                          : "-"}
+                          ? format(new Date(item.date), "dd-MM-yyyy")
+                          : format(new Date(), "dd-MM-yyyy")}
+                      </td>
+                      <td className="py-2 px-1">
+                        {item.itemName === "Previous Balance"
+                          ? "OD Balance"
+                          : item.itemName || "Item name"}
+                      </td>
+                      <td className="py-2 px-1 text-center text-sm">
+                        {item.tag || "Tag"}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {formatNumber(item.grossWt, 3)}
+                        {formatNumber(item.grossWt || 0, 3)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {formatNumber(item.stoneWt, 3)}
+                        {formatNumber(item.stoneWt || 0, 3)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {formatNumber(item.netWt, 3)}
+                        {formatNumber(item.meltingTouch || 0, 3)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {formatNumber(item.finalWt, 3)}
+                        {formatNumber(item.netWt || 0, 3)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {formatNumber(item.stoneAmt, 2)}
+                        {formatNumber(item.finalWt || 0, 3)}
                       </td>
                       <td className="py-2 px-1 text-right">
-                        {formatNumber(item.meltingTouch, 2)}%
+                        {formatNumber(item.stoneAmt || 0, 3)}
                       </td>
                     </tr>
                   ))}
 
                   <tr className="font-medium bg-accent/20 print:bg-gray-100">
                     <td className="py-2 px-1 text-left" colSpan={3}>
-                      Totals
+                      Totals:
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.grossWt, 3)}
+                      {formatNumber(receipt.data.totals?.grossWt || 0, 3)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.stoneWt, 3)}
+                      {formatNumber(receipt.data.totals?.stoneWt || 0, 3)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.netWt, 3)}
+                      {formatNumber(receipt.data.totals?.netWt || 0, 3)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.finalWt, 3)}
+                      {formatNumber(receipt.data.totals?.finalWt || 0, 3)}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.stoneAmt, 2)}
-                    </td>
-                    <td className="py-2 px-1 text-right">
-                      {receipt.data.givenItems &&
-                      receipt.data.givenItems.length > 0
-                        ? formatNumber(
-                            receipt.data.givenItems.reduce(
-                              (acc, item) =>
-                                acc + Number(item.meltingTouch || 0),
-                              0
-                            ) / receipt.data.givenItems.length,
-                            2
-                          ) + "%"
-                        : "0.00%"}
+                      {formatNumber(receipt.data.totals?.stoneAmt || 0, 3)}
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+
             {/* Received Items Table */}
             <h2 className="text-xl font-medium mb-4 mt-8">Received Items</h2>
             <div className="overflow-x-auto">
@@ -729,22 +713,19 @@ export default function ReceiptDetailsPage() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-center py-2 px-1 text-sm font-medium">
-                      S.No
-                    </th>
-                    <th className="text-center py-2 px-1 text-sm font-medium">
                       Date
                     </th>
-                    <th className="text-right py-2 px-1 text-sm font-medium">
-                      Received Gold (g)
+                    <th className="text-center py-2 px-1 text-sm font-medium">
+                      S.No
                     </th>
                     <th className="text-right py-2 px-1 text-sm font-medium">
-                      Melting %
+                      Received Gold
                     </th>
                     <th className="text-right py-2 px-1 text-sm font-medium">
-                      Final Weight (g)
+                      Melting
                     </th>
                     <th className="text-right py-2 px-1 text-sm font-medium">
-                      Item ID
+                      Final Wt.
                     </th>
                   </tr>
                 </thead>
@@ -757,29 +738,26 @@ export default function ReceiptDetailsPage() {
                           key={item.id || item._id || idx}
                           className="border-b last:border-b-0"
                         >
-                          <td className="py-2 px-1 text-center">{idx + 1}</td>
                           <td className="py-2 px-1 text-center text-sm">
                             {item.date
-                              ? format(new Date(item.date), "dd/MM/yyyy")
-                              : format(new Date(), "dd/MM/yyyy")}
+                              ? format(new Date(item.date), "dd-MM-yyyy")
+                              : format(new Date(), "dd-MM-yyyy")}
+                          </td>
+                          <td className="py-2 px-1 text-center">{idx + 1}</td>
+                          <td className="py-2 px-1 text-right">
+                            {formatNumber(item.receivedGold || 0, 3)}
                           </td>
                           <td className="py-2 px-1 text-right">
-                            {formatNumber(item.receivedGold, 3)}
+                            {formatNumber(item.melting || 0, 3)}
                           </td>
                           <td className="py-2 px-1 text-right">
-                            {formatNumber(item.melting, 2)}%
-                          </td>
-                          <td className="py-2 px-1 text-right">
-                            {formatNumber(item.finalWt, 3)}
-                          </td>
-                          <td className="py-2 px-1 text-right text-xs">
-                            {item.id || item._id || "-"}
+                            {formatNumber(item.finalWt || 0, 3)}
                           </td>
                         </tr>
                       ))}
                       <tr className="font-medium bg-accent/20 print:bg-gray-100">
                         <td className="py-2 px-1 text-left" colSpan={2}>
-                          Totals
+                          Totals:
                         </td>
                         <td className="py-2 px-1 text-right">
                           {formatNumber(
@@ -791,18 +769,7 @@ export default function ReceiptDetailsPage() {
                             3
                           )}
                         </td>
-                        <td className="py-2 px-1 text-right">
-                          {receipt.data.receivedItems.length > 0
-                            ? formatNumber(
-                                receipt.data.receivedItems.reduce(
-                                  (acc, item) =>
-                                    acc + Number(item.melting || 0),
-                                  0
-                                ) / receipt.data.receivedItems.length,
-                                2
-                              ) + "%"
-                            : "0.00%"}
-                        </td>
+                        <td className="py-2 px-1 text-right">-</td>
                         <td className="py-2 px-1 text-right">
                           {formatNumber(
                             receipt.data.receivedItems.reduce(
@@ -812,21 +779,72 @@ export default function ReceiptDetailsPage() {
                             3
                           )}
                         </td>
-                        <td className="py-2 px-1 text-right">-</td>
                       </tr>
                     </>
                   ) : (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="text-center py-4 text-muted-foreground"
-                      >
-                        No received items
+                      <td className="py-2 px-1 text-center text-sm">
+                        {format(new Date(), "dd-MM-yyyy")}
+                      </td>
+                      <td className="py-2 px-1 text-center">-</td>
+                      <td className="py-2 px-1 text-right text-muted-foreground text-sm">
+                        not filled yet
+                      </td>
+                      <td className="py-2 px-1 text-right text-muted-foreground text-sm">
+                        not filled yet
+                      </td>
+                      <td className="py-2 px-1 text-right text-muted-foreground text-sm">
+                        not filled yet
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Summary Section - Moved below Received Items */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+              <div className="bg-gray-50 p-3 rounded">
+                <p className="text-sm text-muted-foreground">Given Final Wt.</p>
+                <p className="font-medium">
+                  {formatNumber(receipt.data.totals?.finalWt || 0, 3)}g
+                </p>
+              </div>
+              <div className="bg-gray-50 p-3 rounded">
+                <p className="text-sm text-muted-foreground">
+                  Received Final Wt.
+                </p>
+                <p className="font-medium">
+                  {receipt.data.receivedItems &&
+                  receipt.data.receivedItems.length > 0
+                    ? formatNumber(
+                        receipt.data.receivedItems.reduce(
+                          (acc, item) => acc + Number(item.finalWt || 0),
+                          0
+                        ),
+                        3
+                      ) + "g"
+                    : "empty"}
+                </p>
+              </div>
+              <div className="bg-gray-50 p-3 rounded">
+                <p className="text-sm text-muted-foreground">
+                  Final Wt. + Balance
+                </p>
+                <p className="font-medium">
+                  {isNaN(
+                    Number(receipt.data.totals?.finalWt || 0) +
+                      Number(receipt.data.newBalance || 0)
+                  )
+                    ? "NaN"
+                    : formatNumber(
+                        Number(receipt.data.totals?.finalWt || 0) +
+                          Number(receipt.data.newBalance || 0),
+                        3
+                      )}
+                  g
+                </p>
+              </div>
             </div>
           </div>
         </div>{" "}
@@ -864,142 +882,6 @@ export default function ReceiptDetailsPage() {
                 <p className="font-medium text-xs">
                   {receipt.data.clientId || "-"}
                 </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card card-premium rounded-lg p-6 mb-6 print:p-0 print:bg-transparent print:shadow-none">
-            <h2 className="text-xl font-medium mb-4">Balance Information</h2>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Previous Balance
-                </p>
-                <p className="font-medium text-lg">
-                  {formatNumber(receipt.data.previousBalance, 3)} g
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Current Balance</p>
-                <p className="font-medium text-lg">
-                  {formatNumber(receipt.data.balance, 3)} g
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">New Balance</p>
-                <p className="font-medium text-lg text-primary">
-                  {formatNumber(receipt.data.newBalance, 3)} g
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Final Wt Balance Tag
-                </p>
-                <p className="font-medium">
-                  {receipt.data.finalWtBalanceTag || "-"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card card-premium rounded-lg p-6 mb-6 print:p-0 print:bg-transparent print:shadow-none">
-            <h2 className="text-xl font-medium mb-4">Summary Totals</h2>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total Gross Weight
-                </p>
-                <p className="font-medium">
-                  {formatNumber(receipt.data.totals?.grossWt, 3)} g
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total Net Weight
-                </p>
-                <p className="font-medium">
-                  {formatNumber(receipt.data.totals?.netWt, 3)} g
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total Final Weight
-                </p>
-                <p className="font-medium">
-                  {formatNumber(receipt.data.totals?.finalWt, 3)} g
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total Stone Weight
-                </p>
-                <p className="font-medium">
-                  {formatNumber(receipt.data.totals?.stoneWt, 3)} g
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total Stone Amount
-                </p>
-                <p className="font-medium">
-                  ₹{formatNumber(receipt.data.totals?.stoneAmt, 2)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card card-premium rounded-lg p-6 print:p-0 print:bg-transparent print:shadow-none">
-            <h2 className="text-xl font-medium mb-4">Receipt Information</h2>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Status</p>
-                <div className="mt-1">
-                  <StatusBadge status={receipt.data.status || "incomplete"} />
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Completion Status
-                </p>
-                <p className="font-medium">
-                  {receipt.data.isCompleted ? "Completed" : "Pending"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Metal Type</p>
-                <p className="font-medium">{receipt.data.metalType || "-"}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Issue Date</p>
-                <p className="font-medium">
-                  {receipt.data.issueDate
-                    ? format(new Date(receipt.data.issueDate), "PPP")
-                    : "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Created At</p>
-                <p className="font-medium">
-                  {receipt.data.createdAt
-                    ? format(new Date(receipt.data.createdAt), "PPP p")
-                    : "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Last Updated</p>
-                <p className="font-medium">
-                  {receipt.data.updatedAt
-                    ? format(new Date(receipt.data.updatedAt), "PPP p")
-                    : "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Version</p>
-                <p className="font-medium">v{receipt.data.__v || "0"}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Receipt ID</p>
-                <p className="font-medium text-xs">{receipt.data._id || "-"}</p>
               </div>
             </div>
           </div>
