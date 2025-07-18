@@ -408,55 +408,55 @@ const generatePDF = async (
   });
 
   // Manual Calculations Section with horizontal table layout
-  finalY = (doc as any).lastAutoTable.finalY + 8;
+  // finalY = (doc as any).lastAutoTable.finalY + 8;
 
-  const manualHeaders = [
-    "Manual Given",
-    "Operation",
-    "Manual Received",
-    "Manual Result",
-  ];
+  // const manualHeaders = [
+  //   "Manual Given",
+  //   "Operation",
+  //   "Manual Received",
+  //   "Manual Result",
+  // ];
 
-  const manualValues = [
-    formatNumber(receipt.manualCalculations?.givenTotal),
-    receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
-      "subtract given received",
-    formatNumber(receipt.manualCalculations?.receivedTotal),
-    formatNumber(receipt.manualCalculations?.result),
-  ];
+  // const manualValues = [
+  //   formatNumber(receipt.manualCalculations?.givenTotal),
+  //   receipt.manualCalculations?.operation?.replace(/-/g, " ") ||
+  //     "subtract given received",
+  //   formatNumber(receipt.manualCalculations?.receivedTotal),
+  //   formatNumber(receipt.manualCalculations?.result),
+  // ];
 
-  autoTable(doc, {
-    startY: finalY,
-    head: [manualHeaders],
-    body: [manualValues],
-    theme: "grid",
-    styles: {
-      fontSize: 9,
-      cellPadding: 2,
-      textColor: [0, 0, 0],
-      halign: "center",
-    },
-    headStyles: {
-      fillColor: [255, 255, 255],
-      textColor: [0, 0, 0],
-      fontStyle: "bold",
-      lineWidth: 0.1,
-      lineColor: [0, 0, 0],
-      halign: "center",
-    },
-    bodyStyles: {
-      lineWidth: 0.1,
-      lineColor: [0, 0, 0],
-      halign: "center",
-    },
-    columnStyles: {
-      0: { cellWidth: 35 },
-      1: { cellWidth: 40 },
-      2: { cellWidth: 35 },
-      3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
-    },
-    margin: { left: 15, right: 25 },
-  });
+  // autoTable(doc, {
+  //   startY: finalY,
+  //   head: [manualHeaders],
+  //   body: [manualValues],
+  //   theme: "grid",
+  //   styles: {
+  //     fontSize: 9,
+  //     cellPadding: 2,
+  //     textColor: [0, 0, 0],
+  //     halign: "center",
+  //   },
+  //   headStyles: {
+  //     fillColor: [255, 255, 255],
+  //     textColor: [0, 0, 0],
+  //     fontStyle: "bold",
+  //     lineWidth: 0.1,
+  //     lineColor: [0, 0, 0],
+  //     halign: "center",
+  //   },
+  //   bodyStyles: {
+  //     lineWidth: 0.1,
+  //     lineColor: [0, 0, 0],
+  //     halign: "center",
+  //   },
+  //   columnStyles: {
+  //     0: { cellWidth: 35 },
+  //     1: { cellWidth: 40 },
+  //     2: { cellWidth: 35 },
+  //     3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
+  //   },
+  //   margin: { left: 15, right: 25 },
+  // });
 
   // Save the PDF
   const fileName = `receipt_${
@@ -576,7 +576,7 @@ export default function AdminReceiptDetailPage() {
             <p className="text-gray-500">
               Work Receipt for: {client?.clientName || receipt.clientName}
             </p>
-            
+
             <p className="text-gray-500">
               Status:
               <span
@@ -602,34 +602,6 @@ export default function AdminReceiptDetailPage() {
             <Button onClick={handleDownloadPDF}>
               <Download className="mr-2 h-4 w-4" /> Download Receipt
             </Button>
-          </div>
-        </div>
-
-        {/* Balance Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gray-50 p-3 rounded">
-            <p className="text-sm text-gray-500">OD Balance</p>
-            <p className="font-medium">
-              {client && typeof client.balance === "number"
-                ? client.balance.toFixed(3)
-                : "0.000"}
-            </p>
-          </div>
-          <div className="bg-gray-50 p-3 rounded">
-            <p className="text-sm text-gray-500">Given Total</p>
-            <p className="font-medium">
-              {formatNumber(receipt.given?.total, 2)}
-            </p>
-          </div>
-          <div className="bg-gray-50 p-3 rounded">
-            <p className="text-sm text-gray-500">Received Total</p>
-            <p className="font-medium">
-              {formatNumber(receipt.received?.total, 2)}
-            </p>
-          </div>
-          <div className="bg-gray-50 p-3 rounded">
-            <p className="text-sm text-gray-500">Final Balance</p>
-            <p className="font-medium">{calculateBalance()}</p>
           </div>
         </div>
 
