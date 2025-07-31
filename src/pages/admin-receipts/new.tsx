@@ -593,6 +593,7 @@ export default function NewAdminReceiptPage() {
       balanceAdjustment = -receivedTotals.total;
     }
 
+    // Return the manual balance + adjustment, but don't double-add
     return manualClientBalance + balanceAdjustment;
   };
 
@@ -631,12 +632,9 @@ export default function NewAdminReceiptPage() {
         }
       }
 
-      // Calculate balance adjustment
+      // Use manual client balance as the final balance (override calculation)
       const hasReceivedItems = receivedItems.some((item) => item.productName);
-      const balanceAdjustment = hasReceivedItems
-        ? calculateManualResult()
-        : givenTotals.total;
-      const newBalance = manualClientBalance + balanceAdjustment;
+      const newBalance = manualClientBalance;
 
       // Update client balance in the database
       await api.put(`/clients/${selectedClient.id}`, {
@@ -755,12 +753,9 @@ export default function NewAdminReceiptPage() {
         }
       }
 
-      // Calculate balance adjustment
+      // Use manual client balance as the final balance (override calculation)
       const hasGivenItems = givenItems.some((item) => item.productName);
-      const balanceAdjustment = hasGivenItems
-        ? calculateManualResult()
-        : -receivedTotals.total;
-      const newBalance = manualClientBalance + balanceAdjustment;
+      const newBalance = manualClientBalance;
 
       // Update client balance in the database
       await api.put(`/clients/${selectedClient.id}`, {
@@ -780,6 +775,8 @@ export default function NewAdminReceiptPage() {
         totalSubTotal: receivedTotals.totalSubTotal,
         total: receivedTotals.total,
       };
+
+      const status = hasGivenItems ? "complete" : "incomplete";
 
       const receiptData: any = {
         clientId: selectedClient.id,
@@ -1172,9 +1169,7 @@ export default function NewAdminReceiptPage() {
                             <thead>
                               <tr className="border-b">
                                 <th className="text-left pb-2">Totals</th>
-                                <th className="text-left pb-2">
-                                  OD Balance
-                                </th>
+                                <th className="text-left pb-2">OD Balance</th>
                                 <th>Tag</th>
                                 <th className="text-left pb-2">Calculation</th>
                                 <th className="text-left pb-2">
