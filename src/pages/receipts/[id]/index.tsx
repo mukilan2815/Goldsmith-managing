@@ -192,6 +192,12 @@ export default function ReceiptDetailsPage() {
         item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
       ]);
 
+      // Calculate total final weight excluding Previous Balance
+      const totalFinalWeight = givenItems.reduce(
+        (sum, item) => sum + Number(item.finalWt || 0),
+        0
+      );
+
       // Add totals row
       givenTableBody.push([
         "",
@@ -199,7 +205,7 @@ export default function ReceiptDetailsPage() {
         "",
         "",
         "",
-        formatNumber(receipt.data.totals?.finalWt),
+        formatNumber(totalFinalWeight, 3),
         "",
       ]);
 
@@ -374,26 +380,22 @@ export default function ReceiptDetailsPage() {
         "Balance (Given - Received)",
       ];
 
+      // Calculate given total excluding Previous Balance
+      const givenTotal = givenItems.reduce(
+        (sum, item) => sum + Number(item.finalWt || 0),
+        0
+      );
+      
+      const receivedTotal = receivedItems.reduce(
+        (acc, item) => acc + Number(item.finalWt || 0),
+        0
+      );
+
       const balanceValues = [
         formatNumber(receipt.data.previousBalance || 0, 2),
-        formatNumber(receipt.data.totals?.finalWt, 3),
-        formatNumber(
-          receivedItems.reduce(
-            (acc, item) => acc + Number(item.finalWt || 0),
-            0
-          ),
-          3
-        ),
-        formatNumber(
-          Number(receipt.data.totals?.finalWt || 0) -
-            Number(
-              receivedItems.reduce(
-                (acc, item) => acc + Number(item.finalWt || 0),
-                0
-              )
-            ),
-          3
-        ),
+        formatNumber(givenTotal, 3),
+        formatNumber(receivedTotal, 3),
+        formatNumber(givenTotal - receivedTotal, 3)
       ];
 
       autoTable(doc, {
@@ -639,6 +641,7 @@ export default function ReceiptDetailsPage() {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Regular items */}
                   {receipt.data.givenItems
                     ?.filter((item) => item.itemName !== "Previous Balance")
                     .map((item, index) => (
@@ -677,25 +680,78 @@ export default function ReceiptDetailsPage() {
                         </td>
                       </tr>
                     ))}
+                  
+                  {/* OD Balance Row */}
+                  {receipt.data.givenItems?.some(item => item.itemName === "Previous Balance") && (
+                    <tr className="border-b bg-blue-50">
+                      <td className="py-2 px-1 text-center text-sm">
+                        {receipt.data.givenItems.find(item => item.itemName === "Previous Balance")?.date
+                          ? format(new Date(receipt.data.givenItems.find(item => item.itemName === "Previous Balance")?.date || ''), "dd-MM-yyyy")
+                          : format(new Date(), "dd-MM-yyyy")}
+                      </td>
+                      <td className="py-2 px-1 font-medium">
+                        OD Balance
+                      </td>
+                      <td className="py-2 px-1 text-center text-sm">
+                        {receipt.data.givenItems.find(item => item.itemName === "Previous Balance")?.tag || ""}
+                      </td>
+                      <td className="py-2 px-1 text-right">-</td>
+                      <td className="py-2 px-1 text-right">-</td>
+                      <td className="py-2 px-1 text-right">-</td>
+                      <td className="py-2 px-1 text-right">-</td>
+                      <td className="py-2 px-1 text-right font-medium">
+                        {formatNumber(
+                          receipt.data.givenItems.find(item => item.itemName === "Previous Balance")?.finalWt || 0,
+                          3
+                        )}
+                      </td>
+                      <td className="py-2 px-1 text-right">-</td>
+                    </tr>
+                  )}
 
                   <tr className="font-medium bg-accent/20 print:bg-gray-100">
                     <td className="py-2 px-1 text-left" colSpan={3}>
                       Totals:
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.grossWt || 0, 3)}
+                      {formatNumber(
+                        receipt.data.givenItems
+                          ?.filter(item => item.itemName !== "Previous Balance")
+                          .reduce((sum, item) => sum + Number(item.grossWt || 0), 0) || 0,
+                        3
+                      )}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.stoneWt || 0, 3)}
+                      {formatNumber(
+                        receipt.data.givenItems
+                          ?.filter(item => item.itemName !== "Previous Balance")
+                          .reduce((sum, item) => sum + Number(item.stoneWt || 0), 0) || 0,
+                        3
+                      )}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.netWt || 0, 3)}
+                      {formatNumber(
+                        receipt.data.givenItems
+                          ?.filter(item => item.itemName !== "Previous Balance")
+                          .reduce((sum, item) => sum + Number(item.netWt || 0), 0) || 0,
+                        3
+                      )}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.finalWt || 0, 3)}
+                      {formatNumber(
+                        receipt.data.givenItems
+                          ?.filter(item => item.itemName !== "Previous Balance")
+                          .reduce((sum, item) => sum + Number(item.finalWt || 0), 0) || 0,
+                        3
+                      )}
                     </td>
                     <td className="py-2 px-1 text-right">
-                      {formatNumber(receipt.data.totals?.stoneAmt || 0, 3)}
+                      {formatNumber(
+                        receipt.data.givenItems
+                          ?.filter(item => item.itemName !== "Previous Balance")
+                          .reduce((sum, item) => sum + Number(item.stoneAmt || 0), 0) || 0,
+                        3
+                      )}
                     </td>
                   </tr>
                 </tbody>
@@ -803,10 +859,15 @@ export default function ReceiptDetailsPage() {
               <div className="bg-gray-50 p-3 rounded">
                 <p className="text-sm text-muted-foreground">Given Final Wt.</p>
                 <p className="font-medium">
-                  {formatNumber(receipt.data.totals?.finalWt || 0, 3)}g
+                  {formatNumber(
+                    receipt.data.givenItems
+                      ?.filter((item) => item.itemName !== "Previous Balance")
+                      .reduce((sum, item) => sum + Number(item.finalWt || 0), 0) || 0,
+                    3
+                  )}g
                 </p>
               </div>
-              <div className="bg-blue-50 p-3 rounded">
+              {/* <div className="bg-blue-50 p-3 rounded">
                 <p className="text-sm text-muted-foreground">OD Balance</p>
                 <p className="font-medium">
                   {formatNumber(
@@ -817,7 +878,7 @@ export default function ReceiptDetailsPage() {
                   )}
                   g
                 </p>
-              </div>
+              </div> */}
               <div className="bg-gray-50 p-3 rounded">
                 <p className="text-sm text-muted-foreground">
                   Received Final Wt.
@@ -840,17 +901,15 @@ export default function ReceiptDetailsPage() {
                   Final Wt. + Balance
                 </p>
                 <p className="font-medium">
-                  {isNaN(
-                    Number(receipt.data.totals?.finalWt || 0) +
-                      Number(receipt.data.newBalance || 0)
-                  )
-                    ? "NaN"
-                    : formatNumber(
-                        Number(receipt.data.totals?.finalWt || 0) +
-                          Number(receipt.data.newBalance || 0),
-                        3
-                      )}
-                  g
+                  {formatNumber(
+                    (Number(receipt.data.totals?.finalWt || 0) +
+                      Number(
+                        receipt.data.clientInfo?.balance ||
+                        receipt.data.newBalance ||
+                        0
+                      )),
+                    3
+                  )}g
                 </p>
               </div>
             </div>

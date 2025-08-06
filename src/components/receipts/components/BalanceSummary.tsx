@@ -47,9 +47,9 @@ export function BalanceSummary({
           <div className="text-sm text-primary mb-2">New Client Balance</div>
           <Input
             type="number"
-            value={manualClientBalance}
+            value={manualClientBalance ?? ''}
             onChange={(e) =>
-              setManualClientBalance(Number(e.target.value))
+              setManualClientBalance(e.target.value === '' ? undefined : Number(e.target.value))
             }
             placeholder="Enter new balance"
             className="text-lg font-semibold"
@@ -64,7 +64,7 @@ export function BalanceSummary({
             Final Wt. + Balance
           </div>
           <div className="text-lg font-semibold mb-2">
-            {(totals.finalWeight + manualClientBalance).toFixed(3)}g
+            {(totals.finalWeight + (manualClientBalance || 0)).toFixed(3)}g
           </div>
           <Label
             htmlFor="finalWtBalanceTag"
