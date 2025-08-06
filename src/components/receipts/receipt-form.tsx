@@ -110,9 +110,9 @@ export function ReceiptForm({
       date: new Date().toISOString().split("T")[0], // Add date field
     },
   ]);
-  const [clientBalance, setClientBalance] = useState(0);
-  const [manualClientBalance, setManualClientBalance] = useState();
-  const [finalWtBalanceTag, setFinalWtBalanceTag] = useState("");
+  const [clientBalance, setClientBalance] = useState<number>(0);
+  const [manualClientBalance, setManualClientBalance] = useState<number>(0);
+  const [finalWtBalanceTag, setFinalWtBalanceTag] = useState<string>("");
   const [itemErrors, setItemErrors] = useState<{
     [key: string]: { [field: string]: string };
   }>({});
@@ -161,7 +161,7 @@ export function ReceiptForm({
           // Use balance from client object (extract value)
           const balanceValue = extractBalance(clientResponse.client.balance);
           setClientBalance(balanceValue);
-          setManualClientBalance(balanceValue); // Initialize manual balance with current balance
+          setManualClientBalance(prev => balanceValue); // Initialize manual balance with current balance
 
           // Always add Previous Balance row for any non-zero balance
           if (
@@ -685,6 +685,7 @@ export function ReceiptForm({
         issueDate: form.getValues().date.toISOString(),
         voucherId,
         status: receiptStatus,
+        finalWtBalanceTag: finalWtBalanceTag || undefined, // Include finalWtBalanceTag in the payload
         givenItems: items.map((it) => ({
           itemName: it.itemName,
           tag: it.tag || "",
@@ -704,8 +705,7 @@ export function ReceiptForm({
               date: r.date || new Date().toISOString().split("T")[0], // Include date field
             }))
           : [],
-        previousBalance: parseFloat(clientBalance.toFixed(3)),
-        finalWtBalanceTag: finalWtBalanceTag, // Include the tag field
+        previousBalance: parseFloat(clientBalance.toFixed(3))
       };
 
       // 7) Update client balance first

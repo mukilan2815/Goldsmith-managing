@@ -175,20 +175,17 @@ export default function ReceiptDetailsPage() {
       doc.text(`Date: ${givenDate}`, marginLeft, y);
       y += 2;
 
-      // First Table (Given Items) - Filter out Previous Balance
-      const givenItems = Array.isArray(receipt.data.givenItems)
-        ? receipt.data.givenItems.filter(
-            (item) => item.itemName !== "Previous Balance"
-          )
-        : [];
+      // First Table (Given Items) - Include all items
+      const givenItems = Array.isArray(receipt.data.givenItems) ? receipt.data.givenItems : [];
 
       const givenTableBody = givenItems.map((item, index) => [
         index + 1,
-        item.itemName || "-",
+        item.itemName === "Previous Balance" ? "OD Balance" : item.itemName || "-",
         formatNumber(item.grossWt, 3),
-        formatNumber(item.meltingTouch, 2),
+        formatNumber(item.netWt, 3),
         formatNumber(item.meltingTouch, 2),
         formatNumber(item.finalWt, 3),
+        item.tag || "-",
         item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
       ]);
 
@@ -199,13 +196,18 @@ export default function ReceiptDetailsPage() {
       );
 
       // Add totals row
+      const totalGrossWt = givenItems.reduce((sum, item) => sum + Number(item.grossWt || 0), 0);
+      const totalNetWt = givenItems.reduce((sum, item) => sum + Number(item.netWt || 0), 0);
+      const totalFinalWt = givenItems.reduce((sum, item) => sum + Number(item.finalWt || 0), 0);
+
       givenTableBody.push([
         "",
         "Total:",
+        formatNumber(totalGrossWt, 3),
+        formatNumber(totalNetWt, 3),
         "",
+        formatNumber(totalFinalWt, 3),
         "",
-        "",
-        formatNumber(totalFinalWeight, 3),
         "",
       ]);
 
@@ -215,10 +217,11 @@ export default function ReceiptDetailsPage() {
           [
             "S.NO",
             "Product Name",
-            "Pure(wt)",
-            "Pure%",
-            "Melting",
-            "Total",
+            "Gross Wt",
+            "Net Wt",
+            "Melting %",
+            "Final Wt",
+            "Tag",
             "Date",
           ],
         ],
@@ -245,13 +248,14 @@ export default function ReceiptDetailsPage() {
         },
         margin: { left: 15, right: 25 },
         columnStyles: {
-          0: { cellWidth: 12 },
-          1: { cellWidth: 35 },
-          2: { cellWidth: 22 },
-          3: { cellWidth: 20 },
-          4: { cellWidth: 20 },
-          5: { cellWidth: 22 },
-          6: { cellWidth: 22 },
+          0: { cellWidth: 12 },  // S.NO
+          1: { cellWidth: 35 },  // Product Name
+          2: { cellWidth: 20 },  // Gross Wt
+          3: { cellWidth: 20 },  // Net Wt
+          4: { cellWidth: 20 },  // Melting %
+          5: { cellWidth: 20 },  // Final Wt
+          6: { cellWidth: 15 },  // Tag
+          7: { cellWidth: 20 },  // Date
         },
       });
 
@@ -377,7 +381,7 @@ export default function ReceiptDetailsPage() {
         "OD Balance",
         "Given Total",
         "Received Total",
-        "Balance (Given - Received)",
+        "Balance (Given - Received)"
       ];
 
       // Calculate given total excluding Previous Balance
@@ -391,11 +395,16 @@ export default function ReceiptDetailsPage() {
         0
       );
 
+      // Use the OD Balance value (5g) from the given items instead of previousBalance
+      const odBalanceItem = givenItems.find(item => item.itemName === "Previous Balance");
+      const odBalance = odBalanceItem ? odBalanceItem.finalWt : 0;
+      
       const balanceValues = [
-        formatNumber(receipt.data.previousBalance || 0, 2),
-        formatNumber(givenTotal, 3),
-        formatNumber(receivedTotal, 3),
-        formatNumber(givenTotal - receivedTotal, 3)
+        formatNumber(odBalance, 3), // OD Balance
+        formatNumber(givenTotal, 3), // Given Total
+        formatNumber(receivedTotal, 3), // Received Total
+        formatNumber(givenTotal - receivedTotal, 3), // Balance
+        receipt.data.finalWtBalanceTag || '' // Final Weight Balance Tag
       ];
 
       autoTable(doc, {
@@ -423,10 +432,11 @@ export default function ReceiptDetailsPage() {
           halign: "center",
         },
         columnStyles: {
-          0: { cellWidth: 35 },
-          1: { cellWidth: 35 },
-          2: { cellWidth: 35 },
-          3: { cellWidth: 45, fontStyle: "bold", fillColor: [240, 240, 240] },
+          0: { cellWidth: 30 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 30 },
+          3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
+          4: { cellWidth: 25 }
         },
         margin: { left: 15, right: 25 },
       });
@@ -900,17 +910,19 @@ export default function ReceiptDetailsPage() {
                 <p className="text-sm text-muted-foreground">
                   Final Wt. + Balance
                 </p>
-                <p className="font-medium">
-                  {formatNumber(
-                    (Number(receipt.data.totals?.finalWt || 0) +
-                      Number(
-                        receipt.data.clientInfo?.balance ||
-                        receipt.data.newBalance ||
-                        0
-                      )),
-                    3
-                  )}g
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">
+                    {formatNumber(
+                      receipt.data.totals?.finalWt || 0,
+                      3
+                    )}g
+                  </p>
+                  {receipt.data.finalWtBalanceTag && (
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                      {receipt.data.finalWtBalanceTag}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
