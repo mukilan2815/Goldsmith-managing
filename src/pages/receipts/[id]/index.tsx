@@ -48,6 +48,17 @@ export default function ReceiptDetailsPage() {
     queryFn: () => receiptServices.getReceipt(id),
     enabled: !!id,
     meta: {
+      // Add local storage for tag
+      onSuccess: (data) => {
+        if (data?.data?._id) {
+          const storedTag = localStorage.getItem(`receipt_tag_${data.data._id}`);
+          if (storedTag) {
+            // Set the tag in the receipt data
+            data.data.finalWtBalanceTag = storedTag;
+          }
+        }
+        return data;
+      },
       onError: (err) => {
         toast({
           title: "Error",
@@ -175,12 +186,14 @@ export default function ReceiptDetailsPage() {
       doc.text(`Date: ${givenDate}`, marginLeft, y);
       y += 2;
 
-      // First Table (Given Items) - Include all items
-      const givenItems = Array.isArray(receipt.data.givenItems) ? receipt.data.givenItems : [];
+      // First Table (Given Items) - Filter out Previous Balance
+      const givenItems = Array.isArray(receipt.data.givenItems)
+        ? receipt.data.givenItems.filter((item) => item.itemName !== "Previous Balance")
+        : [];
 
       const givenTableBody = givenItems.map((item, index) => [
         index + 1,
-        item.itemName === "Previous Balance" ? "OD Balance" : item.itemName || "-",
+        item.itemName,
         formatNumber(item.grossWt, 3),
         formatNumber(item.netWt, 3),
         formatNumber(item.meltingTouch, 2),
@@ -189,27 +202,25 @@ export default function ReceiptDetailsPage() {
         item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
       ]);
 
-      // Calculate total final weight excluding Previous Balance
-      const totalFinalWeight = givenItems.reduce(
-        (sum, item) => sum + Number(item.finalWt || 0),
-        0
-      );
-
-      // Add totals row
-      const totalGrossWt = givenItems.reduce((sum, item) => sum + Number(item.grossWt || 0), 0);
-      const totalNetWt = givenItems.reduce((sum, item) => sum + Number(item.netWt || 0), 0);
-      const totalFinalWt = givenItems.reduce((sum, item) => sum + Number(item.finalWt || 0), 0);
-
-      givenTableBody.push([
-        "",
-        "Total:",
-        formatNumber(totalGrossWt, 3),
-        formatNumber(totalNetWt, 3),
-        "",
-        formatNumber(totalFinalWt, 3),
-        "",
-        "",
-      ]);
+      // Add totals row for given items
+      if (givenItems.length > 0) {
+        givenTableBody.push([
+          "",
+          "Total:",
+          formatNumber(
+            givenItems.reduce((acc, item) => acc + Number(item.grossWt || 0), 0)
+          ),
+          formatNumber(
+            givenItems.reduce((acc, item) => acc + Number(item.netWt || 0), 0)
+          ),
+          "",
+          formatNumber(
+            givenItems.reduce((acc, item) => acc + Number(item.finalWt || 0), 0)
+          ),
+          "",
+          "",
+        ]);
+      }
 
       autoTable(doc, {
         startY: y + 3,
@@ -248,14 +259,14 @@ export default function ReceiptDetailsPage() {
         },
         margin: { left: 15, right: 25 },
         columnStyles: {
-          0: { cellWidth: 12 },  // S.NO
-          1: { cellWidth: 35 },  // Product Name
-          2: { cellWidth: 20 },  // Gross Wt
-          3: { cellWidth: 20 },  // Net Wt
-          4: { cellWidth: 20 },  // Melting %
-          5: { cellWidth: 20 },  // Final Wt
-          6: { cellWidth: 15 },  // Tag
-          7: { cellWidth: 20 },  // Date
+          0: { cellWidth: 12 }, // S.NO
+          1: { cellWidth: 35 }, // Product Name
+          2: { cellWidth: 20 }, // Gross Wt
+          3: { cellWidth: 20 }, // Net Wt
+          4: { cellWidth: 20 }, // Melting %
+          5: { cellWidth: 20 }, // Final Wt
+          6: { cellWidth: 15 }, // Tag
+          7: { cellWidth: 20 }, // Date
         },
       });
 
@@ -376,120 +387,86 @@ export default function ReceiptDetailsPage() {
       // Balance Summary Section with horizontal table layout
       let finalY = (doc as any).lastAutoTable.finalY + 10;
 
-      // Balance Summary Table - Horizontal Layout
-      const balanceHeaders = [
-        "OD Balance",
-        "Given Total",
-        "Received Total",
-        "Balance (Given - Received)"
-      ];
+     
 
       // Calculate given total excluding Previous Balance
       const givenTotal = givenItems.reduce(
         (sum, item) => sum + Number(item.finalWt || 0),
         0
       );
-      
+
       const receivedTotal = receivedItems.reduce(
         (acc, item) => acc + Number(item.finalWt || 0),
         0
       );
 
-      // Use the OD Balance value (5g) from the given items instead of previousBalance
-      const odBalanceItem = givenItems.find(item => item.itemName === "Previous Balance");
+      // Get OD Balance value from the given items
+      const odBalanceItem = receipt.data.givenItems.find(
+        (item) => item.itemName === "Previous Balance"
+      );
       const odBalance = odBalanceItem ? odBalanceItem.finalWt : 0;
-      
+
       const balanceValues = [
         formatNumber(odBalance, 3), // OD Balance
         formatNumber(givenTotal, 3), // Given Total
         formatNumber(receivedTotal, 3), // Received Total
         formatNumber(givenTotal - receivedTotal, 3), // Balance
-        receipt.data.finalWtBalanceTag || '' // Final Weight Balance Tag
+        receipt.data.finalWtBalanceTag || "", // Final Weight Balance Tag
       ];
 
+   
+      // Create a summary table that matches the website UI
+      newY = (doc as any).lastAutoTable.finalY + 10;
+      
+      // Create a table with headers and data
+      const summaryTable = [
+        [ 'Given Final Wt', 'Received Final Wt', 'OD Balance','Final Wt. + Balance'],
+        [
+          formatNumber(givenTotal, 3),
+          formatNumber(receivedTotal, 3),
+          formatNumber(odBalance, 3),
+          `${formatNumber(givenTotal + receivedTotal, 3)} + ${formatNumber(Number(odBalance), 3)} = ${formatNumber(givenTotal + receivedTotal + Number(odBalance), 3)}`
+        ]
+      ];
+      
+      // Add the first summary table
       autoTable(doc, {
-        startY: finalY,
-        head: [balanceHeaders],
-        body: [balanceValues],
-        theme: "grid",
+        startY: newY,
+        head: [summaryTable[0]],
+        body: [summaryTable[1]],
+        theme: 'grid',
         styles: {
-          fontSize: 9,
-          cellPadding: 2,
+          fontSize: 10,
+          cellPadding: 4,
+          lineColor: [0, 0, 0],
+          lineWidth: 0.1,
+          font: 'helvetica',
           textColor: [0, 0, 0],
-          halign: "center",
+          halign: 'center'
         },
         headStyles: {
-          fillColor: [255, 255, 255],
+          fillColor: [245, 245, 245],
           textColor: [0, 0, 0],
-          fontStyle: "bold",
-          lineWidth: 0.1,
-          lineColor: [0, 0, 0],
-          halign: "center",
-        },
-        bodyStyles: {
-          lineWidth: 0.1,
-          lineColor: [0, 0, 0],
-          halign: "center",
+          fontStyle: 'bold',
+          halign: 'center'
         },
         columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 30 },
-          3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
-          4: { cellWidth: 25 }
+          0: { cellWidth: 40, halign: 'right' },
+          1: { cellWidth: 40, halign: 'right' },
+          2: { cellWidth: 40, halign: 'right' },
+          3: { cellWidth: 60, halign: 'right', fontStyle: 'bold' }
         },
-        margin: { left: 15, right: 25 },
+        margin: { left: 15, right: 25 }
       });
+      
+      // Add some space between tables
+      newY = (doc as any).lastAutoTable.finalY + 10;
+      
+  
+      
+   
 
-      // Current Status Section with horizontal table layout
-      // finalY = (doc as any).lastAutoTable.finalY + 8;
-
-      // const statusHeaders = [
-      //   "Current Balance",
-      //   "New Balance",
-      //   "Balance Tag",
-      //   "Status",
-      // ];
-
-      // const statusValues = [
-      //   formatNumber(receipt.data.balance, 3),
-      //   formatNumber(receipt.data.newBalance, 3),
-      //   receipt.data.finalWtBalanceTag || "-",
-      //   receipt.data.isCompleted ? "Completed" : "Pending",
-      // ];
-
-      // autoTable(doc, {
-      //   startY: finalY,
-      //   head: [statusHeaders],
-      //   body: [statusValues],
-      //   theme: "grid",
-      //   styles: {
-      //     fontSize: 9,
-      //     cellPadding: 2,
-      //     textColor: [0, 0, 0],
-      //     halign: "center",
-      //   },
-      //   headStyles: {
-      //     fillColor: [255, 255, 255],
-      //     textColor: [0, 0, 0],
-      //     fontStyle: "bold",
-      //     lineWidth: 0.1,
-      //     lineColor: [0, 0, 0],
-      //     halign: "center",
-      //   },
-      //   bodyStyles: {
-      //     lineWidth: 0.1,
-      //     lineColor: [0, 0, 0],
-      //     halign: "center",
-      //   },
-      //   columnStyles: {
-      //     0: { cellWidth: 35 },
-      //     1: { cellWidth: 40 },
-      //     2: { cellWidth: 35 },
-      //     3: { cellWidth: 40, fontStyle: "bold", fillColor: [240, 240, 240] },
-      //   },
-      //   margin: { left: 15, right: 25 },
-      // });
+      newY = (doc as any).lastAutoTable.finalY + 5;
 
       // Save the PDF
       const fileName = `receipt_${
@@ -690,34 +667,7 @@ export default function ReceiptDetailsPage() {
                         </td>
                       </tr>
                     ))}
-                  
-                  {/* OD Balance Row */}
-                  {receipt.data.givenItems?.some(item => item.itemName === "Previous Balance") && (
-                    <tr className="border-b bg-blue-50">
-                      <td className="py-2 px-1 text-center text-sm">
-                        {receipt.data.givenItems.find(item => item.itemName === "Previous Balance")?.date
-                          ? format(new Date(receipt.data.givenItems.find(item => item.itemName === "Previous Balance")?.date || ''), "dd-MM-yyyy")
-                          : format(new Date(), "dd-MM-yyyy")}
-                      </td>
-                      <td className="py-2 px-1 font-medium">
-                        OD Balance
-                      </td>
-                      <td className="py-2 px-1 text-center text-sm">
-                        {receipt.data.givenItems.find(item => item.itemName === "Previous Balance")?.tag || ""}
-                      </td>
-                      <td className="py-2 px-1 text-right">-</td>
-                      <td className="py-2 px-1 text-right">-</td>
-                      <td className="py-2 px-1 text-right">-</td>
-                      <td className="py-2 px-1 text-right">-</td>
-                      <td className="py-2 px-1 text-right font-medium">
-                        {formatNumber(
-                          receipt.data.givenItems.find(item => item.itemName === "Previous Balance")?.finalWt || 0,
-                          3
-                        )}
-                      </td>
-                      <td className="py-2 px-1 text-right">-</td>
-                    </tr>
-                  )}
+                  {/* OD Balance row removed as per requirements */}
 
                   <tr className="font-medium bg-accent/20 print:bg-gray-100">
                     <td className="py-2 px-1 text-left" colSpan={3}>
@@ -726,7 +676,7 @@ export default function ReceiptDetailsPage() {
                     <td className="py-2 px-1 text-right">
                       {formatNumber(
                         receipt.data.givenItems
-                          ?.filter(item => item.itemName !== "Previous Balance")
+                          ?.filter((item) => item.itemName !== "Previous Balance")
                           .reduce((sum, item) => sum + Number(item.grossWt || 0), 0) || 0,
                         3
                       )}
@@ -734,7 +684,7 @@ export default function ReceiptDetailsPage() {
                     <td className="py-2 px-1 text-right">
                       {formatNumber(
                         receipt.data.givenItems
-                          ?.filter(item => item.itemName !== "Previous Balance")
+                          ?.filter((item) => item.itemName !== "Previous Balance")
                           .reduce((sum, item) => sum + Number(item.stoneWt || 0), 0) || 0,
                         3
                       )}
@@ -742,7 +692,7 @@ export default function ReceiptDetailsPage() {
                     <td className="py-2 px-1 text-right">
                       {formatNumber(
                         receipt.data.givenItems
-                          ?.filter(item => item.itemName !== "Previous Balance")
+                          ?.filter((item) => item.itemName !== "Previous Balance")
                           .reduce((sum, item) => sum + Number(item.netWt || 0), 0) || 0,
                         3
                       )}
@@ -750,7 +700,7 @@ export default function ReceiptDetailsPage() {
                     <td className="py-2 px-1 text-right">
                       {formatNumber(
                         receipt.data.givenItems
-                          ?.filter(item => item.itemName !== "Previous Balance")
+                          ?.filter((item) => item.itemName !== "Previous Balance")
                           .reduce((sum, item) => sum + Number(item.finalWt || 0), 0) || 0,
                         3
                       )}
@@ -758,7 +708,7 @@ export default function ReceiptDetailsPage() {
                     <td className="py-2 px-1 text-right">
                       {formatNumber(
                         receipt.data.givenItems
-                          ?.filter(item => item.itemName !== "Previous Balance")
+                          ?.filter((item) => item.itemName !== "Previous Balance")
                           .reduce((sum, item) => sum + Number(item.stoneAmt || 0), 0) || 0,
                         3
                       )}
@@ -824,8 +774,7 @@ export default function ReceiptDetailsPage() {
                         <td className="py-2 px-1 text-right">
                           {formatNumber(
                             receipt.data.receivedItems.reduce(
-                              (acc, item) =>
-                                acc + Number(item.receivedGold || 0),
+                              (acc, item) => acc + Number(item.receivedGold || 0),
                               0
                             ),
                             3
@@ -877,7 +826,76 @@ export default function ReceiptDetailsPage() {
                   )}g
                 </p>
               </div>
-              {/* <div className="bg-blue-50 p-3 rounded">
+
+              <div className="bg-gray-50 p-3 rounded">
+                <p className="text-sm text-muted-foreground">
+                  Received Final Wt.{" "}
+                  {receipt.data.givenItems?.find(
+                    (item) => item.itemName === "Previous Balance"
+                  ) && (
+                    <span className="text-xs text-muted-foreground">
+                      (Balance:{" "}
+                      {formatNumber(
+                        receipt.data.givenItems.find(
+                          (item) => item.itemName === "Previous Balance"
+                        )?.finalWt || 0,
+                        3
+                      )}
+                      g)
+                    </span>
+                  )}
+                </p>
+                <p className="font-medium">
+                  {receipt.data.receivedItems &&
+                  receipt.data.receivedItems.length > 0 ? (
+                    receipt.data.givenItems?.find(
+                      (item) => item.itemName === "Previous Balance"
+                    ) ? (
+                      <>
+                        {formatNumber(
+                          receipt.data.receivedItems.reduce(
+                            (acc, item) => acc + Number(item.finalWt || 0),
+                            0
+                          ),
+                          3
+                        )}
+                        {" - "}
+                        {formatNumber(
+                          receipt.data.givenItems.find(
+                            (item) => item.itemName === "Previous Balance"
+                          )?.finalWt || 0,
+                          3
+                        )}
+                        {" = "}
+                        {formatNumber(
+                          receipt.data.receivedItems.reduce(
+                            (acc, item) => acc + Number(item.finalWt || 0),
+                            0
+                          ) - 
+                          Number(
+                            receipt.data.givenItems.find(
+                              (item) => item.itemName === "Previous Balance"
+                            )?.finalWt || 0
+                          ),
+                          3
+                        )}
+                        g
+                      </>
+                    ) : (
+                      `${formatNumber(
+                        receipt.data.receivedItems.reduce(
+                          (acc, item) => acc + Number(item.finalWt || 0),
+                          0
+                        ),
+                        3
+                      )}g`
+                    )
+                  ) : (
+                    "empty"
+                  )}
+                </p>
+              </div>
+              <div className="bg-blue-50 p-3 rounded">
                 <p className="text-sm text-muted-foreground">OD Balance</p>
                 <p className="font-medium">
                   {formatNumber(
@@ -888,23 +906,6 @@ export default function ReceiptDetailsPage() {
                   )}
                   g
                 </p>
-              </div> */}
-              <div className="bg-gray-50 p-3 rounded">
-                <p className="text-sm text-muted-foreground">
-                  Received Final Wt.
-                </p>
-                <p className="font-medium">
-                  {receipt.data.receivedItems &&
-                  receipt.data.receivedItems.length > 0
-                    ? formatNumber(
-                        receipt.data.receivedItems.reduce(
-                          (acc, item) => acc + Number(item.finalWt || 0),
-                          0
-                        ),
-                        3
-                      ) + "g"
-                    : "empty"}
-                </p>
               </div>
               <div className="bg-gray-50 p-3 rounded">
                 <p className="text-sm text-muted-foreground">
@@ -913,9 +914,51 @@ export default function ReceiptDetailsPage() {
                 <div className="flex items-center gap-2">
                   <p className="font-medium">
                     {formatNumber(
-                      receipt.data.totals?.finalWt || 0,
+                      Number(
+                        receipt.data.givenItems.reduce(
+                          (acc, item) => acc + Number(item.finalWt || 0),
+                          0
+                        )
+                      ) +
+                      Number(
+                        receipt.data.receivedItems.reduce(
+                          (acc, item) => acc + Number(item.finalWt || 0),
+                          0
+                        )
+                      ) -
+                      Number(
+                        receipt.data.givenItems.find(
+                          (item) => item.itemName === "Previous Balance"
+                        )?.finalWt || 0
+                      ),
                       3
-                    )}g
+                    )}
+                    {" + "}
+                    {formatNumber(
+                      Number(
+                        receipt.data.givenItems.find(
+                          (item) => item.itemName === "Previous Balance"
+                        )?.finalWt || 0
+                      ),
+                      3
+                    )}
+                    {" = "}
+                    {formatNumber(
+                      Number(
+                        receipt.data.givenItems.reduce(
+                          (acc, item) => acc + Number(item.finalWt || 0),
+                          0
+                        )
+                      ) +
+                      Number(
+                        receipt.data.receivedItems.reduce(
+                          (acc, item) => acc + Number(item.finalWt || 0),
+                          0
+                        )
+                      ),
+                      3
+                    )}
+                    g
                   </p>
                   {receipt.data.finalWtBalanceTag && (
                     <span className="text-xs bg-muted px-2 py-0.5 rounded">
