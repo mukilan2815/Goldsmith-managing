@@ -1208,13 +1208,10 @@ export default function NewAdminReceiptPage() {
                                   />
                                 </td>
                                 <td className="py-2">
-                                  {manualClientBalance.toFixed(3)} +{" "}
-                                  {givenTotals.total.toFixed(3)}
+                                  {givenTotals.total.toFixed(3)} - 0.000
                                 </td>
                                 <td className="py-2">
-                                  {(
-                                    manualClientBalance + givenTotals.total
-                                  ).toFixed(3)}
+                                  {givenTotals.total.toFixed(3)}
                                 </td>
                               </tr>
                             </tbody>
@@ -1519,12 +1516,11 @@ export default function NewAdminReceiptPage() {
                                 />
                               </td>
                               <td className="py-2">
-                                {manualClientBalance.toFixed(3)} -{" "}
-                                {receivedTotals.total.toFixed(3)}
+                                {givenTotals.total.toFixed(3)} - {receivedTotals.total.toFixed(3)} + {manualClientBalance.toFixed(3)}
                               </td>
                               <td className="py-2">
                                 {(
-                                  manualClientBalance - receivedTotals.total
+                                  givenTotals.total - receivedTotals.total + Number(manualClientBalance)
                                 ).toFixed(3)}
                               </td>
                             </tr>
@@ -1535,7 +1531,7 @@ export default function NewAdminReceiptPage() {
                               <td className="py-2">
                                 ={" "}
                                 {(
-                                  manualClientBalance - receivedTotals.total
+                                  givenTotals.total - receivedTotals.total + Number(manualClientBalance)
                                 ).toFixed(3)}
                               </td>
                             </tr>

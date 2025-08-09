@@ -114,6 +114,8 @@ export default function ReceiptDetailsPage() {
     setIsGeneratingPDF(true);
 
     try {
+      // Debug: Log the receipt data structure
+      console.log('Receipt Data:', JSON.stringify(receipt, null, 2));
       const doc = new jsPDF("p", "mm", "a4");
       const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -195,11 +197,11 @@ export default function ReceiptDetailsPage() {
         index + 1,
         item.itemName,
         formatNumber(item.grossWt, 3),
+        item.stoneWeight ? formatNumber(item.stoneWeight, 3) : "-",
         formatNumber(item.netWt, 3),
         formatNumber(item.meltingTouch, 2),
         formatNumber(item.finalWt, 3),
         item.tag || "-",
-        item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
       ]);
 
       // Add totals row for given items
@@ -229,16 +231,16 @@ export default function ReceiptDetailsPage() {
             "S.NO",
             "Product Name",
             "Gross Wt",
+            "Stone Wt",
             "Net Wt",
             "Melting %",
             "Final Wt",
             "Tag",
-            "Date",
           ],
         ],
         body: givenTableBody,
         theme: "grid",
-        styles: { fontSize: 9, cellPadding: 2, textColor: [0, 0, 0] },
+        styles: { fontSize: 8, cellPadding: 2, textColor: [0, 0, 0] },
         headStyles: {
           fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
@@ -259,14 +261,14 @@ export default function ReceiptDetailsPage() {
         },
         margin: { left: 15, right: 25 },
         columnStyles: {
-          0: { cellWidth: 12 }, // S.NO
-          1: { cellWidth: 35 }, // Product Name
-          2: { cellWidth: 20 }, // Gross Wt
-          3: { cellWidth: 20 }, // Net Wt
-          4: { cellWidth: 20 }, // Melting %
-          5: { cellWidth: 20 }, // Final Wt
-          6: { cellWidth: 15 }, // Tag
-          7: { cellWidth: 20 }, // Date
+          0: { cellWidth: 10 },  // S.NO
+          1: { cellWidth: 30 },  // Product Name
+          2: { cellWidth: 18 },  // Gross Wt
+          3: { cellWidth: 18 },  // Stone Wt
+          4: { cellWidth: 18 },  // Net Wt
+          5: { cellWidth: 18 },  // Melting %
+          6: { cellWidth: 18 },  // Final Wt
+          7: { cellWidth: 15 },  // Tag
         },
       });
 
@@ -462,11 +464,36 @@ export default function ReceiptDetailsPage() {
       // Add some space between tables
       newY = (doc as any).lastAutoTable.finalY + 10;
       
-  
+      // Add final weight balance, stone weight, and voucher ID section
+      const detailsY = newY;
       
-   
+      // Debug: Log the values we're trying to display
+      console.log('finalWtBalanceTag:', receipt.data.finalWtBalanceTag);
+      console.log('stoneWeight:', receipt.data.stoneWeight);
+      console.log('voucherId:', receipt.data.voucherId);
+      
+      // Final Weight Balance Tag
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Final Wt. Balance Tag:", 25, detailsY + 5);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        receipt.data.finalWtBalanceTag || "-",
+        70,
+        detailsY + 5
+      );
+      
+      // Voucher ID
+      doc.setFont("helvetica", "bold");
+      doc.text("Voucher ID:", 120, detailsY + 5);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        receipt.data.voucherId || "-",
+        155,
+        detailsY + 5
+      );
 
-      newY = (doc as any).lastAutoTable.finalY + 5;
+      newY = detailsY + 30; // Add some space after the details
 
       // Save the PDF
       const fileName = `receipt_${
