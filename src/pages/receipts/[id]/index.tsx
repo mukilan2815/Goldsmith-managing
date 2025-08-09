@@ -297,7 +297,7 @@ export default function ReceiptDetailsPage() {
       const receivedTableBody = receivedItems.map((item, index) => [
         index + 1,
         "Received Item " + (index + 1), // Product name placeholder
-        item.date ? format(new Date(item.date), "dd/MM/yyyy") : "—",
+        format(new Date(), "dd/MM/yyyy"), // Always show current date
         formatNumber(item.receivedGold, 3),
         formatNumber(0, 3), // Stone weight not available in current structure
         formatNumber(item.melting, 2),
@@ -374,7 +374,7 @@ export default function ReceiptDetailsPage() {
         columnStyles: {
           0: { cellWidth: 12 },
           1: { cellWidth: 20 },
-          2: { cellWidth: 18 },
+          2: { cellWidth: 25 }, // Increased date column width
           3: { cellWidth: 20 },
           4: { cellWidth: 17 },
           5: { cellWidth: 15 },
@@ -425,7 +425,7 @@ export default function ReceiptDetailsPage() {
           formatNumber(givenTotal, 3),
           formatNumber(receivedTotal, 3),
           formatNumber(odBalance, 3),
-          `${formatNumber(givenTotal + receivedTotal, 3)} + ${formatNumber(Number(odBalance), 3)} = ${formatNumber(givenTotal + receivedTotal + Number(odBalance), 3)}`
+          `${formatNumber(givenTotal - receivedTotal, 3)} + ${formatNumber(Number(odBalance), 3)} = ${formatNumber(givenTotal - receivedTotal + Number(odBalance), 3)}`
         ]
       ];
       
@@ -829,21 +829,7 @@ export default function ReceiptDetailsPage() {
 
               <div className="bg-gray-50 p-3 rounded">
                 <p className="text-sm text-muted-foreground">
-                  Received Final Wt.{" "}
-                  {receipt.data.givenItems?.find(
-                    (item) => item.itemName === "Previous Balance"
-                  ) && (
-                    <span className="text-xs text-muted-foreground">
-                      (Balance:{" "}
-                      {formatNumber(
-                        receipt.data.givenItems.find(
-                          (item) => item.itemName === "Previous Balance"
-                        )?.finalWt || 0,
-                        3
-                      )}
-                      g)
-                    </span>
-                  )}
+                  Received Final Wt.
                 </p>
                 <p className="font-medium">
                   {receipt.data.receivedItems &&
@@ -856,26 +842,6 @@ export default function ReceiptDetailsPage() {
                           receipt.data.receivedItems.reduce(
                             (acc, item) => acc + Number(item.finalWt || 0),
                             0
-                          ),
-                          3
-                        )}
-                        {" - "}
-                        {formatNumber(
-                          receipt.data.givenItems.find(
-                            (item) => item.itemName === "Previous Balance"
-                          )?.finalWt || 0,
-                          3
-                        )}
-                        {" = "}
-                        {formatNumber(
-                          receipt.data.receivedItems.reduce(
-                            (acc, item) => acc + Number(item.finalWt || 0),
-                            0
-                          ) - 
-                          Number(
-                            receipt.data.givenItems.find(
-                              (item) => item.itemName === "Previous Balance"
-                            )?.finalWt || 0
                           ),
                           3
                         )}
@@ -908,9 +874,16 @@ export default function ReceiptDetailsPage() {
                 </p>
               </div>
               <div className="bg-gray-50 p-3 rounded">
-                <p className="text-sm text-muted-foreground">
-                  Final Wt. + Balance
-                </p>
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-muted-foreground">
+                    Final Wt. + Balance
+                  </p>
+                  {receipt.data.finalWtBalanceTag && (
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                      {receipt.data.finalWtBalanceTag}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <p className="font-medium">
                     {formatNumber(
@@ -919,7 +892,7 @@ export default function ReceiptDetailsPage() {
                           (acc, item) => acc + Number(item.finalWt || 0),
                           0
                         )
-                      ) +
+                      ) -
                       Number(
                         receipt.data.receivedItems.reduce(
                           (acc, item) => acc + Number(item.finalWt || 0),
@@ -949,7 +922,7 @@ export default function ReceiptDetailsPage() {
                           (acc, item) => acc + Number(item.finalWt || 0),
                           0
                         )
-                      ) +
+                      ) -
                       Number(
                         receipt.data.receivedItems.reduce(
                           (acc, item) => acc + Number(item.finalWt || 0),

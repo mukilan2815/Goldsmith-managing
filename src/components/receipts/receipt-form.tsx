@@ -85,6 +85,7 @@ export function ReceiptForm({
     `SH-${Math.floor(100000 + Math.random() * 900000)}`
   );
   const [metalType, setMetalType] = useState("Gold");
+  const [finalWtBalanceTag, setFinalWtBalanceTag] = useState<string>("");
   const [items, setItems] = useState<ReceiptItem[]>([
     {
       id: uuidv4(),
@@ -96,7 +97,7 @@ export function ReceiptForm({
       netWt: 0,
       finalWt: 0,
       stoneAmt: "",
-      date: new Date().toISOString().split("T")[0], // Add date field
+      date: new Date().toISOString().split("T")[0],
     },
   ]);
   const [overallWeight, setOverallWeight] = useState(0);
@@ -112,7 +113,6 @@ export function ReceiptForm({
   ]);
   const [clientBalance, setClientBalance] = useState<number>(0);
   const [manualClientBalance, setManualClientBalance] = useState<number>(0);
-  const [finalWtBalanceTag, setFinalWtBalanceTag] = useState<string>("");
   const [itemErrors, setItemErrors] = useState<{
     [key: string]: { [field: string]: string };
   }>({});
@@ -238,7 +238,7 @@ export function ReceiptForm({
                   netWt: balanceValue,
                   finalWt: balanceValue,
                   stoneAmt: 0,
-                  date: new Date().toISOString().split("T")[0], // Add date field
+                  date: new Date().toISOString().split("T")[0],
                 },
                 ...items,
               ]);
@@ -573,7 +573,7 @@ export function ReceiptForm({
   );
 
   // Calculate balance and new client balance
-  const balance = totals.finalWeight - receivedTotals.finalWt;
+  const balance = totals.finalWeight - receivedTotals.finalWt + clientBalance; // given - received + od_balance
   const newClientBalance = manualClientBalance; // Use manual balance instead of calculated
 
   const balanceToAdd = clientBalance;
@@ -666,7 +666,7 @@ export function ReceiptForm({
         });
       }
 
-      const balanceChange = parseFloat((totalFinal - receivedFinal).toFixed(3));
+      const balanceChange = parseFloat((totalFinal - receivedFinal + clientBalance).toFixed(3)); // given - received + od_balance
       const finalClientBalance = parseFloat(manualClientBalance.toFixed(3)); // Use manual balance
 
       // Determine receipt status
