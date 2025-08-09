@@ -197,10 +197,11 @@ export default function ReceiptDetailsPage() {
         index + 1,
         item.itemName,
         formatNumber(item.grossWt, 3),
-        item.stoneWeight ? formatNumber(item.stoneWeight, 3) : "-",
+        item.stoneWt ? formatNumber(item.stoneWt, 3) : "0.000",
         formatNumber(item.netWt, 3),
         formatNumber(item.meltingTouch, 2),
         formatNumber(item.finalWt, 3),
+        item.stoneAmt ? formatNumber(item.stoneAmt, 2) : "0.00",
         item.tag || "-",
       ]);
 
@@ -213,14 +214,19 @@ export default function ReceiptDetailsPage() {
             givenItems.reduce((acc, item) => acc + Number(item.grossWt || 0), 0)
           ),
           formatNumber(
+            givenItems.reduce((acc, item) => acc + Number(item.stoneWt || 0), 0)
+          ),
+          formatNumber(
             givenItems.reduce((acc, item) => acc + Number(item.netWt || 0), 0)
           ),
           "",
           formatNumber(
             givenItems.reduce((acc, item) => acc + Number(item.finalWt || 0), 0)
           ),
-          "",
-          "",
+          formatNumber(
+            givenItems.reduce((acc, item) => acc + Number(item.stoneAmt || 0), 0)
+          ),
+          ""
         ]);
       }
 
@@ -235,6 +241,7 @@ export default function ReceiptDetailsPage() {
             "Net Wt",
             "Melting %",
             "Final Wt",
+            "Stone Amt",
             "Tag",
           ],
         ],
@@ -262,13 +269,14 @@ export default function ReceiptDetailsPage() {
         margin: { left: 15, right: 25 },
         columnStyles: {
           0: { cellWidth: 10 },  // S.NO
-          1: { cellWidth: 30 },  // Product Name
-          2: { cellWidth: 18 },  // Gross Wt
-          3: { cellWidth: 18 },  // Stone Wt
-          4: { cellWidth: 18 },  // Net Wt
-          5: { cellWidth: 18 },  // Melting %
-          6: { cellWidth: 18 },  // Final Wt
-          7: { cellWidth: 15 },  // Tag
+          1: { cellWidth: 25 },  // Product Name
+          2: { cellWidth: 15 },  // Gross Wt
+          3: { cellWidth: 15 },  // Stone Wt
+          4: { cellWidth: 15 },  // Net Wt
+          5: { cellWidth: 15 },  // Melting %
+          6: { cellWidth: 15 },  // Final Wt
+          7: { cellWidth: 15 },  // Stone Amt
+          8: { cellWidth: 12 },  // Tag
         },
       });
 
@@ -301,9 +309,10 @@ export default function ReceiptDetailsPage() {
         "Received Item " + (index + 1), // Product name placeholder
         format(new Date(), "dd/MM/yyyy"), // Always show current date
         formatNumber(item.receivedGold, 3),
-        formatNumber(0, 3), // Stone weight not available in current structure
+        formatNumber(item.stoneWt || 0, 3), // Added stone weight
         formatNumber(item.melting, 2),
         formatNumber(0, 2), // MC not available in current structure
+        formatNumber(item.stoneAmt || 0, 2), // Added stone amount
         formatNumber(item.receivedGold, 3),
         formatNumber(item.finalWt, 3),
       ]);
@@ -319,9 +328,20 @@ export default function ReceiptDetailsPage() {
             0
           )
         ),
-        formatNumber(0),
+        formatNumber(
+          receivedItems.reduce(
+            (acc, item) => acc + Number(item.stoneWt || 0),
+            0
+          )
+        ),
         "",
         "",
+        formatNumber(
+          receivedItems.reduce(
+            (acc, item) => acc + Number(item.stoneAmt || 0),
+            0
+          )
+        ),
         formatNumber(
           receivedItems.reduce(
             (acc, item) => acc + Number(item.receivedGold || 0),
@@ -344,9 +364,10 @@ export default function ReceiptDetailsPage() {
             "Product Name",
             "Date",
             "Final Ornament(wt)",
-            "Stone Weight",
+            "Stone Wt",
             "Touch",
-            
+            "MC",
+            "Stone Amt",
             "Subtotal",
             "Total",
           ],
@@ -374,15 +395,16 @@ export default function ReceiptDetailsPage() {
         },
         margin: { left: 15, right: 25 },
         columnStyles: {
-          0: { cellWidth: 12 },
-          1: { cellWidth: 20 },
-          2: { cellWidth: 25 }, // Increased date column width
-          3: { cellWidth: 20 },
-          4: { cellWidth: 17 },
-          5: { cellWidth: 15 },
-          6: { cellWidth: 15 },
-          7: { cellWidth: 17 },
-          8: { cellWidth: 19 },
+          0: { cellWidth: 10 },  // S.NO
+          1: { cellWidth: 20 },  // Product Name
+          2: { cellWidth: 20 },  // Date
+          3: { cellWidth: 15 },  // Final Ornament(wt)
+          4: { cellWidth: 15 },  // Stone Wt
+          5: { cellWidth: 12 },  // Touch
+          6: { cellWidth: 12 },  // MC
+          7: { cellWidth: 15 },  // Stone Amt
+          8: { cellWidth: 15 },  // Subtotal
+          9: { cellWidth: 15 },  // Total
         },
       });
 
