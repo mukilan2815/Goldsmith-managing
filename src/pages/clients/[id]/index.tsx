@@ -480,9 +480,6 @@ const generatePDF = (receipt: any) => {
         ? formatNumber(item.makingChargePercent, 2)
         : formatNumber(item.meltingTouch, 2),
       receipt.type === "admin"
-        ? formatNumber(Number(item.total) - Number(item.subTotal), 2)
-        : formatNumber(0, 2),
-      receipt.type === "admin"
         ? formatNumber(item.subTotal, 3)
         : formatNumber(item.finalWt, 3),
       receipt.type === "admin"
@@ -512,7 +509,6 @@ const generatePDF = (receipt: any) => {
             )
           ),
       "",
-      "",
       receipt.type === "admin"
         ? formatNumber(receipt.received?.totalSubTotal)
         : formatNumber(
@@ -536,7 +532,6 @@ const generatePDF = (receipt: any) => {
           "Final Ornament(wt)",
           "Stone Weight",
           "Touch",
-          "MC",
           "Subtotal",
           "Total",
         ],
@@ -565,14 +560,13 @@ const generatePDF = (receipt: any) => {
       margin: { left: 15, right: 25 },
       columnStyles: {
         0: { cellWidth: 12 },
-        1: { cellWidth: 20 },
-        2: { cellWidth: 18 },
-        3: { cellWidth: 20 },
-        4: { cellWidth: 17 },
-        5: { cellWidth: 15 },
-        6: { cellWidth: 15 },
-        7: { cellWidth: 17 },
-        8: { cellWidth: 19 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 22 },
+        5: { cellWidth: 20 },
+        6: { cellWidth: 22 },
+        7: { cellWidth: 24 },
       },
     });
   }

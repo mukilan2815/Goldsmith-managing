@@ -421,7 +421,8 @@ export default function NewAdminReceiptPage() {
       purePercent: "",
       melting: "",
       total: 0,
-      date: format(new Date(), "yyyy-MM-dd"), // Add default date
+      date: format(new Date(), "yyyy-MM-dd"),
+      tag: ""
     };
 
     setGivenItems([...givenItems, newItem]);
@@ -1178,56 +1179,42 @@ export default function NewAdminReceiptPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              {givenItems.map((item, idx) => (
-                                <tr key={item.id}>
-                                  <td className="py-2">
-                                    {item.total.toFixed(3)} g
-                                  </td>
-                                  <td className="py-2">
-                                    <Input
-                                      type="number"
-                                      value={manualClientBalance || ""}
-                                      onChange={(e) =>
-                                        setManualClientBalance(
-                                          Number(e.target.value) || 0
-                                        )
-                                      }
-                                      placeholder="0.000"
-                                      className="w-24"
-                                      step="0.001"
-                                    />
-                                  </td>
-                                  <td className="py-2">
-                                    <Input
-                                      type="text"
-                                      placeholder="Enter tag"
-                                      value={item.tag || ""}
-                                      onChange={(e) =>
-                                        handleTagChange(idx, e.target.value)
-                                      }
-                                    />
-                                  </td>
-                                  <td className="py-2">
-                                    {manualClientBalance.toFixed(3)} +{" "}
-                                    {item.total.toFixed(3)}
-                                  </td>
-                                  <td className="py-2">
-                                    {(manualClientBalance + item.total).toFixed(
-                                      3
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                              <tr className="border-t">
-                                <td className="py-2"></td>
-                                <td className="py-2"></td>
-                                <td className="py-2"></td>
-                                <td className="py-2"></td>
+                              <tr>
                                 <td className="py-2">
-                                  ={" "}
+                                  {givenTotals.total.toFixed(3)} g
+                                </td>
+                                <td className="py-2">
+                                  <Input
+                                    type="number"
+                                    value={manualClientBalance || ""}
+                                    onChange={(e) =>
+                                      setManualClientBalance(
+                                        Number(e.target.value) || 0
+                                      )
+                                    }
+                                    placeholder="0.000"
+                                    className="w-24"
+                                    step="0.001"
+                                  />
+                                </td>
+                                <td className="py-2">
+                                  <Input
+                                    type="text"
+                                    placeholder="Enter tag"
+                                    value={givenItems[0]?.tag || ""}
+                                    onChange={(e) =>
+                                      handleTagChange(0, e.target.value)
+                                    }
+                                  />
+                                </td>
+                                <td className="py-2">
+                                  {manualClientBalance.toFixed(3)} +{" "}
+                                  {givenTotals.total.toFixed(3)}
+                                </td>
+                                <td className="py-2">
                                   {(
                                     manualClientBalance + givenTotals.total
-                                  ).toFixed(2)}
+                                  ).toFixed(3)}
                                 </td>
                               </tr>
                             </tbody>

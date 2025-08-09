@@ -344,7 +344,7 @@ export default function ReceiptDetailsPage() {
             "Final Ornament(wt)",
             "Stone Weight",
             "Touch",
-            "MC",
+            
             "Subtotal",
             "Total",
           ],
@@ -874,12 +874,12 @@ export default function ReceiptDetailsPage() {
                 </p>
               </div>
               <div className="bg-gray-50 p-3 rounded">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mb-2">
                   <p className="text-sm text-muted-foreground">
                     Final Wt. + Balance
                   </p>
                   {receipt.data.finalWtBalanceTag && (
-                    <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
                       {receipt.data.finalWtBalanceTag}
                     </span>
                   )}
