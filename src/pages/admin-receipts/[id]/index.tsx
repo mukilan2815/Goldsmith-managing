@@ -562,7 +562,8 @@ export default function AdminReceiptDetailPage() {
   const calculateBalance = () => {
     const givenTotal = parseFloat(String(receipt.given?.total || 0));
     const receivedTotal = parseFloat(String(receipt.received?.total || 0));
-    return (givenTotal - receivedTotal).toFixed(3);
+    const currentBalance = client?.balance || 0;
+    return (givenTotal - receivedTotal + currentBalance).toFixed(3);
   };
 
   return (
@@ -964,7 +965,7 @@ export default function AdminReceiptDetailPage() {
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Final Received Total</p>
+              <p className="text-sm text-gray-500">Final Total (Given - Received) + Balance</p>
               <p className="font-medium">{calculateBalance()}</p>
             </div>
           </div>
