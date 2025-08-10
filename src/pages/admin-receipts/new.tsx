@@ -1457,9 +1457,7 @@ export default function NewAdminReceiptPage() {
                       {/* Grand Total and Save Button */}
                       <div className="mt-6 p-4 border rounded-md bg-muted/50">
                         <div className="flex justify-between items-center">
-                          <div className="font-medium">
-                            Grand Total: {receivedTotals.total.toFixed(2)}
-                          </div>
+                         
                           <Button
                             className="bg-yellow-400 hover:bg-yellow-500 text-black"
                             onClick={saveReceivedData}

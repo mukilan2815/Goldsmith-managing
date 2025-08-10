@@ -940,12 +940,7 @@ export default function AdminReceiptDetailPage() {
             </div>
           )}
 
-          {/* Grand Total */}
-          <div className="mb-4">
-            <p className="text-lg font-medium">
-              Grand Total: {formatNumber(receipt.received?.total, 2)}
-            </p>
-          </div>
+      
 
           {/* Received Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded-lg">
