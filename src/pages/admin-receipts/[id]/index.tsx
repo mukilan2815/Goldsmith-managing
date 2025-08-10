@@ -493,6 +493,8 @@ export default function AdminReceiptDetailPage() {
           const clientData = await adminReceiptApi.getClientById(
             receiptData.clientId
           );
+          console.log('Debug - Client Data:', clientData);
+          console.log('Debug - Client Balance:', clientData?.balance, typeof clientData?.balance);
           setClient(clientData);
         } else {
           throw new Error("Client ID not found in receipt");
@@ -558,19 +560,22 @@ export default function AdminReceiptDetailPage() {
     );
   }
 
-  // Calculate the final balance based on given and received
-  const calculateFinalBalance = () => {
+  // Calculate final total with balance
+  const calculateBalance = () => {
     const givenTotal = parseFloat(String(receipt.given?.total || 0));
     const receivedTotal = parseFloat(String(receipt.received?.total || 0));
-    const currentBalance = client?.balance || 0;
+    const currentBalance = client?.balance ? parseFloat(String(client.balance)) : 0;
     
-    // The final balance is the current balance plus given minus received
-    return (currentBalance + givenTotal - receivedTotal).toFixed(3);
-  };
-
-  // Calculate the OD balance (current client balance)
-  const getODBalance = () => {
-    return client?.balance?.toFixed(3) || '0.000';
+    console.log('Debug - Balance Calculation:', {
+      givenTotal,
+      receivedTotal,
+      clientBalance: client?.balance,
+      currentBalance,
+      calculated: (givenTotal - receivedTotal) + currentBalance
+    });
+    
+    const calculated = (givenTotal - receivedTotal) + currentBalance;
+    return calculated.toFixed(3);
   };
 
   return (
@@ -948,30 +953,33 @@ export default function AdminReceiptDetailPage() {
             </div>
           )}
 
+   
+
           {/* Received Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded-lg">
             <div>
-              <p className="text-sm text-gray-500">Totals</p>
+              <p className="text-sm text-gray-500">Received Total</p>
               <p className="font-medium">
                 {formatNumber(receipt.received?.total)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">OD Balance</p>
+              <p className="text-sm text-gray-500">Current Balance</p>
               <p className="font-medium">
-                {getODBalance()}
+                {client && typeof client.balance === "number"
+                  ? client.balance.toFixed(3)
+                  : "0.000"}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Calculation</p>
               <p className="font-medium">
-                {formatNumber(receipt.given?.total || 0)} + {" "}
-                {getODBalance()} - {formatNumber(receipt.received?.total || 0)}
+                ({formatNumber(receipt.given?.total)} - {formatNumber(receipt.received?.total)}) + {client?.balance?.toFixed(3) || '0.000'}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Final Balance</p>
-              <p className="font-medium">{calculateFinalBalance()}</p>
+              <p className="text-sm text-gray-500">Final Total (Given-Received)+Balance</p>
+              <p className="font-medium">{calculateBalance()}</p>
             </div>
           </div>
         </div>
