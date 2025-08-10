@@ -481,14 +481,13 @@ export default function EditAdminReceiptPage() {
     return result;
   };
 
-  // Calculate new client balance as (Given - Received) + Current Balance
+  // Calculate new client balance
   const calculateNewClientBalance = () => {
     if (!receipt) return clientBalance;
     
     const givenTotal = Number(receipt.given?.total) || 0;
     const receivedTotal = Number(receipt.received?.total) || 0;
-
-    return (givenTotal - receivedTotal) + (clientBalance || 0);
+    return (givenTotal - receivedTotal) + clientBalance;
   };
 
   // Handle save

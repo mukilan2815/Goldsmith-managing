@@ -493,8 +493,6 @@ export default function AdminReceiptDetailPage() {
           const clientData = await adminReceiptApi.getClientById(
             receiptData.clientId
           );
-          console.log('Debug - Client Data:', clientData);
-          console.log('Debug - Client Balance:', clientData?.balance, typeof clientData?.balance);
           setClient(clientData);
         } else {
           throw new Error("Client ID not found in receipt");
@@ -560,22 +558,12 @@ export default function AdminReceiptDetailPage() {
     );
   }
 
-  // Calculate final total with balance
-  const calculateBalance = () => {
+  // Calculate final balance including client's current balance
+  const calculateFinalBalance = () => {
     const givenTotal = parseFloat(String(receipt.given?.total || 0));
     const receivedTotal = parseFloat(String(receipt.received?.total || 0));
-    const currentBalance = client?.balance ? parseFloat(String(client.balance)) : 0;
-    
-    console.log('Debug - Balance Calculation:', {
-      givenTotal,
-      receivedTotal,
-      clientBalance: client?.balance,
-      currentBalance,
-      calculated: (givenTotal - receivedTotal) + currentBalance
-    });
-    
-    const calculated = (givenTotal - receivedTotal) + currentBalance;
-    return calculated.toFixed(3);
+    const currentBalance = client?.balance || 0;
+    return (givenTotal - receivedTotal + currentBalance).toFixed(3);
   };
 
   return (
@@ -953,12 +941,10 @@ export default function AdminReceiptDetailPage() {
             </div>
           )}
 
-   
-
           {/* Received Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded-lg">
             <div>
-              <p className="text-sm text-gray-500">Received Total</p>
+              <p className="text-sm text-gray-500">Totals</p>
               <p className="font-medium">
                 {formatNumber(receipt.received?.total)}
               </p>
@@ -979,7 +965,7 @@ export default function AdminReceiptDetailPage() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Final Total (Given-Received)+Balance</p>
-              <p className="font-medium">{calculateBalance()}</p>
+              <p className="font-medium">{calculateFinalBalance()}</p>
             </div>
           </div>
         </div>
