@@ -1523,7 +1523,7 @@ export default function NewAdminReceiptPage() {
                               <td className="py-2">
                                 ={" "}
                                 {(
-                                  givenTotals.total - receivedTotals.total + Number(manualClientBalance)
+                                  receivedTotals.total + Number(manualClientBalance)
                                 ).toFixed(3)}
                               </td>
                             </tr>

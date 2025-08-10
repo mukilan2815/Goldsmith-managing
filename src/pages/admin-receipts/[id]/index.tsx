@@ -940,8 +940,6 @@ export default function AdminReceiptDetailPage() {
             </div>
           )}
 
-      
-
           {/* Received Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded-lg">
             <div>
