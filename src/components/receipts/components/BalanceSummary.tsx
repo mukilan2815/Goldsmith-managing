@@ -72,16 +72,10 @@ export function BalanceSummary({
         </div>
         <div className="bg-muted/10 p-3 rounded-md">
           <div className="text-sm text-muted-foreground">
-            Received Final Wt. {manualClientBalance ? `(Balance: ${manualClientBalance.toFixed(3)}g)` : ''}
+            Received Final Wt.
           </div>
           <div className="text-lg font-semibold">
-            {receivedTotals.finalWt === 0 ? (
-              'empty'
-            ) : manualClientBalance && manualClientBalance > 0 ? (
-              `${(receivedTotals.finalWt - manualClientBalance).toFixed(3)} + ${manualClientBalance.toFixed(3)} = ${receivedTotals.finalWt.toFixed(3)}g`
-            ) : (
-              `${receivedTotals.finalWt.toFixed(3)}g`
-            )}
+            {receivedTotals.finalWt === 0 ? 'empty' : `${receivedTotals.finalWt.toFixed(3)}g`}
           </div>
         </div>
         <div className="bg-primary/10 p-3 rounded-md">
@@ -102,10 +96,11 @@ export function BalanceSummary({
         </div>
         <div className="bg-muted/10 p-3 rounded-md">
           <div className="text-sm text-muted-foreground mb-2">
-            Final Wt. + Balance
+           Finalwt + Balance
+            (Given - Received) + Balance
           </div>
           <div className="text-lg font-semibold mb-2">
-            {(totals.finalWeight + (manualClientBalance || 0)).toFixed(3)}g
+            ({totals.finalWeight.toFixed(3)} - {receivedTotals.finalWt.toFixed(3)}) + {manualClientBalance?.toFixed(3) || '0.000'} = {(totals.finalWeight - receivedTotals.finalWt + (manualClientBalance || 0)).toFixed(3)}g
           </div>
           <Label htmlFor="finalWtBalanceTag" className="text-xs text-muted-foreground">
             Tag
