@@ -487,7 +487,8 @@ export default function EditAdminReceiptPage() {
     
     const givenTotal = Number(receipt.given?.total) || 0;
     const receivedTotal = Number(receipt.received?.total) || 0;
-    return (givenTotal - receivedTotal) + clientBalance;
+
+    return (givenTotal - receivedTotal) + (clientBalance || 0);
   };
 
   // Handle save
