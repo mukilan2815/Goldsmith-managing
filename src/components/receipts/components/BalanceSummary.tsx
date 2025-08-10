@@ -97,10 +97,10 @@ export function BalanceSummary({
         <div className="bg-muted/10 p-3 rounded-md">
           <div className="text-sm text-muted-foreground mb-2">
            Finalwt + Balance
-            (Given - Received) + Balance
+            (Given + Received) + Balance
           </div>
           <div className="text-lg font-semibold mb-2">
-            ({totals.finalWeight.toFixed(3)} - {receivedTotals.finalWt.toFixed(3)}) + {manualClientBalance?.toFixed(3) || '0.000'} = {(totals.finalWeight - receivedTotals.finalWt + (manualClientBalance || 0)).toFixed(3)}g
+            ({totals.finalWeight.toFixed(3)} + {receivedTotals.finalWt.toFixed(3)}) + {manualClientBalance?.toFixed(3) || '0.000'} = {(totals.finalWeight + receivedTotals.finalWt + (manualClientBalance || 0)).toFixed(3)}g
           </div>
           <Label htmlFor="finalWtBalanceTag" className="text-xs text-muted-foreground">
             Tag
