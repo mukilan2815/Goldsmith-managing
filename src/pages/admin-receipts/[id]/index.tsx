@@ -558,11 +558,12 @@ export default function AdminReceiptDetailPage() {
     );
   }
 
-  // Calculate balance
-  const calculateBalance = () => {
+  // Calculate final balance including client's current balance
+  const calculateFinalBalance = () => {
     const givenTotal = parseFloat(String(receipt.given?.total || 0));
     const receivedTotal = parseFloat(String(receipt.received?.total || 0));
-    return (givenTotal - receivedTotal).toFixed(3);
+    const currentBalance = client?.balance || 0;
+    return (givenTotal - receivedTotal + currentBalance).toFixed(3);
   };
 
   return (
@@ -940,13 +941,6 @@ export default function AdminReceiptDetailPage() {
             </div>
           )}
 
-          {/* Grand Total */}
-          <div className="mb-4">
-            <p className="text-lg font-medium">
-              Grand Total: {formatNumber(receipt.received?.total, 2)}
-            </p>
-          </div>
-
           {/* Received Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded-lg">
             <div>
@@ -966,13 +960,12 @@ export default function AdminReceiptDetailPage() {
             <div>
               <p className="text-sm text-gray-500">Calculation</p>
               <p className="font-medium">
-                {formatNumber(receipt.given?.total)} -{" "}
-                {formatNumber(receipt.received?.total)}
+                ({formatNumber(receipt.given?.total)} - {formatNumber(receipt.received?.total)}) + {client?.balance?.toFixed(3) || '0.000'}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Final Received Total</p>
-              <p className="font-medium">{calculateBalance()}</p>
+              <p className="text-sm text-gray-500">Final Total (Given-Received)+Balance</p>
+              <p className="font-medium">{calculateFinalBalance()}</p>
             </div>
           </div>
         </div>
