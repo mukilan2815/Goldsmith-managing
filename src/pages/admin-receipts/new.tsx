@@ -1510,11 +1510,11 @@ export default function NewAdminReceiptPage() {
                                 />
                               </td>
                               <td className="py-2">
-                                {givenTotals.total.toFixed(3)} - {receivedTotals.total.toFixed(3)} + {manualClientBalance.toFixed(3)}
+                                {receivedTotals.total.toFixed(3)} + {manualClientBalance.toFixed(3)}
                               </td>
                               <td className="py-2">
                                 {(
-                                  givenTotals.total - receivedTotals.total + Number(manualClientBalance)
+                                  receivedTotals.total + Number(manualClientBalance)
                                 ).toFixed(3)}
                               </td>
                             </tr>
