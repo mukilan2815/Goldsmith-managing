@@ -361,7 +361,7 @@ const generatePDF = async (
     "OD Balance",
     "Given Total",
     "Received Total",
-    "Balance (Given - Received)",
+    "(Given - Received)+Balance",
   ];
 
   const balanceValues = [
@@ -369,7 +369,7 @@ const generatePDF = async (
     formatNumber(receipt.given?.total),
     formatNumber(receipt.received?.total),
     formatNumber(
-      Number(receipt.given?.total || 0) - Number(receipt.received?.total || 0),
+      (client?.balance || 0) + Number(receipt.given?.total || 0) - Number(receipt.received?.total || 0),
       3
     ),
   ];

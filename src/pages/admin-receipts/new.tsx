@@ -1169,13 +1169,11 @@ export default function NewAdminReceiptPage() {
                           <table className="w-full">
                             <thead>
                               <tr className="border-b">
-                                <th className="text-left pb-2">Totals</th>
+                                <th className="text-left pb-2">Given total</th>
                                 <th className="text-left pb-2">OD Balance</th>
-                                <th>Tag</th>
-                                <th className="text-left pb-2">Calculation</th>
-                                <th className="text-left pb-2">
-                                  Final Given Total
-                                </th>
+                                <th className="text-left pb-2">TAG</th>
+                                <th className="text-left pb-2">Given + OD balance</th>
+                                <th className="text-left pb-2">Final Given total</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1486,14 +1484,10 @@ export default function NewAdminReceiptPage() {
                         <table className="w-full">
                           <thead>
                             <tr className="border-b">
-                              <th className="text-left pb-2">Totals</th>
-                              <th className="text-left pb-2">
-                                Current Balance
-                              </th>
-                              <th className="text-left pb-2">Calculation</th>
-                              <th className="text-left pb-2">
-                                Final Received Total
-                              </th>
+                              <th className="text-left pb-2">Received total</th>
+                              <th className="text-left pb-2">Current Balance</th>
+                              <th className="text-left pb-2">Received + Balance</th>
+                              <th className="text-left pb-2">Final received total</th>
                             </tr>
                           </thead>{" "}
                           <tbody>
