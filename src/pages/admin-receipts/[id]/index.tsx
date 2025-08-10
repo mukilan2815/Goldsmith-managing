@@ -558,11 +558,19 @@ export default function AdminReceiptDetailPage() {
     );
   }
 
-  // Calculate balance
-  const calculateBalance = () => {
+  // Calculate the final balance based on given and received
+  const calculateFinalBalance = () => {
     const givenTotal = parseFloat(String(receipt.given?.total || 0));
     const receivedTotal = parseFloat(String(receipt.received?.total || 0));
-    return (givenTotal - receivedTotal).toFixed(3);
+    const currentBalance = client?.balance || 0;
+    
+    // The final balance is the current balance plus given minus received
+    return (currentBalance + givenTotal - receivedTotal).toFixed(3);
+  };
+
+  // Calculate the OD balance (current client balance)
+  const getODBalance = () => {
+    return client?.balance?.toFixed(3) || '0.000';
   };
 
   return (
@@ -949,23 +957,21 @@ export default function AdminReceiptDetailPage() {
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Current Balance</p>
+              <p className="text-sm text-gray-500">OD Balance</p>
               <p className="font-medium">
-                {client && typeof client.balance === "number"
-                  ? client.balance.toFixed(3)
-                  : "0.000"}
+                {getODBalance()}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Calculation</p>
               <p className="font-medium">
-                {formatNumber(receipt.given?.total)} -{" "}
-                {formatNumber(receipt.received?.total)}
+                {formatNumber(receipt.given?.total || 0)} + {" "}
+                {getODBalance()} - {formatNumber(receipt.received?.total || 0)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Final Received Total</p>
-              <p className="font-medium">{calculateBalance()}</p>
+              <p className="text-sm text-gray-500">Final Balance</p>
+              <p className="font-medium">{calculateFinalBalance()}</p>
             </div>
           </div>
         </div>

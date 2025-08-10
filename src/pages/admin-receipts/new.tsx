@@ -581,21 +581,26 @@ export default function NewAdminReceiptPage() {
     return result;
   };
 
-  const calculateNewBalance = () => {
-    const hasGivenItems = givenItems.some((item) => item.productName);
-    const hasReceivedItems = receivedItems.some((item) => item.productName);
-
-    let balanceAdjustment = 0;
-    if (hasGivenItems && hasReceivedItems) {
-      balanceAdjustment = calculateManualResult();
-    } else if (hasGivenItems) {
-      balanceAdjustment = givenTotals.total;
-    } else if (hasReceivedItems) {
-      balanceAdjustment = -receivedTotals.total;
+  // Calculate the new balance based on given and received items
+  useEffect(() => {
+    if (!selectedClient) return;
+    
+    const givenTotal = givenItems.reduce((sum, item) => sum + item.total, 0);
+    const receivedTotal = receivedItems.reduce((sum, item) => sum + item.total, 0);
+    
+    // The new balance is the current client balance plus given items minus received items
+    const newBalance = selectedClient.balance + givenTotal - receivedTotal;
+    
+    // Only update if the balance has actually changed
+    if (Math.abs(newBalance - manualClientBalance) > 0.001) {
+      setManualClientBalance(parseFloat(newBalance.toFixed(3)));
     }
-
-    // Return the manual balance + adjustment, but don't double-add
-    return manualClientBalance + balanceAdjustment;
+  }, [givenItems, receivedItems, selectedClient]);
+  
+  const calculateNewBalance = () => {
+    const givenTotal = givenItems.reduce((sum, item) => sum + item.total, 0);
+    const receivedTotal = receivedItems.reduce((sum, item) => sum + item.total, 0);
+    return (selectedClient?.balance || 0) + givenTotal - receivedTotal;
   };
 
   const saveGivenData = async () => {
@@ -633,14 +638,18 @@ export default function NewAdminReceiptPage() {
         }
       }
 
-      // Use manual client balance as the final balance (override calculation)
-      const hasReceivedItems = receivedItems.some((item) => item.productName);
-      const newBalance = manualClientBalance;
-
+      // Calculate the new balance based on given and received items
+      const givenTotal = givenItems.reduce((sum, item) => sum + item.total, 0);
+      const receivedTotal = receivedItems.reduce((sum, item) => sum + item.total, 0);
+      const newBalance = (selectedClient.balance || 0) + givenTotal - receivedTotal;
+      
       // Update client balance in the database
       await api.put(`/clients/${selectedClient.id}`, {
         balance: newBalance,
       });
+      
+      // Update the manual client balance to match the new balance
+      setManualClientBalance(newBalance);
 
       // Prepare given data
       const givenData = {
@@ -754,14 +763,18 @@ export default function NewAdminReceiptPage() {
         }
       }
 
-      // Use manual client balance as the final balance (override calculation)
-      const hasGivenItems = givenItems.some((item) => item.productName);
-      const newBalance = manualClientBalance;
-
+      // Calculate the new balance based on given and received items
+      const givenTotal = givenItems.reduce((sum, item) => sum + item.total, 0);
+      const receivedTotal = receivedItems.reduce((sum, item) => sum + item.total, 0);
+      const newBalance = (selectedClient.balance || 0) + givenTotal - receivedTotal;
+      
       // Update client balance in the database
       await api.put(`/clients/${selectedClient.id}`, {
         balance: newBalance,
       });
+      
+      // Update the manual client balance to match the new balance
+      setManualClientBalance(newBalance);
 
       // Prepare received data with MC
       const receivedItemsWithMC = receivedItems.map((item) => ({
